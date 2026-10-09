@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>溯流计划 · 存储诊断</title>
+  <style>
+    :root {
+      --bg: #0d0f14;
+      --card: #161a22;
+      --card2: #1d222c;
+      --line: #2a3140;
+      --text: #e6e9ef;
+      --muted: #8b93a3;
+      --accent: #5eead4;
+      --warn: #fbbf24;
+      --danger: #f87171;
+      --ok: #4ade80;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro", "PingFang SC", sans-serif;
+      padding: env(safe-area-inset-top, 20px) 16px calc(env(safe-area-inset-bottom, 20px) + 40px);
+      font-size: 14px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    .header {
+      padding-top: 20px;
+      margin-bottom: 20px;
+    }
+    .header h1 {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    .header .en {
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+    .card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+    .card-title {
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+    }
+    .stat-row + .stat-row {
+      border-top: 1px solid var(--line);
+    }
+    .stat-label {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .stat-value {
+      font-size: 16px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .stat-value.big { font-size: 22px; }
+    .v-ok { color: var(--ok); }
+    .v-warn { color: var(--warn); }
+    .v-danger { color: var(--danger); }
+    .v-accent { color: var(--accent); }
+    .verdict {
+      border-radius: 14px;
+      padding: 18px 16px;
+      margin-bottom: 14px;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+    .verdict.danger { background: rgba(248,113,113,0.12); border: 1px solid rgba(248,113,113,0.3); }
+    .verdict.ok { background: rgba(74,222,128,0.12); border: 1px solid rgba(74,222,128,0.3); }
+    .verdict.warn { background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.3); }
+    .verdict h2 { font-size: 15px; margin-bottom: 8px; }
+    .sample {
+      background: var(--card2);
+      border-radius: 10px;
+      padding: 12px;
+      margin-top: 8px;
+      font-family: "SF Mono", ui-monospace, monospace;
+      font-size: 11.5px;
+      line-height: 1.5;
+      word-break: break-all;
+      white-space: pre-wrap;
+      color: var(--muted);
+    }
+    .type-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--card2);
+      border-radius: 8px;
+      padding: 6px 10px;
+      margin: 4px 6px 4px 0;
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+    .type-chip .k { color: var(--muted); }
+    .type-chip .n { font-weight: 700; }
+    .loading {
+      text-align: center;
+      color: var(--muted);
+      padding: 40px 0;
+    }
+    .subnote {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 8px;
+      line-height: 1.6;
+    }
+    .scope-picker {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .scope-btn {
+      background: var(--card2);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 14px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .scope-btn.active {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>存储诊断</h1>
+    <div class="en">STORAGE DIAGNOSTIC // READ-ONLY</div>
+  </div>
+
+  <div id="content">
+    <div class="loading">正在读取 IndexedDB…</div>
+  </div>
+
+  <script>
+    'use strict';
+
+    const DB_NAME = 'retroflow';
+    const DB_VERSION = 2;
+    const STORE = 'records';
+
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, DB_VERSION);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+        req.onblocked = () => reject(new Error('数据库被其他标签页占用，请关闭其他标签后重试'));
+      });
+    }
+
+    function getAll(db) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE, 'readonly');
+        const req = tx.objectStore(STORE).getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function getByIndex(db, forkId) {
+      return new Promise((resolve, reject) => {
+        try {
+          const tx = db.transaction(STORE, 'readonly');
+          const idx = tx.objectStore(STORE).index('by_fork_time');
+          const range = IDBKeyRange.bound([forkId, 0], [forkId, Number.MAX_SAFE_INTEGER]);
+          const req = idx.getAll(range);
+          req.onsuccess = () => resolve(req.result || []);
+          req.onerror = () => reject(req.error);
+        } catch (e) {
+          reject(e);
+        }
+      });
+    }
+
+    function esc(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function fmtTime(ts) {
+      if (typeof ts !== 'number' || !isFinite(ts)) return '（非法）';
+      try { return new Date(ts).toLocaleString('zh-CN'); } catch (_) { return String(ts); }
+    }
+
+    let allRecords = [];
+
+    function analyzeScope(forkId, byIndexCount) {
+      const mine = allRecords.filter(r => r && r.forkId === forkId);
+      const bad = mine.filter(r => typeof r.createdAt !== 'number' || !isFinite(r.createdAt));
+      const good = mine.filter(r => typeof r.createdAt === 'number' && isFinite(r.createdAt));
+
+      const typeCount = {};
+      mine.forEach(r => {
+        const t = (r.createdAt === undefined) ? 'undefined'
+          : (r.createdAt === null) ? 'null'
+          : (typeof r.createdAt === 'number' && !isFinite(r.createdAt)) ? 'NaN/Infinity'
+          : typeof r.createdAt;
+        typeCount[t] = (typeCount[t] || 0) + 1;
+      });
+
+      const latestGood = good.length ? Math.max.apply(null, good.map(r => r.createdAt)) : null;
+      const invisibleCount = mine.length - byIndexCount;
+
+      let verdict = '';
+      if (mine.length === 0) {
+        verdict = '<div class="verdict warn"><h2>该会话没有任何记录</h2>这个 forkId 下暂无数据，可能你从没在这个会话发过消息，或记录被清空过。</div>';
+      } else if (invisibleCount > 0) {
+        verdict = `<div class="verdict danger"><h2>确诊：记录没丢，只是读不出来</h2>`
+          + `库里实际有 <b>${mine.length}</b> 条记录，但索引只能读到 <b>${byIndexCount}</b> 条，`
+          + `有 <b>${invisibleCount}</b> 条被卡在索引区间外。`
+          + `这些记录的 createdAt 字段异常（非合法数字），落在查询区间之外，所以界面读不到、停在最后一条正常记录。`
+          + `<div class="subnote">好消息：数据一条都没丢，全都能救回来。把这一屏截图发给罗亚尔，就能开始修复。</div></div>`;
+      } else if (bad.length > 0) {
+        verdict = `<div class="verdict warn"><h2>有 ${bad.length} 条 createdAt 异常，但索引仍读到了全部</h2>`
+          + `索引读取数与全量一致，当前显示可能正常，但这些异常记录是隐患，建议一并修复。</div>`;
+      } else {
+        verdict = `<div class="verdict ok"><h2>该会话存储健康</h2>`
+          + `全量 <b>${mine.length}</b> 条，索引读到 <b>${byIndexCount}</b> 条，createdAt 全部为合法数字，无异常。</div>`;
+      }
+
+      const chips = Object.keys(typeCount).map(k => {
+        const isBad = k !== 'number';
+        return `<span class="type-chip"><span class="k">${esc(k)}</span><span class="n ${isBad ? 'v-danger' : 'v-ok'}">${typeCount[k]}</span></span>`;
+      }).join('');
+
+      const samples = bad.slice(0, 10).map(r => {
+        return `id: ${esc(r.id)}\n`
+          + `createdAt: ${esc(JSON.stringify(r.createdAt))}  (${typeof r.createdAt})\n`
+          + `kind: ${esc(r.kind)}  role: ${esc(r.role)}\n`
+          + `content: ${esc(String(r.content || '').slice(0, 40))}`;
+      }).join('\n\n');
+
+      // 渲染健壮性体检：按 createdAt 升序（与 restoreChatHistory 一致）逐条模拟
+      // appendMessage 会访问的字段，找出第一条会让渲染循环抛错中断的记录。
+      const sorted = good.slice().sort((a, b) => a.createdAt - b.createdAt);
+      const renderIssues = simulateRender(sorted);
+
+      // 时间线跨度：首条 / 末条 / 大致中段（对齐界面"停在某条"的观察）
+      const firstRec = sorted[0];
+      const lastRec = sorted[sorted.length - 1];
+      const spanDays = (firstRec && lastRec)
+        ? Math.round((lastRec.createdAt - firstRec.createdAt) / 86400000)
+        : 0;
+
+      let renderCard = '';
+      if (renderIssues.firstBadIndex >= 0) {
+        const b = renderIssues.firstBad;
+        renderCard = `<div class="verdict danger"><h2>找到渲染断点</h2>`
+          + `按时间顺序渲染到第 <b>${renderIssues.firstBadIndex + 1}</b> 条时命中异常结构，`
+          + `渲染循环会在这里抛错中断，之后的 <b>${sorted.length - renderIssues.firstBadIndex - 1}</b> 条全部无法上屏——`
+          + `这正是"界面停在某条早期记录"的原因。`
+          + `<div class="subnote">断点记录时间：${fmtTime(b.createdAt)}<br>问题：${esc(renderIssues.firstReason)}</div>`
+          + `<div class="sample">id: ${esc(b.id)}\nkind: ${esc(b.kind)}  role: ${esc(b.role)}\nmessageType: ${esc(b.messageType)}\ncreatedAt: ${fmtTime(b.createdAt)}\ncontent: ${esc(String(b.content||'').slice(0,60))}</div></div>`;
+      } else if (renderIssues.suspects.length) {
+        const lines = renderIssues.suspects.slice(0, 12).map(s =>
+          `#${s.index + 1}  ${fmtTime(s.rec.createdAt)}\n  ${esc(s.reason)}  [${esc(s.rec.messageType || s.rec.kind)}]`
+        ).join('\n\n');
+        renderCard = `<div class="card"><div class="card-title">渲染可疑记录（不一定致命，共 ${renderIssues.suspects.length} 条）</div>`
+          + `<div class="subnote">这些记录带有图片/文件引用，若引用的资源已丢失，渲染时可能抛错中断。</div>`
+          + `<div class="sample">${lines}</div></div>`;
+      } else {
+        renderCard = `<div class="verdict ok"><h2>渲染结构体检通过</h2>${sorted.length} 条记录结构完整，模拟渲染未发现会抛错的记录。断点可能不在数据本身。</div>`;
+      }
+
+      return verdict
+        + renderCard
+        + `<div class="card"><div class="card-title">核心数字</div>`
+        + `<div class="stat-row"><span class="stat-label">全量记录数（该会话）</span><span class="stat-value big v-accent">${mine.length}</span></div>`
+        + `<div class="stat-row"><span class="stat-label">索引能读到的数</span><span class="stat-value big ${invisibleCount > 0 ? 'v-danger' : 'v-ok'}">${byIndexCount}</span></div>`
+        + `<div class="stat-row"><span class="stat-label">读不出来的数（差值）</span><span class="stat-value big ${invisibleCount > 0 ? 'v-danger' : 'v-ok'}">${invisibleCount}</span></div>`
+        + `<div class="stat-row"><span class="stat-label">createdAt 异常记录数</span><span class="stat-value ${bad.length > 0 ? 'v-warn' : 'v-ok'}">${bad.length}</span></div>`
+        + `<div class="stat-row"><span class="stat-label">时间线跨度</span><span class="stat-value" style="font-size:13px;">${spanDays} 天</span></div>`
+        + `<div class="stat-row"><span class="stat-label">最早记录时间</span><span class="stat-value" style="font-size:12px;">${fmtTime(firstRec && firstRec.createdAt)}</span></div>`
+        + `<div class="stat-row"><span class="stat-label">最新正常记录时间</span><span class="stat-value" style="font-size:12px;">${fmtTime(latestGood)}</span></div>`
+        + `</div>`
+        + `<div class="card"><div class="card-title">createdAt 类型分布</div>${chips || '（无）'}</div>`
+        + (samples ? `<div class="card"><div class="card-title">异常记录样本（前 10 条）</div><div class="sample">${samples}</div></div>` : '');
+    }
+
+    // 模拟 restoreChatHistory 的渲染循环：找出第一条会抛错的记录。
+    // 只做纯结构判断，不触碰真实 DOM / IndexedDB 资源读取。
+    function simulateRender(sorted) {
+      const suspects = [];
+      let firstBadIndex = -1;
+      let firstBad = null;
+      let firstReason = '';
+
+      for (let i = 0; i < sorted.length; i++) {
+        const r = sorted[i];
+        let fatal = null;
+        let suspect = null;
+
+        // 助手生成图记录：restoreChatHistory 走 appendGeneratedImage 分支
+        if (r.messageType === 'assistant-image') {
+          if (!r.genImageRef || typeof r.genImageRef !== 'object') {
+            fatal = 'assistant-image 记录缺少 genImageRef 对象';
+          }
+        }
+
+        // 工具卡片记录
+        if (!fatal && r.kind && String(r.kind).indexOf('tool') >= 0) {
+          // 工具卡容错性较好，一般不致命，仅标记
+        }
+
+        // 用户图片消息：imageRef / media 结构
+        if (!fatal && r.messageType === 'image') {
+          const ref = r.imageRef || r.media;
+          if (!ref || typeof ref !== 'object') {
+            fatal = 'image 记录缺少 imageRef/media 对象';
+          } else if (!ref.galleryId && !ref.assetKey) {
+            suspect = 'image 记录的 imageRef 无 galleryId/assetKey（图可能已丢）';
+          }
+        }
+
+        // 文件消息：fileRefs 数组
+        if (!fatal && r.messageType === 'file') {
+          if (!Array.isArray(r.fileRefs)) {
+            fatal = 'file 记录的 fileRefs 不是数组';
+          } else {
+            const badF = r.fileRefs.find(f => !f || typeof f !== 'object');
+            if (badF !== undefined) fatal = 'file 记录的 fileRefs 含非法元素';
+          }
+        }
+
+        // 普通消息里挂了 fileRefs 但结构异常
+        if (!fatal && Array.isArray(r.fileRefs) && r.fileRefs.length) {
+          const badF = r.fileRefs.find(f => !f || typeof f.name !== 'string');
+          if (badF !== undefined) suspect = '记录的 fileRefs 元素缺少 name 字段';
+        }
+
+        if (fatal && firstBadIndex < 0) {
+          firstBadIndex = i;
+          firstBad = r;
+          firstReason = fatal;
+        }
+        if (suspect) suspects.push({ index: i, rec: r, reason: suspect });
+      }
+
+      return { firstBadIndex, firstBad, firstReason, suspects };
+    }
+
+    async function run() {
+      const content = document.getElementById('content');
+
+      // 先读渲染失败明细（由 system-chat-ui 的加载循环写入）
+      let renderErrCard = '';
+      try {
+        const raw = localStorage.getItem('retroflow_render_errors');
+        if (raw) {
+          const data = JSON.parse(raw);
+          if (data && data.failed) {
+            const lines = (data.items || []).map(it =>
+              `id: ${esc(it.id)}\n`
+              + `kind: ${esc(it.kind)}  role: ${esc(it.role)}  type: ${esc(it.messageType)}\n`
+              + `time: ${fmtTime(it.createdAt)}\n`
+              + `错误: ${esc(it.error)}`
+              + (it.stack ? `\n栈: ${esc(it.stack)}` : '')
+            ).join('\n\n');
+            renderErrCard = `<div class="verdict danger"><h2>抓到渲染失败记录（真凶）</h2>`
+              + `上次加载系统助手历史时，共 <b>${data.total}</b> 条中有 <b>${data.failed}</b> 条渲染抛错。`
+              + `修复后这些记录已被跳过、其余正常上屏。以下是失败明细：`
+              + `<div class="sample">${lines}</div>`
+              + `<div class="subnote">把这一屏截图发给罗亚尔，就能从根上修掉抛错点。</div></div>`;
+          }
+        }
+      } catch (_) {}
+      let db;
+      try {
+        db = await openDB();
+      } catch (e) {
+        content.innerHTML = `<div class="verdict danger"><h2>打开数据库失败</h2>${esc(e.message)}</div>`;
+        return;
+      }
+
+      let all;
+      try {
+        all = await getAll(db);
+      } catch (e) {
+        content.innerHTML = `<div class="verdict danger"><h2>读取记录失败</h2>${esc(e.message)}</div>`;
+        return;
+      }
+      allRecords = all;
+
+      // 统计所有出现过的 forkId
+      const forkIds = {};
+      all.forEach(r => {
+        if (r && typeof r.forkId === 'string') {
+          forkIds[r.forkId] = (forkIds[r.forkId] || 0) + 1;
+        }
+      });
+      const forkList = Object.keys(forkIds).sort((a, b) => forkIds[b] - forkIds[a]);
+
+      // 系统助手会话优先
+      const primaryFork = forkList.includes('system-chat:main') ? 'system-chat:main' : (forkList[0] || '');
+
+      const picker = document.createElement('div');
+      picker.className = 'scope-picker';
+      forkList.forEach(fk => {
+        const btn = document.createElement('button');
+        btn.className = 'scope-btn' + (fk === primaryFork ? ' active' : '');
+        btn.textContent = `${fk} (${forkIds[fk]})`;
+        btn.addEventListener('click', async () => {
+          picker.querySelectorAll('.scope-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          await renderScope(fk);
+        });
+        picker.appendChild(btn);
+      });
+
+      const summary = document.createElement('div');
+      summary.className = 'card';
+      summary.innerHTML = `<div class="card-title">数据库总览</div>`
+        + `<div class="stat-row"><span class="stat-label">records 表总记录数</span><span class="stat-value big v-accent">${all.length}</span></div>`
+        + `<div class="stat-row"><span class="stat-label">会话数（不同 forkId）</span><span class="stat-value">${forkList.length}</span></div>`;
+
+      const scopeResult = document.createElement('div');
+      scopeResult.id = 'scopeResult';
+
+      content.innerHTML = '';
+      if (renderErrCard) {
+        const errBox = document.createElement('div');
+        errBox.innerHTML = renderErrCard;
+        content.appendChild(errBox);
+      }
+      content.appendChild(summary);
+      content.appendChild(picker);
+      content.appendChild(scopeResult);
+
+      async function renderScope(fk) {
+        scopeResult.innerHTML = '<div class="loading">分析中…</div>';
+        let byIndexCount = 0;
+        try {
+          const byIndex = await getByIndex(db, fk);
+          byIndexCount = byIndex.length;
+        } catch (e) {
+          byIndexCount = -1;
+        }
+        scopeResult.innerHTML = analyzeScope(fk, byIndexCount);
+      }
+
+      await renderScope(primaryFork);
+    }
+
+    run();
+  </script>
+</body>
+</html>

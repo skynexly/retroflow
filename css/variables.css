@@ -1,0 +1,45 @@
+:root {
+  /* 基础主色板 */
+  --bg-color: #EDEBDD;             /* 页面背景色（复古米白/羊皮纸） */
+  --card-bg-color: #E2DFD0;        /* 卡片底色（比背景色稍深一阶的暖灰米褐） */
+  --secondary-color: #1B1717;      /* 反色（背景的对极：深色块载体 + 主体文字） */
+  --primary-color: #630000;        /* 重点色（深绯红） */
+  --decor-color: #E6C280;          /* 装饰色（暗金/智能终端高亮） */
+
+  /* 文字色彩系统
+     主体文字统一由 --secondary-color（反色）承担，不再单列主文字通道；
+     --text-color 是它的语义别名（历史遗留调用点仍在引用），指向反色以跟随主题；
+     --text-muted 仅管次级/辅助说明文字。 */
+  --text-color: var(--secondary-color);   /* 主体文字色（= 反色，跟随主题联动） */
+  --text-muted: #756A5B;           /* 次要文字色 */
+
+  /* RGB通道变量 */
+  --bg-color-rgb: 237, 235, 221;
+  --card-bg-color-rgb: 226, 223, 208;
+  --secondary-color-rgb: 27, 23, 23;
+  --primary-color-rgb: 99, 0, 0;
+  --decor-color-rgb: 230, 194, 128;
+  --text-muted-rgb: 117, 106, 91;
+  --text-color-rgb: 27, 23, 23;
+
+  /* 语义状态色（不参与主题调色，仅用于状态指示与危险操作） */
+  /* 在线/成功态：直接跟随装饰色（主题高亮色），避免写死的绿在冷色/深色主题里突兀。
+     装饰色本身就承担高亮语义，成功/在线态复用它即可随主题联动。 */
+  --success-color: var(--decor-color);
+  --success-color-rgb: var(--decor-color-rgb);
+  --danger-color: #C62828;         /* 危险/删除态 */
+  --danger-color-rgb: 198, 40, 40;
+  --warning-color: #E5A00D;        /* 警示/待补充态 */
+  --warning-color-rgb: 229, 160, 13;
+  --inactive-color: #787878;       /* 失效/停用态 */
+  --inactive-color-rgb: 120, 120, 120;
+
+  /* 全局字体系统。
+     --main-font 是全站唯一的字体总闸，默认走系统字体栈。
+     执行员在设置中激活自定义字体时，theme.js 只需重写这一个变量，
+     全终端所有文字（含输入框、按钮、弹窗、列表）即刻同步切换。
+     --mono-font 为机能等宽通道，专供编号、时钟、序列号等需要
+     等宽对齐的战术组件，不受自定义字体影响，保证数字不歪斜。 */
+  --main-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --mono-font: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
