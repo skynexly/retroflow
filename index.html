@@ -19,7 +19,9 @@
 
   <!-- 样式资产（带构建版本戳穿透 HTTP 磁盘缓存） -->
   <link rel="stylesheet" href="css/variables.css?v=190">
-  <link rel="stylesheet" href="css/style.css?v=866">
+  <link rel="stylesheet" href="css/style.css?v=892">
+  <link rel="stylesheet" href="css/fork-deck-camera.css?v=3">
+  <link rel="stylesheet" href="css/api-call-log.css?v=4">
 
   <!-- 首帧配色影子缓存回填。
        权威配色在 IndexedDB（随存档导出），但那是异步读取：首帧只能拿到
@@ -1441,17 +1443,7 @@
             </label>
           </div>
 
-          <!-- 随行悬浮球：关掉后球不出现，大窗顶栏的缩小与最小化键一并隐去 -->
-          <div class="chat-bento-row">
-            <div class="chat-bento-label">
-              <span class="chat-bento-zh">随行悬浮球</span>
-              <span class="chat-bento-en">FLOATING ORB · 浮于全部视图之上</span>
-            </div>
-            <label class="chat-bento-switch">
-              <input type="checkbox" id="systemChatToggle_floatingOrb" checked>
-              <span class="chat-switch-slider"></span>
-            </label>
-          </div>
+          <!-- 随行悬浮球开关已迁往「设置 › 08 终端配置」（悬浮球已升级为全站战术中枢，不再隶属助手） -->
 
           <!-- 对话壁纸 -->
           <div class="chat-bento-row chat-bento-col-mobile">
@@ -1691,6 +1683,62 @@
               </div>
               <div class="settings-item-right">
                 <span class="settings-watermark-num">06</span>
+                <svg class="settings-chevron-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
+                </svg>
+              </div>
+            </button>
+
+            <!-- 07 调用日志 -->
+            <button class="settings-nav-item" type="button" data-section="apiLog" data-title="调用日志">
+              <div class="settings-item-left">
+                <div class="settings-item-icon">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <!-- 协议日志 / 数据流监控 -->
+                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                  </svg>
+                </div>
+                <div class="settings-item-info">
+                  <div class="settings-item-main-row">
+                    <span class="settings-item-name">调用日志</span>
+                  </div>
+                  <div class="settings-item-sub-row">
+                    <span class="settings-item-en">API CALL LOG</span>
+                    <span class="settings-item-slash">//</span>
+                    <span class="settings-item-zh">请求追踪</span>
+                  </div>
+                </div>
+              </div>
+              <div class="settings-item-right">
+                <span class="settings-watermark-num">07</span>
+                <svg class="settings-chevron-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
+                </svg>
+              </div>
+            </button>
+
+            <!-- 08 终端配置 -->
+            <button class="settings-nav-item" type="button" data-section="terminal" data-title="终端配置">
+              <div class="settings-item-left">
+                <div class="settings-item-icon">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <!-- 调节旋钮 / 中枢控制面板 -->
+                    <path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/>
+                  </svg>
+                </div>
+                <div class="settings-item-info">
+                  <div class="settings-item-main-row">
+                    <span class="settings-item-name">终端配置</span>
+                  </div>
+                  <div class="settings-item-sub-row">
+                    <span class="settings-item-en">TERMINAL CONFIG</span>
+                    <span class="settings-item-slash">//</span>
+                    <span class="settings-item-zh">中枢调校</span>
+                  </div>
+                </div>
+              </div>
+              <div class="settings-item-right">
+                <span class="settings-watermark-num">08</span>
                 <svg class="settings-chevron-icon" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
                 </svg>
@@ -2722,7 +2770,103 @@
                 <!-- 由 js/theme-ui.js 动态渲染 -->
               </div>
             </div>
-
+            <!-- 模块 5：悬浮球美化（皮肤上传 / 尺寸 / 边框调校工坊） -->
+            <div class="theme-module">
+              <div class="module-label-row with-action">
+                <div class="module-label-group">
+                  <span class="module-label-en">ORB SKIN</span>
+                  <span class="module-label-slash">//</span>
+                  <span class="module-label-zh">悬浮球美化</span>
+                </div>
+                <button class="tile-reset-ghost-btn" id="orbSkinResetBtn" type="button" title="恢复默认（清除皮肤并还原罗盘芯）">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>
+                  </svg>
+                  <span>恢复默认</span>
+                </button>
+              </div>
+              <div class="chat-bento-card orb-skin-card">
+                <div class="orb-skin-workbench">
+                  <!-- 左：实时预览（克隆球体渲染结果，随调校即时刷新） -->
+                  <div class="orb-skin-preview-zone" id="orbSkinPreviewZone" aria-label="悬浮球实时预览">
+                    <div class="orb-skin-preview-orb" id="orbSkinPreviewOrb">
+                      <div class="orb-skin-preview-halo" aria-hidden="true"></div>
+                      <div class="orb-skin-preview-core">
+                        <svg viewBox="0 0 24 24" class="orb-skin-preview-svg" aria-hidden="true">
+                          <circle cx="12" cy="12" r="9.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="2 3"/>
+                          <circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="1.2"/>
+                          <path d="M12 3.5v2.8M12 17.7v2.8M3.5 12h2.8M17.7 12h2.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                          <circle cx="12" cy="12" r="2" fill="currentColor"/>
+                        </svg>
+                        <img class="orb-skin-preview-img" id="orbSkinPreviewImg" alt="" hidden>
+                      </div>
+                    </div>
+                    <span class="orb-skin-preview-tag">LIVE PREVIEW</span>
+                  </div>
+                  <!-- 右：双上传位 -->
+                  <div class="orb-skin-slots">
+                    <button type="button" class="orb-skin-slot" id="orbSkinNormalSlot" aria-label="上传常态图">
+                      <img class="orb-skin-slot-img" id="orbSkinNormalSlotImg" alt="" hidden>
+                      <span class="orb-skin-slot-empty" id="orbSkinNormalSlotEmpty">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M19 7v2.99s-1.99.01-2 0V7h-3s.01-1.99 0-2h3V2h2v3h3v2h-3zm-3 4V8h-3V5H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-8h-3zM5 19l3-4 2 3 3-4 4 5H5z"/>
+                        </svg>
+                        <span>上传常态图</span>
+                      </span>
+                      <span class="orb-skin-slot-badge">NORMAL</span>
+                      <span class="orb-skin-slot-clear" id="orbSkinNormalClear" role="button" aria-label="清除常态图" hidden>
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/>
+                        </svg>
+                      </span>
+                    </button>
+                    <button type="button" class="orb-skin-slot" id="orbSkinDragSlot" aria-label="上传拖拽图">
+                      <img class="orb-skin-slot-img" id="orbSkinDragSlotImg" alt="" hidden>
+                      <span class="orb-skin-slot-empty" id="orbSkinDragSlotEmpty">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M10 9h4V6h3l-5-5-5 5h3v3zm-1 1H6V7l-5 5 5 5v-3h3v-4zm14 2l-5-5v3h-3v4h3v3l5-5zm-9 3h-4v3H7l5 5 5-5h-3v-3z"/>
+                        </svg>
+                        <span>上传拖拽图</span>
+                      </span>
+                      <span class="orb-skin-slot-badge">DRAG</span>
+                      <span class="orb-skin-slot-clear" id="orbSkinDragClear" role="button" aria-label="清除拖拽图" hidden>
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/>
+                        </svg>
+                      </span>
+                    </button>
+                  </div>
+                </div>
+                <div class="orb-skin-hint">支持 JPG / PNG / WEBP / GIF 动图，原样存储不转码。未传拖拽图时两态共用常态图。</div>
+                <!-- 尺寸滑杆 -->
+                <div class="orb-skin-scale-row">
+                  <div class="theme-toggle-title">
+                    <span class="toggle-en">SCALE</span>
+                    <span class="toggle-slash">//</span>
+                    <span class="toggle-zh">尺寸</span>
+                  </div>
+                  <input type="range" class="orb-skin-scale-input" id="orbSkinScaleInput" min="80" max="400" step="10" value="100" aria-label="悬浮球尺寸">
+                  <span class="orb-skin-scale-value" id="orbSkinScaleValue">100%</span>
+                </div>
+                <!-- 边框开关 -->
+                <label class="theme-toggle-row" for="orbSkinBorderedCheckbox">
+                  <div class="theme-toggle-info">
+                    <div class="theme-toggle-title">
+                      <span class="toggle-en">FRAME</span>
+                      <span class="toggle-slash">//</span>
+                      <span class="toggle-zh">圆形边框与底衬</span>
+                    </div>
+                    <span class="theme-toggle-desc">关闭后去除圆形裁切与底衬光环，皮肤以自由原形站立</span>
+                  </div>
+                  <div class="theme-switch-wrap">
+                    <input type="checkbox" id="orbSkinBorderedCheckbox" class="theme-switch-input" checked>
+                    <span class="theme-switch-track" aria-hidden="true">
+                      <span class="theme-switch-thumb"></span>
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -2880,6 +3024,182 @@
                 <span class="rail-watermark-text">PROTOCOL MANUAL // SYSTEM DIRECTIVE · 06</span>
               </div>
             </aside>
+          </div>
+        </section>
+
+        <!-- 二级：07 调用日志 · API 请求追踪 -->
+        <section class="detail-section" id="apiLogDetailSection" hidden>
+          <header class="settings-header">
+            <button class="settings-back-btn" type="button" aria-label="返回配置列表" title="返回配置列表">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+              </svg>
+            </button>
+            <div class="settings-header-title">
+              <span class="settings-title-en">API LOG</span>
+              <span class="settings-title-slash">//</span>
+              <span class="settings-title-zh">调用日志</span>
+            </div>
+          </header>
+
+          <div class="settings-body-scroll">
+            <!-- 顶部工具条：筛选 / 清空 / 导出 / 暂停记录 -->
+            <div class="api-log-toolbar">
+              <!-- 筛选胶囊 -->
+              <div class="api-log-filter-bar" id="apiCallLogFilterBar">
+                <button class="api-log-filter-pill is-active" data-log-filter="all" type="button">全部</button>
+                <button class="api-log-filter-pill" data-log-filter="fail" type="button">仅失败</button>
+              </div>
+
+              <!-- 操作按钮组 -->
+              <div class="api-log-actions">
+                <button class="api-log-action-btn" id="apiCallLogClearBtn" type="button" title="清空全部日志">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                  </svg>
+                  <span>清空</span>
+                </button>
+                <button class="api-log-action-btn" id="apiCallLogExportBtn" type="button" title="导出 JSON 日志文件">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2z"/>
+                  </svg>
+                  <span>导出</span>
+                </button>
+                <button class="api-log-action-btn is-toggle" id="apiCallLogPauseBtn" type="button" data-paused="false" title="暂停记录新调用">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                  </svg>
+                  <span>暂停</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 汇总信息行 -->
+            <div class="api-log-summary" id="apiCallLogSummary">
+              <span>共 <strong>0</strong> 条记录（上限 50 环形）</span>
+            </div>
+
+            <!-- 日志卡片流 -->
+            <div class="api-log-list" id="apiCallLogList">
+              <!-- 由 api-call-log-ui.js 动态渲染 -->
+            </div>
+
+            <!-- 空态占位 -->
+            <div class="api-log-empty" id="apiCallLogEmpty" hidden>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+              </svg>
+              <span class="api-log-empty-title">尚无调用记录</span>
+              <span class="api-log-empty-desc">每次调用 API（推演 / 生图 / TTS）时会自动在此记录</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 二级：08 终端配置 · 中枢调校 -->
+        <section class="detail-section" id="terminalDetailSection" hidden>
+          <header class="settings-header">
+            <button class="settings-back-btn" type="button" aria-label="返回配置列表" title="返回配置列表">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+              </svg>
+            </button>
+            <div class="settings-header-title">
+              <span class="settings-title-en">TERMINAL</span>
+              <span class="settings-title-slash">//</span>
+              <span class="settings-title-zh">终端配置</span>
+            </div>
+          </header>
+
+          <div class="settings-body-scroll">
+            <!-- 模块 1：随行中枢（使用 theme-module 结构对齐界面主题的标题/卡片间距） -->
+            <div class="theme-module">
+              <div class="module-label-row">
+                <span class="module-label-en">ORB</span>
+                <span class="module-label-slash">//</span>
+                <span class="module-label-zh">随行中枢</span>
+              </div>
+              <div class="chat-bento-card terminal-config-card">
+                <!-- 悬浮球启用开关（权威状态仍在 SystemChatOrb 的 localStorage） -->
+                <div class="chat-bento-row">
+                  <div class="chat-bento-label">
+                    <span class="chat-bento-zh">随行悬浮球</span>
+                    <span class="chat-bento-en">TACTICAL ORB · 点击展开指令环</span>
+                  </div>
+                  <div class="terminal-config-row-actions">
+                    <button type="button" class="psych-help-circle-btn" id="terminalOrbHelpBtn" aria-label="查看随行中枢说明" title="查看随行中枢说明">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                        <path d="M12 17h.01"/>
+                      </svg>
+                    </button>
+                    <label class="chat-bento-switch">
+                      <input type="checkbox" id="terminalToggleFloatingOrb" checked>
+                      <span class="chat-switch-slider"></span>
+                    </label>
+                  </div>
+                </div>
+                <!-- 随行悬浮球折叠说明抽屉（默认收起，点问号展开） -->
+                <div class="psych-radar-manual-drawer terminal-config-drawer" id="terminalOrbManualDrawer" hidden>
+                  <div class="terminal-config-hint">
+                    全站随行战术入口，浮于全部视图之上。点击球体展开指令环：助手窗口 / 调用日志 / 当前状态。<button type="button" class="terminal-config-link-btn" id="terminalGoOrbSkinBtn">前往悬浮球美化，为中枢换装</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 模块 2：后台服务 -->
+            <div class="theme-module">
+              <div class="module-label-row">
+                <span class="module-label-en">BACKGROUND</span>
+                <span class="module-label-slash">//</span>
+                <span class="module-label-zh">后台服务</span>
+              </div>
+              <div class="chat-bento-card terminal-config-card">
+                <!-- 静音音轨保活开关（权威状态归 KeepaliveCore 的 localStorage） -->
+                <div class="chat-bento-row">
+                  <div class="chat-bento-label">
+                    <span class="chat-bento-zh">后台保活</span>
+                    <span class="chat-bento-en">KEEPALIVE · 静音音轨留住后台 CPU</span>
+                  </div>
+                  <div class="terminal-config-row-actions">
+                    <button type="button" class="psych-help-circle-btn" id="terminalKeepaliveHelpBtn" aria-label="查看后台保活说明" title="查看后台保活说明">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                        <path d="M12 17h.01"/>
+                      </svg>
+                    </button>
+                    <label class="chat-bento-switch">
+                      <input type="checkbox" id="terminalToggleKeepalive">
+                      <span class="chat-switch-slider"></span>
+                    </label>
+                  </div>
+                </div>
+                <!-- 屏幕常亮开关（Wake Lock API，与音轨互不依赖） -->
+                <div class="chat-bento-row">
+                  <div class="chat-bento-label">
+                    <span class="chat-bento-zh">屏幕常亮</span>
+                    <span class="chat-bento-en">WAKE LOCK · 前台时不让屏幕熄灭</span>
+                  </div>
+                  <label class="chat-bento-switch">
+                    <input type="checkbox" id="terminalToggleWakeLock">
+                    <span class="chat-switch-slider"></span>
+                  </label>
+                </div>
+                <!-- 后台保活折叠说明抽屉（默认收起，点问号展开） -->
+                <div class="psych-radar-manual-drawer terminal-config-drawer" id="terminalKeepaliveManualDrawer" hidden>
+                  <div class="terminal-config-hint" id="terminalKeepaliveHint">
+                    保活机制：循环播放静音音轨，维持页面后台活性。注意：网页/PWA 仍可能被系统冻结，长生成建议保持前台。驻留费电，按需开启。
+                  </div>
+                </div>
+                <!-- 状态自证行：off/yield/run/wait 如实上报 -->
+                <div class="terminal-config-hint terminal-keepalive-status" id="terminalKeepaliveStatus" hidden>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                  <span id="terminalKeepaliveStatusText">待机</span>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -9633,7 +9953,7 @@
                     <!-- 舱顶信息眉栏：静态等宽编号与装载规格 (零呼吸灯) -->
                     <div class="fork-deck-gear-pod-head">
                       <span class="fork-deck-gear-pod-bay">BAY-03 // FIELD GEAR</span>
-                      <span class="fork-deck-gear-pod-spec">4 SLOTS · 3 ARMED</span>
+                      <span class="fork-deck-gear-pod-spec">4 SLOTS · 4 ARMED</span>
                     </div>
 
                     <!-- 舱体内嵌四槽位芯片网格 (3 随身模组 + 1 核心自转陀螺仪) -->
@@ -9668,25 +9988,15 @@
                         <span class="fork-deck-gear-title">草稿本</span>
                       </button>
 
-                      <!-- 核心战术电量环仪表 CORE (真实设备电量感知 + 匀速自转外环) -->
-                      <div class="fork-deck-gear-chip fork-deck-gear-chip-core" id="forkDeckBatteryChip" aria-label="设备战术能源" title="设备战术能源储备">
-                        <div class="fork-deck-battery-meter">
-                          <svg class="fork-deck-battery-svg" viewBox="0 0 36 36" aria-hidden="true">
-                            <!-- 1. 外层匀速自转的微米刻度虚线齿环 (零闪烁、纯物理自转) -->
-                            <g class="fork-deck-gyro-ring">
-                              <circle cx="18" cy="18" r="16.5" fill="none" stroke="currentColor" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.45" />
-                            </g>
-                            <!-- 2. 底层暗金跑道 -->
-                            <circle class="fork-deck-battery-track" cx="18" cy="18" r="13" />
-                            <!-- 3. 动态电量进度条 -->
-                            <circle class="fork-deck-battery-progress" id="forkDeckBatteryCircle" cx="18" cy="18" r="13" />
+                      <!-- 调用日志 SLOT.CORE (就地弹速览浮卡，复用 SystemChatOrb.openLogCard) -->
+                      <button type="button" class="fork-deck-gear-chip" id="forkDeckApiLogBtn">
+                        <span class="fork-deck-gear-icon">
+                          <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
                           </svg>
-                          <!-- 4. 环心实时电量数值 (绝对几何居中，移除挤占空间的闪电微标) -->
-                          <div class="fork-deck-battery-val" id="forkDeckBatteryVal">
-                            <span class="fork-deck-battery-num" id="forkDeckBatteryNum">--</span>
-                          </div>
-                        </div>
-                      </div>
+                        </span>
+                        <span class="fork-deck-gear-title">调用日志</span>
+                      </button>
                     </div>
 
                     <!-- 舱底战术微米刻度装饰 (纯静态 SVG 标尺，零闪烁) -->
@@ -9754,7 +10064,7 @@
                       <div class="fork-deck-card-desc">兑换因果物资与道具</div>
                     </button>
 
-                    <!-- 溯流相机 (视网膜抓拍) -->
+                    <!-- 系统相机 (视网膜抓拍) -->
                     <button type="button" class="fork-deck-nav-card" id="forkDeckCameraBtn">
                       <div class="fork-deck-card-top-row">
                         <span class="fork-deck-card-icon">
@@ -9762,7 +10072,7 @@
                             <path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
                           </svg>
                         </span>
-                        <span class="fork-deck-card-title">溯流相机</span>
+                        <span class="fork-deck-card-title">系统相机</span>
                       </div>
                       <div class="fork-deck-card-sub-row">
                         <span class="fork-deck-sub-bullet">
@@ -9770,7 +10080,7 @@
                         </span>
                         <span class="fork-deck-card-en">CAMERA // SNAP</span>
                       </div>
-                      <div class="fork-deck-card-desc">现场取景与视网膜快照</div>
+                      <div class="fork-deck-card-desc">拍摄当前场景</div>
                     </button>
 
                     <!-- 溯流直播 (待接入) -->
@@ -10163,8 +10473,286 @@
                     <span id="forkDeckAsstBatchDeleteLabel">删除 (0)</span>
                   </button>
                 </div>
+              </div>
+            </div>
+
+            <!-- ===================================================================
+                 Pane 6 · 系统相机舱 (SYSTEM CAMERA // SNAP)
+                 DECK 二级内联视口，所见即所得取景与快门二次确认显影出图。
+                 零分割线、纯机能色阶、纯 SVG 矢量图标、iOS 灵动岛保护。
+                 =================================================================== -->
+            <div class="fork-deck-pane fork-deck-pane-senary" id="forkDeckCameraPane">
+              <div class="fork-cam-body">
+
+                <!-- 顶栏：返回 + 标头 + 切换相册/拍摄 Tab -->
+                <div class="fork-cam-header">
+                  <div class="fork-cam-header-left">
+                    <button type="button" class="fork-res-back-btn" id="forkDeckCameraBackBtn" aria-label="返回战术控制台">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+                      </svg>
+                    </button>
+                    <div class="fork-cam-title-block">
+                      <div class="fork-cam-title-zh">系统相机</div>
+                      <div class="fork-cam-title-en">CAMERA // SNAP</div>
+                    </div>
+                  </div>
+
+                  <!-- 顶栏双段切换胶囊 -->
+                  <div class="fork-cam-tab-pill" role="tablist" aria-label="相机模式切换">
+                    <button type="button" class="fork-cam-tab-btn is-active" id="forkCamTabShootBtn" role="tab" aria-selected="true">
+                      <span>拍摄</span>
+                    </button>
+                    <button type="button" class="fork-cam-tab-btn" id="forkCamTabAlbumBtn" role="tab" aria-selected="false">
+                      <span>相册</span>
+                      <span class="fork-cam-album-count-badge" id="forkCamAlbumCountBadge" hidden>0</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- 1. 拍摄视口 (Shoot View) -->
+                <div class="fork-cam-view fork-cam-shoot-view" id="forkCamShootView">
+                  
+                  <!-- 取景器大卡 (Viewfinder Card) -->
+                  <div class="fork-cam-finder-card">
+                    <!-- 取景器微标装饰头 -->
+                    <div class="fork-cam-finder-bar">
+                      <div class="fork-cam-finder-tag">
+                        <span class="fork-cam-finder-dot"></span>
+                        <span class="fork-cam-finder-label">现场画面</span>
+                      </div>
+                      <!-- AI 智能总结画面微钮 -->
+                      <button type="button" class="fork-cam-refine-btn" id="forkCamAiRefineBtn" title="将现场剧情总结为视觉画面描述">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M7 2v11h3v9l7-12h-4l4-8z"/>
+                        </svg>
+                        <span>总结画面</span>
+                      </button>
+                    </div>
+
+                    <!-- 场景描述编辑框 (四角取景标环绕) -->
+                    <div class="fork-cam-textarea-wrap">
+                      <span class="fork-cam-corner-mark top-left" aria-hidden="true"></span>
+                      <span class="fork-cam-corner-mark top-right" aria-hidden="true"></span>
+                      <span class="fork-cam-corner-mark bottom-left" aria-hidden="true"></span>
+                      <span class="fork-cam-corner-mark bottom-right" aria-hidden="true"></span>
+                      <textarea id="forkCamSceneInput" class="fork-cam-scene-textarea" placeholder="正在读取当前副本场景..." spellcheck="false" rows="5"></textarea>
+                    </div>
+                  </div>
+
+                  <!-- 战术参数配置区 (机能卡片，零分割线) -->
+                  <div class="fork-cam-config-card">
+
+                    <!-- 画幅比例行 -->
+                    <div class="fork-cam-config-section">
+                      <div class="fork-cam-config-header">
+                        <span class="fork-cam-cfg-zh">画幅比例</span>
+                        <span class="fork-cam-cfg-en">ASPECT RATIO</span>
+                      </div>
+                      <div class="fork-cam-ratio-group" id="forkCamRatioGroup">
+                        <button type="button" class="fork-cam-ratio-pill is-active" data-ratio="1:1" data-size="1024x1024">
+                          <span class="fork-cam-ratio-sym">1:1</span>
+                          <span class="fork-cam-ratio-desc">方形</span>
+                        </button>
+                        <button type="button" class="fork-cam-ratio-pill" data-ratio="2:3" data-size="832x1248">
+                          <span class="fork-cam-ratio-sym">2:3</span>
+                          <span class="fork-cam-ratio-desc">立绘</span>
+                        </button>
+                        <button type="button" class="fork-cam-ratio-pill" data-ratio="3:2" data-size="1248x832">
+                          <span class="fork-cam-ratio-sym">3:2</span>
+                          <span class="fork-cam-ratio-desc">胶片</span>
+                        </button>
+                        <button type="button" class="fork-cam-ratio-pill" data-ratio="3:4" data-size="896x1152">
+                          <span class="fork-cam-ratio-sym">3:4</span>
+                          <span class="fork-cam-ratio-desc">肖像</span>
+                        </button>
+                        <button type="button" class="fork-cam-ratio-pill" data-ratio="4:3" data-size="1152x896">
+                          <span class="fork-cam-ratio-sym">4:3</span>
+                          <span class="fork-cam-ratio-desc">画报</span>
+                        </button>
+                        <button type="button" class="fork-cam-ratio-pill" data-ratio="9:16" data-size="720x1280">
+                          <span class="fork-cam-ratio-sym">9:16</span>
+                          <span class="fork-cam-ratio-desc">壁纸</span>
+                        </button>
+                        <button type="button" class="fork-cam-ratio-pill" data-ratio="16:9" data-size="1280x720">
+                          <span class="fork-cam-ratio-sym">16:9</span>
+                          <span class="fork-cam-ratio-desc">宽幅</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- 锁脸目标行 (Cast Lock) -->
+                    <div class="fork-cam-config-section">
+                      <div class="fork-cam-config-header">
+                        <span class="fork-cam-cfg-zh">出镜锁脸</span>
+                        <span class="fork-cam-cfg-en">CAST FACE LOCK</span>
+                      </div>
+                      <div class="fork-cam-cast-list" id="forkCamCastList">
+                        <!-- 动态填充在场执行员与 NPC 胶囊 -->
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 底部机能快门控制台 -->
+                  <div class="fork-cam-dock">
+                    <!-- 左：重置为原始场景 -->
+                    <button type="button" class="fork-cam-dock-btn" id="forkCamResetBtn" title="恢复为副本最新原始场景" aria-label="重置场景">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                      </svg>
+                      <span>重置</span>
+                    </button>
+
+                    <!-- 中：战术快门同心光圈大按钮 -->
+                    <button type="button" class="fork-cam-shutter-btn" id="forkCamShutterBtn" aria-label="按下快门取景">
+                      <span class="fork-cam-shutter-ring"></span>
+                      <span class="fork-cam-shutter-core">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <circle cx="12" cy="12" r="3.2"/>
+                          <path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                        </svg>
+                      </span>
+                    </button>
+
+                    <!-- 右：相册直达 -->
+                    <button type="button" class="fork-cam-dock-btn" id="forkCamToAlbumBtn" title="前往个人快照相册" aria-label="相册">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                      </svg>
+                      <span>相册</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- 2. 相册视口 (Album View) -->
+                <div class="fork-cam-view fork-cam-album-view" id="forkCamAlbumView" hidden>
+                  <div class="fork-cam-album-scroll">
+                    <!-- 照片网格容器 -->
+                    <div class="fork-cam-album-grid" id="forkCamAlbumGrid">
+                      <!-- 动态填充照片拍立得卡片 -->
+                    </div>
+
+                    <!-- 空态占位 -->
+                    <div class="fork-cam-album-empty" id="forkCamAlbumEmpty">
+                      <div class="fork-cam-empty-icon">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <rect x="3" y="5" width="18" height="16" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                          <circle cx="12" cy="11" r="3.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                          <circle cx="17.5" cy="8" r="0.8" fill="currentColor"/>
+                        </svg>
+                      </div>
+                      <div class="fork-cam-empty-title">暂无显影快照</div>
+                      <div class="fork-cam-empty-desc">在推演中按下快门，定格当前因果瞬间</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 3. 画面总结指导二次确认浮层 (Scene Refine Guidance Modal) -->
+                <div class="fork-cam-confirm-overlay" id="forkCamRefineOverlay" hidden>
+                  <div class="fork-cam-confirm-sheet" id="forkCamRefineSheet">
+                    <div class="fork-cam-confirm-header">
+                      <div class="fork-cam-confirm-title-zh">总结画面设置</div>
+                      <div class="fork-cam-confirm-title-en">SCENE SUMMARIZE // AI GUIDANCE</div>
+                    </div>
+
+                    <div class="fork-cam-guidance-field">
+                      <label class="fork-cam-guidance-label" for="forkCamGuidanceInput">
+                        画面偏好与指导要求 (可选)
+                      </label>
+                      <textarea id="forkCamGuidanceInput" class="fork-cam-guidance-textarea" placeholder="例如：突出雨夜反光与霓虹、低角度仰视、特写面部神态、压抑胶片质感..." rows="3" spellcheck="false"></textarea>
+                    </div>
+
+                    <div class="fork-cam-guidance-tips">
+                      终端将结合现场剧情与你的指导，精炼出适合生图的画面描写并回填至取景器。
+                    </div>
+
+                    <!-- 确认动作区 -->
+                    <div class="fork-cam-confirm-actions">
+                      <button type="button" class="fork-cam-confirm-btn is-cancel" id="forkCamRefineCancelBtn">
+                        取消
+                      </button>
+                      <button type="button" class="fork-cam-confirm-btn is-primary" id="forkCamRefineProceedBtn">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M7 2v11h3v9l7-12h-4l4-8z"/>
+                        </svg>
+                        <span>开始总结</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 4. 快门拍摄二次确认浮层 (Develop Confirmation Sheet) -->
+                <div class="fork-cam-confirm-overlay" id="forkCamConfirmOverlay" hidden>
+                  <div class="fork-cam-confirm-sheet" id="forkCamConfirmSheet">
+                    <div class="fork-cam-confirm-header">
+                      <div class="fork-cam-confirm-title-zh">拍摄确认</div>
+                      <div class="fork-cam-confirm-title-en">CONFIRM PHOTO // AI GENERATION</div>
+                    </div>
+
+                    <div class="fork-cam-confirm-meta-row">
+                      <div class="fork-cam-confirm-tag">
+                        <span class="fork-cam-tag-label">画幅</span>
+                        <span class="fork-cam-tag-val" id="forkCamConfirmRatioVal">1:1</span>
+                      </div>
+                      <div class="fork-cam-confirm-tag">
+                        <span class="fork-cam-tag-label">出镜锁脸</span>
+                        <span class="fork-cam-tag-val" id="forkCamConfirmCastVal">未指定</span>
+                      </div>
+                    </div>
+
+                    <!-- 最终提纯 Prompt 预览 -->
+                    <div class="fork-cam-confirm-prompt-box">
+                      <div class="fork-cam-prompt-box-label">即将使用的生图提示词 (PROMPT)：</div>
+                      <div class="fork-cam-prompt-box-text" id="forkCamConfirmPromptText"></div>
+                    </div>
+
+                    <!-- 确认动作区 -->
+                    <div class="fork-cam-confirm-actions">
+                      <button type="button" class="fork-cam-confirm-btn is-cancel" id="forkCamConfirmCancelBtn">
+                        取消
+                      </button>
+                      <button type="button" class="fork-cam-confirm-btn is-primary" id="forkCamConfirmProceedBtn">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.2L12 16.8 5.7 21.2 8 14 2 9.4h7.6z"/>
+                        </svg>
+                        <span>交给AI生成</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 4. 单张照片大卡详情模态 (Photo Detail Lightbox) -->
+                <div class="fork-cam-photo-modal" id="forkCamPhotoModal" hidden>
+                  <div class="fork-cam-modal-backdrop" id="forkCamPhotoModalBackdrop"></div>
+                  <div class="fork-cam-modal-dialog">
+                    <button type="button" class="fork-cam-modal-close-btn" id="forkCamPhotoModalCloseBtn" aria-label="关闭照片详情">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                      </svg>
+                    </button>
+                    <div class="fork-cam-modal-img-wrap" id="forkCamModalImgWrap">
+                      <!-- 预览图或文字卡 -->
+                    </div>
+                    <div class="fork-cam-modal-info">
+                      <div class="fork-cam-modal-desc" id="forkCamModalDesc"></div>
+                      <div class="fork-cam-modal-meta">
+                        <span id="forkCamModalTime"></span>
+                        <span id="forkCamModalLoc"></span>
+                      </div>
+                      <div class="fork-cam-modal-actions">
+                        <button type="button" class="fork-cam-modal-del-btn" id="forkCamModalDelBtn">
+                          <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                          </svg>
+                          <span>删除快照</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
               </div>
+            </div>
             </div>
 
           </div>
@@ -10439,13 +11027,14 @@
       </div>
     </div>
   </div>
-  <script src="js/storage.js?v=269"></script>
-  <script src="js/data-registry.js?v=400"></script>
+  <script src="js/storage.js?v=270"></script>
+  <script src="js/data-registry.js?v=402"></script>
   <script src="js/preset-assistants.js?v=3"></script>
   <script src="js/store.js?v=258"></script>
   <script src="js/psych-store.js?v=191"></script>
   <script src="js/psych-archive-app.js?v=198"></script>
   <script src="js/boot.js?v=186"></script>
+  <script src="js/keepalive-core.js?v=4"></script>
   <script src="js/downloader.js?v=188"></script>
   <script src="js/chat-shot.js?v=4"></script>
   <script src="js/ui-motion.js?v=186"></script>
@@ -10456,7 +11045,7 @@
   <script src="js/text-editor.js?v=188"></script>
   <script src="js/select-modal.js?v=190"></script>
   <script src="js/form-editor-modal.js?v=186"></script>
-  <script src="js/gallery-store.js?v=303"></script>
+  <script src="js/gallery-store.js?v=304"></script>
   <script src="js/file-store.js?v=301"></script>
   <script src="js/data-vault.js?v=10"></script>
   <script src="js/data-vault-ui.js?v=3"></script>
@@ -10466,21 +11055,24 @@
   <script src="js/worldbook-mount-modal.js?v=6"></script>
   <script src="js/online-store.js?v=379"></script>
   <script src="js/online-ui.js?v=382"></script>
-  <script src="js/avatar-forge.js?v=188"></script>
-  <script src="js/gallery-app.js?v=310"></script>
+  <script src="js/avatar-forge.js?v=189"></script>
+  <script src="js/gallery-app.js?v=312"></script>
   <script src="js/profile.js?v=190"></script>
   <script src="js/clock.js?v=186"></script>
   <script src="js/apps.js?v=245"></script>
   <script src="js/dock.js?v=187"></script>
   <script src="js/theme.js?v=210"></script>
-   <script src="js/theme-ui.js?v=223"></script>
+   <script src="js/theme-ui.js?v=225"></script>
   <script src="js/api-core.js?v=190"></script>
   <script src="js/tts-cache.js?v=186"></script>
-  <script src="js/api-ui.js?v=206"></script>
-  <script src="js/system-protocols.js?v=213"></script>
+  <script src="js/api-ui.js?v=207"></script>
+  <script src="js/system-protocols.js?v=214"></script>
   <script src="js/manual-rag.js?v=1"></script>
   <script src="js/manual-app.js?v=201"></script>
-  <script src="js/settings.js?v=189"></script>
+  <script src="js/api-call-log.js?v=1"></script>
+  <script src="js/api-call-log-ui.js?v=2"></script>
+  <script src="js/terminal-config.js?v=6"></script>
+  <script src="js/settings.js?v=190"></script>
   <script src="js/persona-ui.js?v=189"></script>
   <script src="js/resonance-ui.js?v=296"></script>
   <script src="js/fork-archive-ui.js?v=35"></script>
@@ -10488,20 +11080,21 @@
 <script src="js/fork-ready-ui.js?v=38"></script>
     <script src="js/fork-transition-ui.js?v=7"></script>
     <script src="js/fork-run-parser.js?v=5"></script>
-  <script src="js/fork-run-prompt.js?v=22"></script>
+  <script src="js/fork-run-prompt.js?v=23"></script>
   <script src="js/fork-doc-ui.js?v=16"></script>
   <script src="js/fork-run-store.js?v=25"></script>
+  <script src="js/memory-store.js?v=1"></script>
   <script src="js/fork-run-wallpaper.js?v=1"></script>
   <script src="js/fork-run-settings.js?v=19"></script>
-  <script src="js/fork-run-api.js?v=22"></script>
+  <script src="js/fork-run-api.js?v=23"></script>
   <script src="js/fork-run-context-inspector.js?v=5"></script>
-  <script src="js/fork-run-ui.js?v=190"></script>
+  <script src="js/fork-run-ui.js?v=192"></script>
   <script src="js/fork-editor-ui.js?v=84"></script>
   <script src="js/onboarding-ui.js?v=61"></script>
   <script src="js/talent-prompt.js?v=3"></script>
   <script src="js/markdown.js?v=302"></script>
   <script src="js/env-awareness.js?v=1"></script>
-  <script src="js/system-chat-prompt.js?v=310"></script>
+  <script src="js/system-chat-prompt.js?v=311"></script>
   <script src="js/online-chat-prompt.js?v=380"></script>
   <script src="js/context-budget.js?v=1"></script>
   <script src="js/chat-day-sep.js?v=2"></script>
@@ -10511,12 +11104,13 @@
   <script src="js/online-chat-settings.js?v=4"></script>
   <script src="js/system-chat-store.js?v=1"></script>
   <script src="js/assistant-chat-core.js?v=3"></script>
-  <script src="js/system-chat-ui.js?v=362"></script>
-  <script src="js/fork-deck-asst.js?v=18"></script>
-  <script src="js/system-chat-orb.js?v=5"></script>
+<script src="js/system-chat-ui.js?v=364"></script>
+   <script src="js/fork-deck-asst.js?v=19"></script>
+   <script src="js/fork-deck-camera.js?v=2"></script>
+  <script src="js/system-chat-orb.js?v=25"></script>
   <script src="js/file-store-ui.js?v=303"></script>
   <script src="js/chat-history-search-ui.js?v=4"></script>
-  <script src="js/system-chat-settings.js?v=315"></script>
+  <script src="js/system-chat-settings.js?v=316"></script>
   <script src="js/pwa.js?v=187"></script>
 
   <!-- 全部模块注册完 Boot.onReady 之后，才装载配置数据并触发数据填充 -->

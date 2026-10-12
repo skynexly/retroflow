@@ -139,13 +139,36 @@
   /* ---------------- 相册筛选 ---------------- */
 
   // 相册定义：
-  //  - avatar_forge  图像生成：绘像工坊及未来独立生图入口的产出（category === 'image-gen'）
-  //  - 对话缓存      按对话对象（ownerId）动态成册，卡片在有图时才渲染，无图不占位
+  //  - image_gen     图像生成：无归属的散图（绘像工坊及未来独立生图入口的产出）
+  //  - genfork:<id>  副本快照：image-gen 分类下按副本（ownerType === 'fork'）动态成册
+  //  - chat:<id>     对话缓存：按对话对象（ownerId）动态成册，卡片在有图时才渲染，无图不占位
   const AVATAR_FORGE_ALBUM_ID = 'image_gen';
 
-  /** 图像生成相册：所有主动生图归档 */
+  /** 图像生成相册：仅无归属的散图（副本快照归各自副本册，不在此混排） */
   function filterImageGen(list) {
-    return list.filter(p => p.category === 'image-gen');
+    return list.filter(p => p.category === 'image-gen' && !(p.ownerType === 'fork' && p.ownerId));
+  }
+
+  /** 副本快照：按 ownerId 归拢，返回 [{ ownerId, ownerName, photos }]，photos 已按时间倒序 */
+  function groupForkGenByOwner(list) {
+    const buckets = new Map();
+    list.forEach((p) => {
+      if (p.category !== 'image-gen' || p.ownerType !== 'fork' || !p.ownerId) return;
+      if (!buckets.has(p.ownerId)) {
+        buckets.set(p.ownerId, {
+          ownerId: p.ownerId,
+          ownerName: p.ownerName || '副本快照',
+          photos: []
+        });
+      }
+      buckets.get(p.ownerId).photos.push(p);
+    });
+    // 按最新一张时间倒序
+    return Array.from(buckets.values()).sort((a, b) => {
+      const at = (a.photos[0] && a.photos[0].createdAt) || 0;
+      const bt = (b.photos[0] && b.photos[0].createdAt) || 0;
+      return bt - at;
+    });
   }
 
   /** 对话缓存：按 ownerId 归拢，返回 [{ ownerId, ownerType, ownerName, photos }]，photos 已按时间倒序 */
@@ -175,9 +198,13 @@
     });
   }
 
-  /** 按相册 id 取图：image_gen 走图像生成，chat:<ownerId> 走对话缓存对应对象 */
+  /** 按相册 id 取图：image_gen 走无归属散图，genfork:<ownerId> 走副本快照册，chat:<ownerId> 走对话缓存对应对象 */
   function filterByAlbum(list, albumId) {
     if (albumId === AVATAR_FORGE_ALBUM_ID) return filterImageGen(list);
+    if (albumId && albumId.indexOf('genfork:') === 0) {
+      const ownerId = albumId.slice('genfork:'.length);
+      return list.filter(p => p.category === 'image-gen' && p.ownerType === 'fork' && p.ownerId === ownerId);
+    }
     if (albumId && albumId.indexOf('chat:') === 0) {
       const ownerId = albumId.slice('chat:'.length);
       return list.filter(p => p.category === 'chat-cache' && (p.ownerId || 'system') === ownerId);
@@ -254,7 +281,42 @@
     return btn;
   }
 
-  /** 渲染相册总览：图像生成卡（静态）+ 对话缓存卡（按对话对象动态） */
+  /** 构建一张副本快照相册卡片（副本维度，image-gen 分类下按副本成册） */
+  function buildForkGenAlbumCard(bucket) {
+    const first = bucket.photos.find((p) => p.src);
+    const btn = document.createElement('button');
+    btn.className = 'gallery-album-card';
+    btn.type = 'button';
+    btn.dataset.albumId = `genfork:${bucket.ownerId}`;
+    btn.dataset.category = 'image-gen-fork';
+    if (bucket.photos.length === 0) btn.classList.add('is-empty');
+
+    const coverHtml = first
+      ? `<img class="gallery-album-cover-img" src="${escapeHtml(first.src)}" alt="${escapeHtml(bucket.ownerName)}副本快照封面">`
+      : `<div class="gallery-album-cover-empty" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zm-2 0H5V5h14v14zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H6l2.5-4.5z"/></svg></div>`;
+
+    // 战术相机徽标：取景框四角标 + 中央镜头圆点，与 DECK 相机舱同语言
+    const badgeSvg = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h6v2H5v4H3V3zm12 0h6v6h-2V5h-4V3zM3 15h2v4h4v2H3v-6zm16 0h2v6h-6v-2h4v-4zm-7-4.5a2.5 2.5 0 110 5 2.5 2.5 0 010-5z"/></svg>`;
+
+    btn.innerHTML = `
+      <div class="gallery-album-frame">
+        <div class="gallery-album-cover-box">${coverHtml}</div>
+        <div class="gallery-album-badge">${badgeSvg}<span>CAM</span></div>
+      </div>
+      <div class="gallery-album-meta">
+        <div class="gallery-album-zh">${escapeHtml(bucket.ownerName)}</div>
+        <div class="gallery-album-sub">
+          <span class="gallery-album-en">DIVE CAM</span>
+          <span class="gallery-album-slash">//</span>
+          <span class="gallery-album-desc">${bucket.photos.length} 张</span>
+        </div>
+      </div>`;
+
+    btn.addEventListener('click', () => showDetailView(`genfork:${bucket.ownerId}`, bucket.ownerName));
+    return btn;
+  }
+
+  /** 渲染相册总览：图像生成卡（静态）+ 副本快照卡（按副本动态）+ 对话缓存卡（按对话对象动态） */
   function renderAlbumCover() {
     // 图像生成相册（静态卡片，只更新封面/计数）
     const imageGenCard = document.querySelector('.gallery-album-card[data-album-id="image_gen"]');
@@ -282,6 +344,20 @@
       const buckets = groupChatCacheByOwner(allPhotoList);
       buckets.forEach((bucket) => {
         galleryAlbumsGrid.appendChild(buildChatAlbumCard(bucket));
+      });
+
+      // 副本快照相册：image-gen 分类下按副本动态成册，插在对话缓存卡之前
+      galleryAlbumsGrid.querySelectorAll('.gallery-album-card[data-category="image-gen-fork"]')
+        .forEach((el) => el.remove());
+      const forkBuckets = groupForkGenByOwner(allPhotoList);
+      const chatFirstCard = galleryAlbumsGrid.querySelector('.gallery-album-card[data-category="chat-cache"]');
+      forkBuckets.forEach((bucket) => {
+        const card = buildForkGenAlbumCard(bucket);
+        if (chatFirstCard) {
+          galleryAlbumsGrid.insertBefore(card, chatFirstCard);
+        } else {
+          galleryAlbumsGrid.appendChild(card);
+        }
       });
     }
   }
@@ -399,9 +475,13 @@
     }
 
     // 相册视图：按分类筛选相册卡片
+    // 副本快照册标记为 image-gen-fork（建卡/重建时精准删旧卡用），
+    // 但它归属「图像生成」Tab，筛选时需一并放行
     let visibleCards = 0;
     document.querySelectorAll('.gallery-album-card').forEach((card) => {
-      const match = filter === 'all' || card.dataset.category === filter;
+      const match = filter === 'all'
+        || card.dataset.category === filter
+        || (filter === 'image-gen' && card.dataset.category === 'image-gen-fork');
       card.style.display = match ? 'flex' : 'none';
       if (match) visibleCards += 1;
     });
@@ -523,10 +603,19 @@
   function showDetailView(albumId, titleZh) {
     activeAlbumId = albumId || AVATAR_FORGE_ALBUM_ID;
     photoList = filterByAlbum(allPhotoList, activeAlbumId);
-    // 详情顶栏标题：图像生成走固定文案，对话缓存走对话对象名
+    // 详情顶栏标题：图像生成走固定文案，副本快照走副本名，对话缓存走对话对象名
     const isChat = activeAlbumId.indexOf('chat:') === 0;
-    if (galleryDetailZh) galleryDetailZh.textContent = isChat ? (titleZh || '对话影像') : '图像生成';
-    if (galleryDetailEn) galleryDetailEn.textContent = isChat ? 'CHAT MEDIA' : 'IMAGE GEN';
+    const isForkGen = activeAlbumId.indexOf('genfork:') === 0;
+    if (galleryDetailZh) {
+      galleryDetailZh.textContent = isChat ? (titleZh || '对话影像')
+        : isForkGen ? (titleZh || '副本快照')
+        : '图像生成';
+    }
+    if (galleryDetailEn) {
+      galleryDetailEn.textContent = isChat ? 'CHAT MEDIA'
+        : isForkGen ? 'DIVE CAM'
+        : 'IMAGE GEN';
+    }
     if (galleryMasterView) galleryMasterView.classList.add('is-pushed');
     if (galleryDetailView) {
       galleryDetailView.classList.add('is-active');

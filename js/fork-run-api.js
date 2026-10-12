@@ -258,7 +258,7 @@ window.ForkRunApi = (() => {
 
     const config = resolveConfig();
     if (!config || !config.baseUrl || !config.modelId) {
-      throw new Error('尚未配置模型，请先在「算力接入」中设置主模型');
+      throw new Error('尚未配置模型，请先在「API 设置」中设置主模型');
     }
 
     // 世界书扫描用消息：从 records 尾部取最近若干条，映射成 {role, content}，
@@ -397,14 +397,14 @@ window.ForkRunApi = (() => {
         if (meta && meta.reasoning) return;
         full += delta || '';
         if (typeof o.onChunk === 'function') o.onChunk(delta || '', full);
-      }, { signal: o.signal });
+      }, { signal: o.signal, logTag: '推演主线' });
       return trimStr(res && res.content) || full;
     }
 
     // 非流式：不回调 onChunk。反正要等整段回来，中途没有可呈现的增量，
     // 调了只会让等待占位块闪一下被截断的半截正文，随即又被完整成品替换。
     // 等待标识保持到收尾，由调用方一次性渲染带状态卡的成品。
-    const res = await RetroflowAPI.chat(config, finalMessages, { signal: o.signal });
+    const res = await RetroflowAPI.chat(config, finalMessages, { signal: o.signal, logTag: '推演主线' });
     return trimStr(res && res.content);
   }
 

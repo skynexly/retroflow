@@ -131,6 +131,15 @@ const DataRegistry = (() => {
       // 语义同 run 域：删一个对话窗是正常操作，不牵连助手档案本身
       assetClearable: true,
       hasText: true
+    },
+    memory: {
+      prefix: 'memory/',
+      zh: '记忆库',
+      en: 'MEMORY BANK',
+      desc: '事件记忆与角色记忆的元配置（提取开关、预算参数），记忆本体存于 memories 流水库',
+      // 记忆是叙事沉淀，整域清空等于抹除因果，不允许一键清
+      assetClearable: false,
+      hasText: true
     }
   };
 
@@ -160,6 +169,9 @@ const DataRegistry = (() => {
     /** 单条助手对话的元信息（标题 / 时间 / 消息数） */
     sysChatDoc: (convId) => `${DOMAINS.sysChat.prefix}doc.${convId}`,
 
+    // —— memory 域（记忆库元配置）——
+    /** 记忆库全局配置（提取开关、预算参数、播种标记） */
+    memoryConfig: () => `${DOMAINS.memory.prefix}config`,
 
     // —— envoy 域（用户自己，含马甲分身）——
     /** 个人档案立绘 */
@@ -194,6 +206,10 @@ const DataRegistry = (() => {
     tileBg: (id) => `${DOMAINS.decor.prefix}desktop.tile_bg.${id}`,
     /** 桌面磁贴自定义图标（图标美化：按卡片 appId 存图标图） */
     tileIcon: (id) => `${DOMAINS.decor.prefix}desktop.tile_icon.${id}`,
+    /** 悬浮球皮肤 · 常态图（悬浮球美化：原样存储，支持 GIF 动图） */
+    orbSkinNormal: () => `${DOMAINS.decor.prefix}orb.skin_normal`,
+    /** 悬浮球皮肤 · 拖拽态图（悬浮球美化：缺省时两态共用常态图） */
+    orbSkinDrag: () => `${DOMAINS.decor.prefix}orb.skin_drag`,
     chatWallpaper: (slot) => `${DOMAINS.decor.prefix}chat.wallpaper.${slot || 'system'}`,
     /** 自定义字体文件 */
     font: (id) => `${DOMAINS.decor.prefix}theme.font.${id}`,
@@ -228,6 +244,7 @@ const DataRegistry = (() => {
     runDoc: `${DOMAINS.run.prefix}doc.`,
     sysChat: DOMAINS.sysChat.prefix,
     sysChatDoc: `${DOMAINS.sysChat.prefix}doc.`,
+    memory: DOMAINS.memory.prefix,
     maskAvatar: `${DOMAINS.envoy.prefix}mask.avatar.`,
     maskFaceId: `${DOMAINS.envoy.prefix}mask.face_id.`,
     charAvatar: `${DOMAINS.roster.prefix}char.avatar.`,

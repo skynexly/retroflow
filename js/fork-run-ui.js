@@ -1352,11 +1352,6 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
   let deckSanValueEl = null;
   let deckSanFillEl = null;
   let deckSanNoteEl = null;
-  // 战术能源电量环
-  let deckBatteryMeterEl = null;
-  let deckBatteryCircleEl = null;
-  let deckBatteryNumEl = null;
-  let deckBatteryBoltEl = null;
   // 解析度大卡与全景态势舱 DOM
   let deckResolutionCardEl = null;
   let resDashOverlayEl = null;
@@ -1429,10 +1424,17 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
     deckSanValueEl = document.getElementById('forkDeckSanValue');
     deckSanFillEl = document.getElementById('forkDeckSanFill');
     deckSanNoteEl = document.getElementById('forkDeckSanNote');
-    deckBatteryMeterEl = document.querySelector('.fork-deck-battery-meter');
-    deckBatteryCircleEl = document.getElementById('forkDeckBatteryCircle');
-    deckBatteryNumEl = document.getElementById('forkDeckBatteryNum');
-    deckBatteryBoltEl = document.getElementById('forkDeckBatteryBolt');
+
+    // DECK 装备舱「调用日志」芯片：就地弹速览浮卡（锚在芯片旁）。
+    // 球在推演页是收走的，浮卡走 SystemChatOrb.openLogCard 的独立锚定口。
+    const deckApiLogBtn = document.getElementById('forkDeckApiLogBtn');
+    if (deckApiLogBtn) {
+      deckApiLogBtn.addEventListener('click', () => {
+        if (window.SystemChatOrb && typeof SystemChatOrb.openLogCard === 'function') {
+          SystemChatOrb.openLogCard(deckApiLogBtn);
+        }
+      });
+    }
 
     // 解析度大卡与抽屉二级态势舱 DOM 元素获取
     deckResolutionCardEl = document.getElementById('forkDeckResolutionCard');
@@ -1511,6 +1513,16 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
     const asstBackBtn = document.getElementById('forkDeckAsstBackBtn');
     if (asstBackBtn) {
       asstBackBtn.addEventListener('click', () => { closeAsstPane(); });
+    }
+
+    // 系统相机：进 DECK 内的系统相机舱 (Pane 6)，不是全屏独立页
+    const deckCameraBtn = document.getElementById('forkDeckCameraBtn');
+    if (deckCameraBtn) {
+      deckCameraBtn.addEventListener('click', () => {
+        if (window.ForkDeckCamera && typeof ForkDeckCamera.open === 'function') {
+          ForkDeckCamera.open();
+        }
+      });
     }
 
 
@@ -1636,8 +1648,10 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
         const dy = t.clientY - touchStartY;
         // 触发条件：从左向右滑动超过 72px 且纵向偏离不大
         if (dx > 72 && Math.abs(dy) < dx * 0.8) {
-          // 逐级返回：随行助手舱 → 任务看板 → 身份舱 → 态势舱 → 整个抽屉
-          if (isAsstPaneOpen) {
+          // 逐级返回：系统相机 → 随行助手舱 → 任务看板 → 身份舱 → 态势舱 → 整个抽屉
+          if (window.ForkDeckCamera && ForkDeckCamera.isOpened && ForkDeckCamera.isOpened()) {
+            ForkDeckCamera.close();
+          } else if (isAsstPaneOpen) {
             closeAsstPane();
           } else if (isMissionBoardOpen) {
             closeMissionBoard();
@@ -2995,63 +3009,6 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
     }
     if (deckSanNoteEl) {
       deckSanNoteEl.textContent = sanStatus ? `${sanStatus.text} · ${sanStatus.code}` : '等待接入';
-    }
-
-    // 5.3 战术能源核电量感知 (环形进度条 + 实时百分比 + 充电微标)
-    refreshDeckBatteryMeter();
-  }
-
-  /**
-   * 刷新 DECK 装备舱中的真实电量环形仪表
-   */
-  async function refreshDeckBatteryMeter() {
-    if (!deckBatteryCircleEl && !deckBatteryNumEl) return;
-    const CIRCLE_CIRCUMFERENCE = 81.68; // 2 * Math.PI * 13
-
-    let pct = 100;
-    let charging = false;
-    let hasBatteryInfo = false;
-
-    try {
-      if (window.EnvAwareness && typeof EnvAwareness.getBatteryInfo === 'function') {
-        const info = await EnvAwareness.getBatteryInfo();
-        if (info && Number.isFinite(info.pct)) {
-          pct = Math.max(0, Math.min(100, Math.round(info.pct)));
-          charging = Boolean(info.charging);
-          hasBatteryInfo = true;
-        }
-      } else if (navigator.getBattery) {
-        const b = await navigator.getBattery();
-        if (b && Number.isFinite(b.level)) {
-          pct = Math.max(0, Math.min(100, Math.round(b.level * 100)));
-          charging = Boolean(b.charging);
-          hasBatteryInfo = true;
-        }
-      }
-    } catch (_) {}
-if (deckBatteryNumEl) {
-      deckBatteryNumEl.textContent = hasBatteryInfo ? `${pct}` : '99';
-    }
-    if (deckBatteryBoltEl) {
-      deckBatteryBoltEl.style.display = 'none'; // 彻底隐藏原本挤占空间的微标
-    }
-    if (deckBatteryMeterEl) {
-      deckBatteryMeterEl.classList.toggle('is-charging', Boolean(charging));
-    }
-
-    if (deckBatteryCircleEl) {
-      const offset = CIRCLE_CIRCUMFERENCE * (1 - (pct / 100));
-      deckBatteryCircleEl.style.strokeDashoffset = String(offset);
-      // 充电态交给 CSS 关键帧柔和过渡接管，非充电态按电量分级着色
-      if (charging) {
-        deckBatteryCircleEl.style.stroke = '';
-      } else if (pct <= 20) {
-        deckBatteryCircleEl.style.stroke = 'var(--danger-color, #FF5E5E)';
-      } else if (pct <= 40) {
-        deckBatteryCircleEl.style.stroke = 'var(--warning-color, #E6A23C)';
-      } else {
-        deckBatteryCircleEl.style.stroke = 'var(--decor-color)';
-      }
     }
   }
 
@@ -8088,6 +8045,14 @@ if (deckBatteryNumEl) {
         } catch (_) {}
         return;
       }
+      // 抽屉内系统相机舱开着：优先滑回控制台主舱，同时保持抽屉开启
+      if (window.ForkDeckCamera && ForkDeckCamera.isOpened && ForkDeckCamera.isOpened()) {
+        ForkDeckCamera.close();
+        try {
+          window.history.pushState({ rfPage: 'fork-run-deck' }, '', '#fork-run');
+        } catch (_) {}
+        return;
+      }
       // 抽屉内随行助手舱开着：优先滑回控制台主舱，同时保持抽屉开启。
       // 与任务看板同范式 —— 补回一层 fork-run-deck 桩，使下次返回收的是抽屉本体。
       if (isAsstPaneOpen) {
@@ -8293,6 +8258,27 @@ if (deckBatteryNumEl) {
     getRunId: () => currentRunId,
     getForkId: () => currentForkId,
     isReadonly: () => isReadonly,
+    /**
+     * 副本场景上下文：供系统助手（DECK 随行助手）在副本页内构建上下文时取用。
+     * 一把打包副本信息头 / 身份 / 任务所需的全部真相源。
+     * 仅在副本页打开（isOpened）且卷宗/世界线就绪时返回；否则返回 null，
+     * 调用方据此回落日常模式。
+     * @returns {{ fork: Object, envoyCtx: Object, missionCtx: Object, runId: string } | null}
+     */
+    buildAsstSceneCtx: () => {
+      if (!isOpened || !currentFork || !currentRunId) return null;
+      try {
+        return {
+          fork: currentFork,
+          envoyCtx: buildEnvoyCtx(),
+          missionCtx: buildMissionCtx(),
+          runId: currentRunId
+        };
+      } catch (err) {
+        console.warn('[ForkRun] 副本场景上下文构建失败：', err);
+        return null;
+      }
+    },
     // 会话级世界书覆写变更：设置页现场开关落库后调此入口，把黑名单同步回内存 currentRun，
     // 否则推演页仍持旧快照，buildWbOverrides 读到空，关掉的条目仍会被注入。
     syncWorldbookOverrides: (next) => {

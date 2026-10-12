@@ -37,6 +37,7 @@ const GalleryStore = (() => {
     'system-chat': { zh: '执行员上传', en: 'UPLOADED' },
     'online-chat': { zh: '联络上传', en: 'ONLINE' },
     'fork-run': { zh: '推演上传', en: 'DIVE' },
+    'fork-camera': { zh: '副本快照', en: 'DIVE CAM' },
     unknown: { zh: '图像生成', en: 'GENERATED' }
   };
 
@@ -152,9 +153,11 @@ const GalleryStore = (() => {
       entry.ownerId = (meta && meta.ownerId) ? String(meta.ownerId) : (inferred.ownerId || SYSTEM_ASSISTANT_OWNER_ID);
       entry.ownerName = (meta && meta.ownerName) ? String(meta.ownerName) : (inferred.ownerName || '系统助手');
     } else {
-      entry.ownerType = null;
-      entry.ownerId = null;
-      entry.ownerName = null;
+      // image-gen 默认无归属（散图进通用「图像生成」相册）；
+      // 但调用方显式声明归属时保留——副本快照按副本成册（ownerType: 'fork'）。
+      entry.ownerType = (meta && meta.ownerType) || null;
+      entry.ownerId = (meta && meta.ownerId) ? String(meta.ownerId) : null;
+      entry.ownerName = (meta && meta.ownerName) ? String(meta.ownerName) : null;
     }
 
     await Storage.setAsset(entry.key, blob);

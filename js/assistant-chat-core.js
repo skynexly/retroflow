@@ -334,9 +334,9 @@ window.AssistantChatCore = (() => {
       if (streaming && typeof RetroflowAPI.streamChat === 'function') {
         await RetroflowAPI.streamChat(config, messages, (delta, meta) => {
           update(delta, Boolean(meta && meta.reasoning));
-        }, { signal });
+        }, { signal, logTag: opts.logTag || '系统助手' });
       } else {
-        const result = await RetroflowAPI.chat(config, messages, { signal });
+        const result = await RetroflowAPI.chat(config, messages, { signal, logTag: opts.logTag || '系统助手' });
         reply = result && result.content ? result.content : '';
         reasoningText = String((result && result.reasoning) || '');
         hasReceivedFirstChunk = true;
@@ -473,9 +473,9 @@ window.AssistantChatCore = (() => {
         if (streaming && typeof RetroflowAPI.streamChat === 'function') {
           await RetroflowAPI.streamChat(config, messages, (delta, meta) => {
             nextUpdate(delta, Boolean(meta && meta.reasoning));
-          }, { signal });
+          }, { signal, logTag: opts.logTag || '系统助手' });
         } else {
-          const result = await RetroflowAPI.chat(config, messages, { signal });
+          const result = await RetroflowAPI.chat(config, messages, { signal, logTag: opts.logTag || '系统助手' });
           currentReply = result && result.content ? result.content : '';
           nextReasoning = String((result && result.reasoning) || '');
           renderer.syncBubble(currentHandle, composeWithThinking(nextReasoning, currentReply), { animate: true });

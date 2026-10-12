@@ -79,6 +79,59 @@ window.SystemChatPrompt = (() => {
 - 执行员与自己专属系统助手的对话同样走这条通讯链路，在 Retroflow 上进行。助手账号由系统直接下发，不受平台入口限制——执行员即使不在平台页面内，也可通过终端的全局快捷呼叫直接联系助手。`;
 
 
+  /* ================= 副本场景 · 精简世界观 =================
+     副本页内（DECK 随行助手）专用。日常版 RETROFLOW_CANON 近千字、含溯流空间 /
+     积分商城 / Retroflow 平台 / 等级权限等副本内用不上的内容，副本页换成这段精简版省 token。
+     只保留与「执行员正在副本里拼命」强相关的核心：执行员本质、副本是什么、精神值命脉、
+     通关与死亡。世界观细节由使用手册命中（ManualRag）按需补全。 */
+
+  const RETROFLOW_CANON_FORK = `## 溯流计划 · 核心常识
+
+溯流计划是一个超越世界线的神秘系统组织，从无数平行世界招募走投无路的灵魂，赋予其「执行员」身份。执行员攒够积分即可兑现一个心愿、送返原世界——而积分来自进入副本世界完成系统下发的任务。
+
+- 执行员的肉身留在原世界，来到溯流计划的是灵魂体。副本中的伤害会真实反馈到灵魂体，副本世界的危险是真实的。
+- 执行员持有唯一的六位数字编号（NO.xxxxxx），是其恒定不变的身份标识，无论在副本中以何种样貌或身份出现。
+- 执行员须完成副本的全部主线任务方可通关、安全登出。危局中可紧急登出强行脱离，代价是本轮无积分并扣除精神值。
+
+【精神值 · 执行员的命脉】
+精神值是执行员灵魂体的存续根基，上限 100、下限 0，只在副本中消耗、不会凭空回升。它直接决定执行员此刻的身心状态：
+
+- 85~100 良好：神志清明、情绪平稳，判断与行动不受影响。
+- 60~84 波动：开始疲惫、走神、烦躁或酸痛，但理智仍占上风。
+- 30~59 衰弱：精神高度紧张，注意力涣散、情绪脆弱易怒，可能焦虑惊悸、失眠倦怠。
+- 1~29 濒危：濒临崩溃，可能幻听幻视、被害妄想、记忆错乱、肢体颤抖，难辨现实与臆想。
+- 0 消亡：灵魂彻底瓦解，不可逆的永久死亡。
+
+执行员在副本中死亡不会真正消亡，灵魂体会被强制弹出副本，但扣除大量精神值。唯有精神值归零才是真正的、无法挽回的终结。请始终把它当作高压、稀缺、不可挥霍的生存资源来看待。`;
+
+  /* ================= 副本场景 · 通信场景 =================
+     副本中 Retroflow 日常社交被隔绝，但系统助手走系统专线仍可联系。
+     助手没进副本、只是透过系统权限观察——守住「禁止描写动作」底线防入戏。 */
+
+  const CHAT_SCENE_FORK_TEMPLATE = `## 当前通信场景
+
+执行员「{{ENVOY_NAME}}」此刻正身处副本之中。在副本世界里，Retroflow 平台的日常社交功能已被隔绝——执行员无法像在溯流空间时那样浏览动态、与其他人往来。但你作为系统助手是一个例外：你的通讯链路由系统直接架设，不受副本环境限制，执行员可通过终端随时呼叫你。
+
+你依然只以线上系统助手的身份存在，不具备实体、身体、表情或现实空间位置，你并没有进入副本，也不是副本世界里的角色。你只是透过系统权限观察着执行员的处境，并与他保持通讯。
+
+因此，禁止描写你自己的任何动作、表情、姿态与空间行为，也禁止使用括号动作、星号动作、舞台指示、镜头描写或小说式旁白，例如“（点头）”“*轻叹*”“走到你身边”等表达。请直接以自然、口语化且符合既定性格的文字与「{{ENVOY_NAME}}」交流。
+
+你可以在自然需要停顿、转换话题或分开发送内容时使用空行分段，以模拟即时通信中连续发送多条消息气泡的节奏；无需刻意将每句话拆成一段。
+
+你使用的 Markdown 会被正常渲染，可以放心使用加粗、列表、代码块等 Markdown 语法来组织内容。
+
+你的回复必须直接从要说的话开始。上下文里出现的“[消息时间：…]”“[副本实况]”“[副本行动]”“[系统通知…]”一类方括号标注，都是系统附加的后台信息，只供你判断情境，绝不是对话内容的一部分。禁止复述、播报或转述这些标注，也禁止模仿它们的格式在回复开头添加任何形如“[xxx：xxx]”的标记。`;
+
+  /* ================= 副本场景 · 深度注入贴脸说明（A 段） =================
+     走深度注入 depth:1，紧贴生成点，不被 10 轮原文冲散。
+     点明「[副本实况] 是后台情报别复述」+「你不是推演引擎、不用加格式」。 */
+
+  const FORK_SCENE_DEPTH_TEMPLATE = `【副本实况 · 实时同步】
+执行员「{{ENVOY_NAME}}」正在副本中行动。上下文中标记为「[副本实况]」「[副本行动]」的内容，是系统为你实时同步的副本现场信息——执行员的所在、所为与处境，你能借系统权限实时看到。这些是只供你知悉的后台情报，执行员本人看不到它们，请不要向他复述、播报或转引这些标记里的内容，而是把它们当作你本就“看在眼里”的事实，自然地融入对话。
+
+你无需在回复末尾附加任何结构化格式或状态块——那是副本推演的规则，与你无关。你只需作为执行员的随身系统助手，正常地与他交流：该提醒时提醒，该分析时分析，该陪他说话时就好好说话。`;
+
+
   /* ================= 系统助手身份模板 ================= */
 
   const ASSISTANT_IDENTITY_TEMPLATE = `## 系统助手 · 身份协议
@@ -109,7 +162,6 @@ window.SystemChatPrompt = (() => {
 你对上述世界观与 Retroflow 平台的基本规则都很熟悉，这是你身为系统助手的固有常识。超出这些内容的细节，不要想象或断言。执行员提起平台上的人际往来、群聊或动态时，你能自然地理解{{ENVOY_NAME}}在说什么，但不必主动向执行员科普平台的操作方式，也不要生硬地背诵世界观条目。
 
 等级、经验值、精神值与积分的运作规则你同样清楚。{{ENVOY_NAME}}当前的等级与经验值进度已列在个人档案中，你可以据此与他讨论晋级进度与副本权限范围。但你并不掌握他当前的精神值余量与积分余额——这两项不在你的可见范围内，不要臆测、编造或断言，执行员主动告知时以其所述为准。`;
-
   /* ================= 当前通信场景约束 ================= */
 
   const CHAT_SCENE_TEMPLATE = `## 当前通信场景
@@ -126,9 +178,13 @@ window.SystemChatPrompt = (() => {
 
 你的回复必须直接从要说的话开始。上下文里出现的“[消息时间：…]”“[现实时间基准]”“[系统通知…]”“[充电中 电量76%]”一类方括号标注，都是系统附加的后台元数据，只供你判断时间、情境与执行员的设备状态，绝不是对话内容的一部分。禁止复述、播报或转述这些标注，也禁止模仿它们的格式在回复开头添加时间戳、日期、星期、电量或任何形如“[xxx：xxx]”的标记。执行员看不到这些标注，你把它们写出来只会显得突兀。
 
-执行员的设备电量只在你自然关心他状态时才值得提起，比如电量很低、或他正熬夜久聊。不要每轮都念电量，也不要在电量充足时刻意提及。
+执行员的设备电量只在你自然关心他状态时才值得提起，比如电量很低、或他正熬夜久聊。不要每轮都念电量，也不要在电量充足时刻意提及。`;
 
-## 你拥有以下权限
+  /* ================= 系统权限段（场景无关，日常/副本共用） =================
+     从通信场景模板里抽出来，日常版与副本版场景说明都在末尾追加这一段。
+     {{FILE_TOOL_PERMISSION}} / {{IMAGE_GEN_PERMISSION}} 由 buildSystemPrompt 按开关替换。 */
+
+  const PERMISSION_SECTION_HEAD = `## 你拥有以下权限
 
 你拥有下列受限的系统权限。这些权限仅在满足各自触发条件时使用，除此之外不要主动触发。触发时需在回复末尾追加对应的单独动作标记，标记内必须是合法 JSON，且不会展示给执行员。
 
@@ -140,6 +196,7 @@ window.SystemChatPrompt = (() => {
 以上权限只约束你对自身实体行为的描写与系统动作，不影响你讨论执行员、第三方或故事世界中实际发生的动作。`;
 
   /* ================= 内置工具权限（可开关） ================= */
+
 
   // 文件区读取工具属于「内置工具」，触发工具循环会额外消耗模型调用。
   // 当对话设置里的 builtinTools 关闭时，这段权限说明不会拼进 System Prompt，
@@ -359,30 +416,108 @@ prompt 请用英文书写，逗号分隔关键词，只描述画面本身（主�
       : null;
     return !s || s.imageGen !== false;
   }
+  /**
+   * 拼副本信息头 + 执行员副本身份（B 段）。仅副本场景（sceneCtx 非空）时调用。
+   * 口径：只给「执行员终端上也看得到」的那部分（名字/等级/背景/已下发主线），
+   * 不含达成判定、隐藏真相、觉醒者底细等作者视角内容——助手认知与执行员对齐、不剧透。
+   * @param {Object} sceneCtx { fork, envoyCtx, missionCtx }
+   * @returns {string}
+   */
+  function buildForkSceneBlock(sceneCtx) {
+    const fork = (sceneCtx && sceneCtx.fork) || {};
+    const envoyCtx = (sceneCtx && sceneCtx.envoyCtx) || {};
+    const missionCtx = (sceneCtx && sceneCtx.missionCtx) || {};
+    const trimS = (v) => (typeof v === 'string' ? v.trim() : (v == null ? '' : String(v).trim()));
+
+    const title = trimS(fork.title) || '未命名副本';
+
+    // 等级：复用 ForkRunPrompt 的等级定义（label），取不到就回落 levelKey 原值
+    let levelLabel = trimS(fork.levelKey);
+    if (window.ForkRunPrompt && typeof ForkRunPrompt.resolveLevelLabel === 'function') {
+      const lb = ForkRunPrompt.resolveLevelLabel(fork);
+      if (lb) levelLabel = lb;
+    }
+
+    const background = trimS(fork.background) || '暂无背景设定。';
+
+    // 主线任务：只列已解锁的（missionCtx.unlockedIds），标注已完成；不列达成判定
+    const conditions = Array.isArray(fork.clearConditions) ? fork.clearConditions : [];
+    const unlockedSet = Array.isArray(missionCtx.unlockedIds) ? new Set(missionCtx.unlockedIds.map(trimS)) : null;
+    const achievedSet = Array.isArray(missionCtx.achievedIds) ? new Set(missionCtx.achievedIds.map(trimS)) : new Set();
+    const missionLines = conditions.map((m) => {
+      const id = trimS(m && m.id);
+      if (unlockedSet && (!id || !unlockedSet.has(id))) return '';
+      const goal = trimS(m && m.goal) || trimS(m && m.text);
+      if (!goal) return '';
+      const done = id && achievedSet.has(id);
+      return `  - ${goal}${done ? '（已完成）' : ''}`;
+    }).filter(Boolean);
+    const missionsText = missionLines.length ? missionLines.join('\n') : '  - 暂无已下发的主线任务。';
+
+    // 副本身份：按接入模式分别出「助手视角」文案
+    const idName = trimS(envoyCtx.name) || '执行员';
+    let identityNote = '';
+    if (envoyCtx.mode === 'mask') {
+      identityNote = `执行员在副本中并未使用真实身份，而是以伪装身份「${idName}」行动。你知道这层马甲底下是执行员本人。`;
+    } else if (envoyCtx.mode === 'locked') {
+      identityNote = `执行员本次魂穿进副本原生角色「${idName}」的身体，以该角色的身份行动。这具身体和它的人际关系属于那个角色，但操控它的是执行员本人。`;
+    } else {
+      identityNote = `执行员以本来的身份「${idName}」进入副本，没有任何伪装。`;
+    }
+
+    return `## 当前副本信息
+
+执行员当前正在下潜的副本如下。在常规权限下，你可以知悉以下信息：
+
+- 副本名称：${title}
+- 副本等级：${levelLabel || '未定级'}
+- 背景设定：${background}
+- 主线任务：
+${missionsText}
+
+以上是你当前权限下可见的副本情报。副本中还存在一些你暂时无法读取的信息（例如任务的隐藏达成条件、尚未揭晓的真相、角色不为人知的底细等），不要凭空臆测或编造这些内容——若执行员问起你并不掌握的细节，如实告诉他你这边读不到。
+
+### 执行员的副本身份
+
+${identityNote}`;
+  }
 
   /**
    * 拼装完整的 System Prompt
    * @param {Array} [history] 对话消息数组，用于世界书关键词条目的触发判定。
    *                          不传时关键词条目不会命中，常驻条目仍照常注入。
+   * @param {Object} [sceneCtx] 副本场景上下文 { fork, envoyCtx, missionCtx, runId }。
+   *                          非空时切「副本场景模式」：精简世界观 + 副本通信场景 + 副本信息头。
    * @returns {string}
    */
-  function buildSystemPrompt(history) {
+  function buildSystemPrompt(history, sceneCtx) {
+    const inFork = !!(sceneCtx && sceneCtx.fork);
     // 内置工具关闭时，文件区读取权限段不拼入提示词（运行期也不会响应其标记）
     const filePermission = isBuiltinToolsEnabled() ? FILE_TOOL_PERMISSION : '';
     // 生图关闭时同理：提示词不发，运行期也不响应 generate_image 标记
     const imagePermission = isImageGenEnabled() ? IMAGE_GEN_PERMISSION : '';
-    const scene = CHAT_SCENE_TEMPLATE
+
+    // 通信场景说明：副本场景换副本版，日常用线上纯文字版；两版都在末尾追加系统权限段。
+    const sceneHead = inFork ? CHAT_SCENE_FORK_TEMPLATE : CHAT_SCENE_TEMPLATE;
+    const scene = (sceneHead + '\n\n' + PERMISSION_SECTION_HEAD)
       .replace('{{FILE_TOOL_PERMISSION}}', filePermission)
       .replace('{{IMAGE_GEN_PERMISSION}}', imagePermission);
 
     const sections = [
-      // 世界观已无占位符，直接注入，省一次正则扫描
-      RETROFLOW_CANON,
+      // 世界观：副本场景用精简版省 token，日常用完整版
+      inFork ? RETROFLOW_CANON_FORK : RETROFLOW_CANON,
       replaceVars(ASSISTANT_IDENTITY_TEMPLATE),
       replaceVars(ASSISTANT_KNOWLEDGE_TEMPLATE),
       replaceVars(scene),
       buildEnvoyProfileBlock()
     ];
+
+    // 副本信息头 + 身份：紧随执行员档案之后（同属背景设定层，一场副本内基本不变）
+    if (inFork) {
+      const forkBlock = buildForkSceneBlock(sceneCtx);
+      if (forkBlock) sections.push(forkBlock);
+    }
+
     // 使用手册关键词命中段：整本手册常驻会撑爆 Token，故只注入与最近对话相关的条目。
     // 位置在人设与场景之后、个人档案之前 —— 它是临时调取的参考资料，
     // 不该压在身份协议前面抢走人设的统领地位。无命中时返回空串，不占位。
@@ -417,13 +552,22 @@ prompt 请用英文书写，逗号分隔关键词，只描述画面本身（主�
    * 深度注入必须在上下文裁剪之后插入消息数组，所以单独暴露给调用方，
    * 由 system-chat-ui 在裁剪完成后调 WorldBookEngine.applyDepthInjection。
    * @param {Array} [history] 对话消息数组，用于关键词判定
+   * @param {Object} [sceneCtx] 副本场景上下文；非空时追加副本贴脸场景说明（A 段，depth:1）
    * @returns {Array} depthItems
    */
-  function buildDepthInjection(history) {
-    if (!window.WorldBookEngine || typeof WorldBookEngine.buildInjection !== 'function') return [];
-    const wb = WorldBookEngine.buildInjection(history, 'assistant');
-    return Array.isArray(wb.depthItems) ? wb.depthItems : [];
+  function buildDepthInjection(history, sceneCtx) {
+    const items = [];
+    if (window.WorldBookEngine && typeof WorldBookEngine.buildInjection === 'function') {
+      const wb = WorldBookEngine.buildInjection(history, 'assistant');
+      if (Array.isArray(wb.depthItems)) items.push(...wb.depthItems);
+    }
+    // 副本场景：追加贴脸场景说明（depth:1，紧贴生成点，不被 10 轮原文冲散）
+    if (sceneCtx && sceneCtx.fork) {
+      items.push({ depth: 1, role: 'system', content: replaceVars(FORK_SCENE_DEPTH_TEMPLATE) });
+    }
+    return items;
   }
+
 
   /* ================= 模型配置解析 ================= */
 

@@ -198,7 +198,7 @@
     const cfg = getImageSlotConfig();
     if (!cfg) {
       setStageState('error', {
-        message: '未配置生图模型 · 请到设置 › API 算力接入 › 图像生成中填写'
+        message: '未配置生图模型 · 请到设置 › API 设置 › 图像生成中填写'
       });
       return;
     }
@@ -242,14 +242,16 @@
           prompt: finalPrompt,
           size: AVATAR_SIZE,
           ratioHint: RetroflowAPI.RATIO_HINT_PORTRAIT,
-          signal: abortCtrl.signal
+          signal: abortCtrl.signal,
+          logTag: '头像工坊 · 锁脸'
         });
       } else {
         res = await RetroflowAPI.generateImage(cfg, {
           prompt: finalPrompt,
           size: AVATAR_SIZE,
           ratioHint: RetroflowAPI.RATIO_HINT_PORTRAIT,
-          signal: abortCtrl.signal
+          signal: abortCtrl.signal,
+          logTag: '头像工坊'
         });
       }
 

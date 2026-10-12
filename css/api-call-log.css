@@ -1,0 +1,310 @@
+/**
+ * 溯流计划 · 设置页「调用日志」子页样式
+ * 遵循《工地施工协议》：100% 纯 SVG、零 Emoji、零物理分割线。
+ * 灵动岛保护由复用的 .settings-header（safe-area padding）承担。
+ *
+ * 配色语言与隔壁「使用手册」（style.css 的 .manual-* 系列）完全对齐：
+ *   - 卡片底 --card-bg-color，正文 --secondary-color，次要 --text-muted
+ *   - 强调 --primary-color / --decor-color，语义态 --success-color / --danger-color
+ *   - 等宽字体走 --mono-font（注意不是 --font-mono）
+ * 全部跟随主题引擎联动，禁止写死色值。
+ */
+
+/* 工具条：筛选胶囊 + 操作按钮 */
+.api-log-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 0 12px;
+}
+
+.api-log-filter-pill {
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-family: var(--mono-font);
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  background-color: var(--card-bg-color);
+  color: var(--text-muted);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+/* 激活态抄 .manual-keyword-pill:hover 的反色做法 */
+.api-log-filter-pill.is-active {
+  background-color: var(--secondary-color);
+  color: var(--decor-color);
+  font-weight: 700;
+}
+
+/* 操作按钮组容器：类名必须与 index.html 中的 .api-log-actions 对齐，
+   否则 flex/gap/margin-left:auto 全部失效，按钮会挤成一团 */
+.api-log-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+
+.api-log-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-family: var(--mono-font);
+  cursor: pointer;
+  background-color: var(--card-bg-color);
+  color: var(--secondary-color);
+  opacity: 0.85;
+  transition: background-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+}
+
+.api-log-action-btn svg {
+  width: 13px;
+  height: 13px;
+  fill: currentColor;
+}
+
+.api-log-action-btn:active {
+  opacity: 0.65;
+}
+
+/* 暂停态：danger 语义色 */
+.api-log-action-btn.is-paused {
+  background-color: rgba(var(--danger-color-rgb), 0.12);
+  color: var(--danger-color);
+  opacity: 1;
+}
+
+/* 状态摘要行 */
+.api-log-summary {
+  display: flex;
+  gap: 12px;
+  font-size: 10px;
+  font-family: var(--mono-font);
+  color: var(--text-muted);
+  opacity: 0.6;
+  padding-bottom: 10px;
+  letter-spacing: 0.5px;
+}
+
+/* 日志卡片列表 */
+.api-log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 卡片本体：对齐 .manual-article-card 的浅色纸面卡 */
+.api-log-card {
+  border-radius: 4px;
+  background-color: var(--card-bg-color);
+  overflow: hidden;
+  transition: background-color 0.15s ease;
+}
+
+.api-log-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.api-log-card-head:active {
+  opacity: 0.85;
+}
+
+/* 状态点：语义色变量（默认/成功=重点色绯红 / 失败=危险色鲜红） */
+.api-log-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background-color: var(--primary-color);
+}
+
+.api-log-card.is-fail .api-log-status-dot {
+  background-color: var(--danger-color);
+  box-shadow: 0 0 5px rgba(var(--danger-color-rgb), 0.5);
+}
+
+.api-log-caller {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--secondary-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 34vw;
+}
+
+/* 类型徽章：抄 .manual-card-content code 的描金底做法 */
+.api-log-kind-badge {
+  flex-shrink: 0;
+  font-size: 9px;
+  font-family: var(--mono-font);
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 2px;
+  background-color: rgba(var(--decor-color-rgb), 0.15);
+  color: var(--primary-color);
+  letter-spacing: 0.5px;
+}
+
+.api-log-card.is-fail .api-log-kind-badge {
+  background-color: rgba(var(--danger-color-rgb), 0.1);
+  color: var(--danger-color);
+}
+
+.api-log-head-meta {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-size: 9px;
+  font-family: var(--mono-font);
+  color: var(--text-muted);
+  opacity: 0.75;
+}
+
+.api-log-chevron {
+  width: 14px;
+  height: 14px;
+  fill: var(--secondary-color);
+  opacity: 0.5;
+  flex-shrink: 0;
+  transition: transform 0.18s ease, opacity 0.15s ease;
+}
+
+.api-log-card.is-open .api-log-chevron {
+  transform: rotate(90deg);
+  opacity: 0.9;
+}
+
+/* 展开的详情体（微动效淡入上滑） */
+.api-log-card-body {
+  padding: 2px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: rfViewFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.api-log-field-label {
+  font-size: 9px;
+  font-family: var(--mono-font);
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  color: var(--primary-color);
+  margin-bottom: 3px;
+}
+
+.api-log-field-value {
+  font-size: 11px;
+  color: var(--secondary-color);
+  opacity: 0.85;
+  word-break: break-all;
+}
+
+/* 端点/模型等浅色微凹槽容器（统一纸面质感） */
+.api-log-well {
+  font-family: var(--mono-font);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--secondary-color);
+  background-color: rgba(var(--bg-color-rgb), 0.65);
+  border-radius: 4px;
+  padding: 8px 12px;
+  word-break: break-all;
+}
+
+.api-log-model-tag {
+  margin-top: 4px;
+  font-size: 10.5px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* 响应原文框：抄 .manual-card-content 的浅色凹槽 */
+.api-log-pre {
+  font-family: var(--mono-font);
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--secondary-color);
+  background-color: rgba(var(--bg-color-rgb), 0.65);
+  border-radius: 4px;
+  padding: 10px 12px;
+  max-height: 40vh;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.api-log-error-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--danger-color);
+  line-height: 1.6;
+}
+
+.api-log-causes {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.api-log-cause-item {
+  display: flex;
+  gap: 7px;
+  align-items: flex-start;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.api-log-cause-item svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  fill: var(--decor-color);
+}
+
+/* 空态：对齐 .manual-empty-state */
+.api-log-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 40px 16px;
+  text-align: center;
+}
+
+.api-log-empty svg {
+  width: 32px;
+  height: 32px;
+  fill: var(--secondary-color);
+  opacity: 0.2;
+}
+
+.api-log-empty-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--secondary-color);
+  opacity: 0.6;
+}
+
+.api-log-empty-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  opacity: 0.5;
+}

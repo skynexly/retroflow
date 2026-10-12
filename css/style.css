@@ -37672,18 +37672,6 @@ button.fork-run-mission-action-card:active,
   background-color: rgba(var(--bg-color-rgb), 0.09);
 }
 
-.fork-deck-gear-chip-core {
-  cursor: default;
-  background-color: rgba(var(--bg-color-rgb), 0.02);
-  box-shadow: inset 0 0 0 0.5px rgba(var(--decor-color-rgb, 230, 194, 128), 0.15);
-  padding: 6px 2px;
-}
-
-.fork-deck-gear-chip-core:active {
-  transform: none;
-  background-color: rgba(var(--bg-color-rgb), 0.02);
-}
-
 .fork-deck-gear-icon {
   display: inline-flex;
   align-items: center;
@@ -37706,94 +37694,8 @@ button.fork-run-mission-action-card:active,
   line-height: 1.15;
 }
 
-/* 核心战术电量环仪表 (ENERGY CORE) */
-.fork-deck-battery-meter {
-  position: relative;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.fork-deck-battery-svg {
-  width: 36px;
-  height: 36px;
-  transform: rotate(-90deg); /* 从顶部 12 点钟顺时针走进度 */
-}
-
-/* 外层匀速自转刻度齿环 (自转中心 18px 18px) */
-.fork-deck-gyro-ring {
-  transform-origin: 18px 18px;
-  animation: forkDeckGyroSpin 16s linear infinite;
-  color: var(--decor-color);
-}
-
-@keyframes forkDeckGyroSpin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.fork-deck-battery-track {
-  fill: none;
-  stroke: rgba(var(--bg-color-rgb), 0.1);
-  stroke-width: 2.2;
-}
-
-.fork-deck-battery-progress {
-  fill: none;
-  stroke: var(--decor-color);
-  stroke-width: 2.2;
-  stroke-linecap: round;
-  stroke-dasharray: 81.68; /* 2 * PI * 13 */
-  stroke-dashoffset: 0;
-  transition: stroke-dashoffset 0.4s ease, stroke 0.4s ease;
-}
-
-/* 设备接通电源充电态 (CHARGING STATUS - 超长周期柔和呼吸过渡) */
-.fork-deck-battery-meter.is-charging .fork-deck-gyro-ring {
-  animation: forkDeckGyroSpin 8s linear infinite; /* 外轮自然慢悠自转，绝不抢戏 */
-  opacity: 0.65;
-}
-
-.fork-deck-battery-meter.is-charging .fork-deck-battery-progress {
-  animation: forkDeckBatterySoftGlow 5s ease-in-out infinite alternate;
-}
-
-@keyframes forkDeckBatterySoftGlow {
-  0% {
-    stroke: var(--primary-color); /* 重点色：深绯红 */
-  }
-  100% {
-    stroke: var(--decor-color); /* 装饰色：暗金高亮 */
-  }
-}
-
-.fork-deck-battery-val {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-}
-
-.fork-deck-battery-num {
-  font-family: var(--mono-font, monospace);
-  font-size: 10px;
-  font-weight: 800;
-  color: var(--bg-color);
-  letter-spacing: -0.2px;
-  line-height: 1;
-  text-align: center;
-}
+/* （原核心战术电量环仪表 ENERGY CORE 样式已随电量格撤下整体清退，
+   该槽位现为「调用日志」芯片，复用 .fork-deck-gear-chip 通用样式） */
 
 .fork-deck-gear-pod-foot {
   display: flex;
@@ -40455,7 +40357,10 @@ button.fork-run-mission-action-card:active,
   cursor: grab;
   user-select: none;
   touch-action: none;
-  background: rgba(18, 20, 24, 0.88);
+  /* 面板底色走主题反色变量（--secondary-color 语义即"深色块载体"），
+   与 rgba(var(--bg-color-rgb)) 的反白文字永远成对联动，任何主题都可读；
+   严禁写死 rgba(18,20,24)——深色主题下会变深字压深底 */
+  background: rgba(var(--secondary-color-rgb), 0.88);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   box-shadow: inset 0 0 0 1px rgba(var(--decor-color-rgb), 0.45),
@@ -40482,6 +40387,303 @@ button.fork-run-mission-action-card:active,
   pointer-events: none;
   transform: scale(0.6);
   visibility: hidden;
+}
+
+/* ---------- 悬浮球美化（皮肤 / 尺寸 / 边框） ---------- */
+/* 尺寸滑杆：整球等比缩放（宽高走变量，拖拽/吸附逻辑读实时 rect 不受影响） */
+.system-chat-orb {
+  width: calc(48px * var(--orb-scale, 1));
+  height: calc(48px * var(--orb-scale, 1));
+}
+/* 皮肤图层：常态图与拖拽图叠放，is-dragging 切换时 180ms 交叉淡化 */
+.orb-skin-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* 有边框模式：皮肤随球圆形裁切（裁切放图层自己身上，不裁球外光环） */
+  border-radius: 50%;
+  overflow: hidden;
+}
+.system-chat-orb.orb-borderless .orb-skin-layer {
+  border-radius: 0;
+  overflow: visible;
+}
+.orb-skin-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: opacity 0.18s ease;
+}
+.orb-skin-normal { opacity: 1; }
+.orb-skin-drag { opacity: 0; }
+/* 裂图保险：没有 src 的皮肤 img 永不进入渲染，从根上杜绝裂图标记 */
+.orb-skin-img:not([src]) { display: none; }
+.system-chat-orb.is-dragging .orb-skin-normal { opacity: 0; }
+.system-chat-orb.is-dragging .orb-skin-drag { opacity: 1; }
+/* 有皮肤：默认罗盘芯与呼吸点让位 */
+.system-chat-orb.has-skin .system-chat-orb-svg,
+.system-chat-orb.has-skin .system-chat-orb-pulse {
+  display: none;
+}
+/* 无边框模式：去圆形裁切、底衬、描边与光环，图片以自由原形站立（真桌宠） */
+.system-chat-orb.orb-borderless {
+  border-radius: 0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+.system-chat-orb.orb-borderless.is-dragging {
+  box-shadow: none;
+}
+/* 无边框模式：指令环展开时也不给桌宠套金色勾边（3 类特异性压过后置的 .is-ring-open） */
+.system-chat-orb.orb-borderless.is-ring-open {
+  box-shadow: none;
+}
+.system-chat-orb.orb-borderless .system-chat-orb-halo {
+  display: none;
+}
+
+/* ---------- 悬浮球美化工坊（主题页 · 模块 5） ---------- */
+.orb-skin-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  /* 模块内卡片统一 4px 圆角（覆盖 bento 默认的 8px） */
+  border-radius: 4px;
+}
+.orb-skin-workbench {
+  display: flex;
+  gap: 16px;
+  align-items: stretch;
+}
+/* 左：实时预览区 */
+.orb-skin-preview-zone {
+  flex-shrink: 0;
+  width: 132px;
+  border-radius: 4px;
+  background-color: rgba(var(--secondary-color-rgb), 0.06);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 18px 10px 12px;
+}
+.orb-skin-preview-orb {
+  position: relative;
+  width: calc(48px * var(--orb-scale, 1));
+  height: calc(48px * var(--orb-scale, 1));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--secondary-color-rgb), 0.88);
+  box-shadow: inset 0 0 0 1px rgba(var(--decor-color-rgb), 0.45);
+  color: var(--decor-color);
+  transition: width 0.18s ease, height 0.18s ease, background 0.2s ease, box-shadow 0.2s ease, border-radius 0.2s ease;
+}
+.orb-skin-preview-halo {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  pointer-events: none;
+  box-shadow: 0 0 12px rgba(var(--primary-color-rgb), 0.25);
+}
+.orb-skin-preview-core {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  overflow: hidden;
+}
+.orb-skin-preview-svg {
+  width: 78%;
+  height: 78%;
+}
+.orb-skin-preview-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.orb-skin-preview-orb.has-skin .orb-skin-preview-svg {
+  display: none;
+}
+.orb-skin-preview-orb.orb-borderless {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.orb-skin-preview-orb.orb-borderless .orb-skin-preview-halo {
+  display: none;
+}
+.orb-skin-preview-orb.orb-borderless .orb-skin-preview-core {
+  border-radius: 0;
+  overflow: visible;
+}
+.orb-skin-preview-tag {
+  font-family: var(--mono-font);
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+  opacity: 0.65;
+}
+/* 右：双上传槽 */
+.orb-skin-slots {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.orb-skin-slot {
+  position: relative;
+  border: none;
+  border-radius: 4px;
+  background-color: rgba(var(--secondary-color-rgb), 0.06);
+  overflow: hidden;
+  cursor: pointer;
+  padding: 0;
+  min-height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.2s ease;
+}
+.orb-skin-slot:active {
+  transform: scale(0.97);
+}
+.orb-skin-slot-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.orb-skin-slot-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+  padding: 8px;
+}
+.orb-skin-slot-empty svg {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+  opacity: 0.7;
+}
+.orb-skin-slot-badge {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  font-family: var(--mono-font);
+  font-size: 8px;
+  letter-spacing: 1px;
+  padding: 2px 5px;
+  border-radius: 3px;
+  color: var(--decor-color);
+  background: rgba(var(--secondary-color-rgb), 0.72);
+  box-shadow: inset 0 0 0 1px rgba(var(--decor-color-rgb), 0.3);
+  pointer-events: none;
+}
+.orb-skin-slot-clear {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  cursor: pointer;
+  z-index: 2;
+  transition: background 0.15s ease, transform 0.12s ease;
+}
+.orb-skin-slot-clear:active {
+  transform: scale(0.88);
+}
+.orb-skin-slot-clear svg {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+}
+.orb-skin-hint {
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+/* 尺寸滑杆行：与「圆形边框与底衬」的 theme-toggle-row 同款行卡，
+   两行标题左侧 EN//中文 标签竖向严格对齐 */
+.orb-skin-scale-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: var(--card-bg-color);
+  border-radius: 4px;
+  padding: 12px 14px;
+}
+.orb-skin-scale-row .theme-toggle-title {
+  flex-shrink: 0;
+}
+.orb-skin-scale-input {
+  flex: 1;
+  min-width: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(var(--secondary-color-rgb), 0.22);
+  outline: none;
+  cursor: pointer;
+}
+.orb-skin-scale-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.18);
+  cursor: grab;
+  transition: transform 0.12s ease;
+}
+.orb-skin-scale-input::-webkit-slider-thumb:active {
+  transform: scale(1.15);
+  cursor: grabbing;
+}
+.orb-skin-scale-input::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 50%;
+  background: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.18);
+  cursor: grab;
+}
+.orb-skin-scale-value {
+  flex-shrink: 0;
+  min-width: 42px;
+  text-align: right;
+  font-family: var(--mono-font);
+  font-size: 11px;
+  color: var(--primary-color);
+  letter-spacing: 0.5px;
 }
 
 .system-chat-orb-halo {
@@ -40531,6 +40733,837 @@ button.fork-run-mission-action-card:active,
   background-color: var(--primary-color);
   box-shadow: 0 0 8px var(--primary-color);
   pointer-events: none;
+}
+
+/* 1.5 扇形指令环 (Radial Command Ring) -> 战术芯片条 (Tactical Command Pill Bar)
+   三枚一体化长条指令 fixed 挂在 body 上，坐标由 JS 按球体纵向垂直阶梯布局写入。
+   高度 32px，圆角 4px，图标与文字合一，全条作为点击热区，彻底消除割裂感。 */
+.orb-radial-ring {
+  position: fixed;
+  inset: 0;
+  z-index: 16010; /* 必须高于球本体(16000) */
+  pointer-events: none;
+}
+
+.orb-radial-item {
+  position: absolute;
+  height: 32px;
+  min-width: 96px;
+  border-radius: 4px;
+  border: none;
+  padding: 0 12px 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  cursor: pointer;
+  pointer-events: auto;
+  background: rgba(var(--secondary-color-rgb), 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: inset 0 0 0 1px rgba(var(--decor-color-rgb), 0.4),
+              0 6px 18px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transform: scale(0.85);
+  transition: opacity 0.2s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.15s ease;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.orb-radial-ring.side-left .orb-radial-item {
+  transform: translateX(12px) scale(0.9);
+}
+
+.orb-radial-ring.side-right .orb-radial-item {
+  transform: translateX(-12px) scale(0.9);
+}
+
+.orb-radial-ring.is-open .orb-radial-item {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+}
+
+.orb-radial-item:active {
+  transform: scale(0.96);
+  box-shadow: inset 0 0 0 1.5px var(--decor-color),
+              0 3px 10px rgba(0, 0, 0, 0.5);
+}
+
+/* 置灰态：助手窗口已开（小窗/全屏）时助手钮不可点。
+   带 .is-open 守卫，收环后无残留 */
+.orb-radial-ring.is-open .orb-radial-item.is-disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+.orb-radial-item.is-disabled:active {
+  transform: none;
+  box-shadow: inset 0 0 0 1px rgba(var(--decor-color-rgb), 0.4),
+              0 6px 18px rgba(0, 0, 0, 0.45);
+}
+
+.orb-radial-item svg {
+  width: 16px;
+  height: 16px;
+  fill: var(--decor-color);
+  flex-shrink: 0;
+}
+
+/* 战术长条内部文字：内嵌居中，紧凑清晰 */
+.orb-radial-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  line-height: 1;
+  color: var(--bg-color);
+  pointer-events: none;
+}
+
+/* 指令环展开时球本体轻微亮起，提示"再点一下收起" */
+.system-chat-orb.is-ring-open {
+  box-shadow: inset 0 0 0 1.5px var(--decor-color),
+              0 8px 24px rgba(0, 0, 0, 0.48),
+              0 0 22px rgba(var(--decor-color-rgb), 0.4);
+}
+
+/* 1.6 当前状态浮卡 (Status Card)：暗色终端面板，与球同语言 */
+.orb-status-card {
+  position: fixed;
+  width: 268px;
+  z-index: 16010; /* 高于球本体(16000)：小屏+大球时卡片钳回视口后可能与球重叠，压在球下会点不动 */
+  border-radius: 4px;
+  padding: 12px 13px;
+  background: rgba(var(--secondary-color-rgb), 0.94);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: inset 0 0 0 1px rgba(var(--decor-color-rgb), 0.4),
+              0 12px 32px rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  transform: scale(0.92);
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.orb-status-card.is-open {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+.orb-status-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.orb-status-head svg {
+  width: 13px;
+  height: 13px;
+  fill: var(--decor-color);
+}
+
+.orb-status-title {
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--decor-color);
+}
+
+/* 战术身份衬板 (Tactical ID Plate) */
+.orb-agent-plate {
+  background: rgba(var(--bg-color-rgb), 0.06);
+  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.orb-agent-id {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 0;
+}
+
+.orb-agent-id-main {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+}
+
+.orb-agent-name {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--bg-color);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.orb-agent-serial {
+  font-family: var(--mono-font);
+  font-size: 9px;
+  color: rgba(var(--bg-color-rgb), 0.6);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+/* 部门微型胶囊 (第一行右侧：仅部门纯文字，无前缀无图标) */
+.orb-agent-dept-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: rgba(var(--bg-color-rgb), 0.08);
+  box-shadow: inset 0 0 0 0.5px rgba(var(--decor-color-rgb), 0.35);
+  flex-shrink: 0;
+  max-width: 50%;
+}
+
+.orb-agent-dept-name {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--decor-color);
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 第二行：等级与积分轻量小字微标 (去掉双方形大框) */
+.orb-agent-stats-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-top: 2px;
+}
+
+.orb-agent-stat-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.orb-agent-stat-lbl {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: rgba(var(--bg-color-rgb), 0.52);
+}
+
+.orb-agent-stat-val {
+  font-family: var(--mono-font);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: var(--decor-color);
+  line-height: 1;
+}
+  color: rgba(var(--bg-color-rgb), 0.55);
+  line-height: 1;
+}
+
+.orb-agent-warn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 3px;
+  background: rgba(var(--danger-color-rgb), 0.14);
+  box-shadow: inset 0 0 0 0.5px rgba(var(--danger-color-rgb), 0.45);
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+
+.orb-agent-warn svg {
+  width: 11px;
+  height: 11px;
+  fill: var(--danger-color);
+  flex-shrink: 0;
+}
+
+.orb-agent-warn span {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--danger-color);
+  letter-spacing: 0.3px;
+}
+
+.orb-agent-warn:active {
+  background: rgba(var(--danger-color-rgb), 0.22);
+}
+
+/* 仪表归拢组 */
+.orb-gauges-block {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+/* 仪表条：经验值 / 精神值 */
+.orb-gauge {
+  margin-bottom: 0;
+}
+
+.orb-gauge-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.orb-gauge-k {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: rgba(var(--bg-color-rgb), 0.55);
+  letter-spacing: 0.4px;
+}
+
+.orb-gauge-v {
+  margin-left: auto;
+  font-family: var(--mono-font);
+  font-size: 9.5px;
+  color: rgba(var(--bg-color-rgb), 0.85);
+  letter-spacing: 0.5px;
+}
+/* 精神值分级状态：纯文字呈现，无边框背景底衬 */
+.orb-gauge-san-text {
+  flex-shrink: 0;
+  font-family: var(--mono-font);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  opacity: 0.95;
+}
+
+/* 纯净实体能量槽轨道（无格子分段，光滑一体） */
+.orb-gauge-track {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(var(--bg-color-rgb), 0.12);
+  overflow: hidden;
+  position: relative;
+}
+
+/* 填充条：纯实体平滑过度 */
+.orb-gauge-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.orb-gauge-fill.is-exp {
+  background: rgba(var(--bg-color-rgb), 0.45);
+}
+
+.orb-gauge-fill.is-sanity {
+  background-color: var(--fill-color, var(--decor-color));
+}
+.orb-log-card {
+  position: fixed;
+  width: 280px;
+  z-index: 16010; /* 高于球本体(16000)：同状态卡，防小屏大球重叠压卡 */
+  border-radius: 6px;
+  padding: 12px 14px;
+  background: rgba(var(--secondary-color-rgb), 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: inset 0 0 0 1px rgba(var(--decor-color-rgb), 0.35),
+              0 10px 30px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transform: scale(0.92);
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  max-height: 60vh;
+}
+
+.orb-log-card.is-open {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+/* 量高度用：临时上屏但不可见不拦截 */
+.orb-log-card.is-measuring {
+  opacity: 0;
+  transform: none;
+  pointer-events: none;
+  transition: none;
+}
+
+/* ---------- 执行员档案浮卡（状态卡改版）：身份区 / 警示条 / 仪表条 ---------- */
+
+.orb-agent-id {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.orb-agent-id-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.orb-agent-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: rgba(var(--bg-color-rgb), 0.92);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.orb-agent-serial {
+  font-family: var(--mono-font);
+  font-size: 9px;
+  color: rgba(var(--bg-color-rgb), 0.45);
+  letter-spacing: 1px;
+}
+
+.orb-agent-level {
+  flex-shrink: 0;
+  font-family: var(--mono-font);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--decor-color);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(var(--decor-color-rgb, 212, 175, 55), 0.12);
+  box-shadow: inset 0 0 0 1px rgba(var(--decor-color-rgb, 212, 175, 55), 0.35);
+  letter-spacing: 0.5px;
+}
+
+.orb-agent-dept {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.orb-agent-dept svg {
+  width: 12px;
+  height: 12px;
+  fill: rgba(var(--bg-color-rgb), 0.5);
+  flex-shrink: 0;
+}
+
+.orb-agent-dept-code {
+  font-family: var(--mono-font);
+  font-size: 9px;
+  color: rgba(var(--bg-color-rgb), 0.45);
+  letter-spacing: 0.8px;
+}
+
+.orb-agent-dept-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(var(--bg-color-rgb), 0.78);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 主模型未配置：极窄绯红警示条，可点直达 API 设置 */
+.orb-agent-warn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(var(--danger-color-rgb), 0.12);
+  box-shadow: inset 0 0 0 1px rgba(var(--danger-color-rgb), 0.3);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.orb-agent-warn svg {
+  width: 10px;
+  height: 10px;
+  fill: var(--danger-color);
+  flex-shrink: 0;
+}
+
+.orb-agent-warn span {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--danger-color);
+  letter-spacing: 0.3px;
+}
+
+.orb-agent-warn:active {
+  background: rgba(var(--danger-color-rgb), 0.2);
+}
+
+/* 仪表条：经验值 / 积分（占位） / 精神值 共用 */
+.orb-gauge {
+  margin-bottom: 7px;
+}
+
+.orb-gauge:last-child {
+  margin-bottom: 0;
+}
+
+.orb-gauge-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+
+.orb-gauge-k {
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(var(--bg-color-rgb), 0.5);
+  letter-spacing: 0.5px;
+}
+
+.orb-gauge-v {
+  margin-left: auto;
+  font-family: var(--mono-font);
+  font-size: 9px;
+  color: rgba(var(--bg-color-rgb), 0.72);
+  letter-spacing: 0.5px;
+}
+
+.orb-gauge-v.is-placeholder {
+  color: rgba(var(--bg-color-rgb), 0.3);
+}
+
+.orb-gauge-v.is-placeholder em {
+  font-style: normal;
+  font-size: 8px;
+  color: rgba(var(--bg-color-rgb), 0.25);
+}
+
+/* 精神值分级徽章：颜色由行内 --san-color（PsychStore colorVar）驱动 */
+.orb-gauge-badge {
+  flex-shrink: 0;
+  font-family: var(--mono-font);
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--san-color, rgba(var(--bg-color-rgb), 0.6));
+  padding: 1px 5px;
+  border-radius: 999px;
+  letter-spacing: 0.5px;
+  box-shadow: inset 0 0 0 1px currentColor;
+  opacity: 0.9;
+}
+
+/* 旧规则已迁移至上方 .orb-gauge-track / .orb-gauge-fill 战术光栅分段体系 */
+
+.orb-log-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.orb-log-head svg {
+  width: 13px;
+  height: 13px;
+  fill: var(--decor-color);
+}
+
+.orb-log-title {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--decor-color);
+}
+
+.orb-log-count {
+  margin-left: auto;
+  font-family: var(--mono-font);
+  font-size: 9px;
+  color: rgba(var(--bg-color-rgb), 0.45);
+  letter-spacing: 0.5px;
+}
+
+/* 浮卡卡头通用关闭钮（状态卡 / 日志卡共用）：
+   注意 .orb-status-head svg / .orb-log-head svg 会把钮内 svg 染成金色 13px，
+   以下规则靠文件顺序在后 + 同等特异性覆盖之。 */
+.orb-card-close {
+  margin-left: auto;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: rgba(var(--bg-color-rgb), 0.08);
+  border-radius: 50%;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease;
+}
+
+.orb-card-close svg {
+  width: 9px;
+  height: 9px;
+  fill: rgba(var(--bg-color-rgb), 0.6);
+}
+
+.orb-card-close:active {
+  background: rgba(var(--bg-color-rgb), 0.18);
+}
+
+/* 日志卡头部：计数徽章已被 margin-left:auto 推到右侧，
+   关闭钮跟在计数后面，只留小间距、不再二次推右 */
+.orb-log-head .orb-card-close {
+  margin-left: 8px;
+}
+
+.orb-log-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.orb-log-row-wrap {
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.orb-log-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  padding: 5.5px 4px;
+  cursor: pointer;
+  text-align: left;
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+}
+
+.orb-log-row:active,
+.orb-log-row.is-open {
+  background-color: rgba(var(--bg-color-rgb), 0.07);
+}
+
+.orb-log-caller {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: rgba(var(--bg-color-rgb), 0.92);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 88px;
+  flex-shrink: 0;
+}
+
+.orb-log-kind {
+  font-family: var(--mono-font);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  padding: 1.5px 5px;
+  border-radius: 2px;
+  background-color: rgba(var(--decor-color-rgb), 0.16);
+  color: var(--decor-color);
+  flex-shrink: 0;
+}
+
+.orb-log-row.is-fail .orb-log-kind {
+  background-color: rgba(var(--danger-color-rgb), 0.16);
+  color: var(--danger-color);
+}
+
+.orb-log-meta {
+  margin-left: auto;
+  font-family: var(--mono-font);
+  font-size: 8.5px;
+  color: rgba(var(--bg-color-rgb), 0.4);
+  flex-shrink: 0;
+  letter-spacing: 0.3px;
+}
+
+/* 行内展开详情：限高可滚 */
+.orb-log-detail {
+  padding: 6px 8px 9px;
+  background-color: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  margin: 0 2px 4px;
+  max-height: 26vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.orb-log-detail[hidden] {
+  display: none;
+}
+
+.orb-log-detail-k {
+  font-family: var(--mono-font);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: var(--decor-color);
+  opacity: 0.8;
+  margin: 5px 0 2px;
+}
+
+.orb-log-detail-k:first-child {
+  margin-top: 0;
+}
+
+.orb-log-detail-v {
+  font-family: var(--mono-font);
+  font-size: 9.5px;
+  line-height: 1.55;
+  color: rgba(var(--bg-color-rgb), 0.78);
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.orb-log-detail-v.is-error {
+  color: rgba(240, 140, 115, 0.95);
+}
+
+.orb-log-causes {
+  margin-top: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.orb-log-cause {
+  font-size: 9.5px;
+  line-height: 1.5;
+  color: rgba(var(--bg-color-rgb), 0.6);
+}
+
+.orb-log-empty {
+  padding: 22px 0;
+  text-align: center;
+  font-size: 10.5px;
+  color: rgba(var(--bg-color-rgb), 0.4);
+}
+
+.orb-log-full-btn {
+  flex-shrink: 0;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: none;
+  border-radius: 4px;
+  padding: 7px 0;
+  cursor: pointer;
+  background-color: rgba(var(--decor-color-rgb), 0.14);
+  color: var(--decor-color);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  transition: background-color 0.15s ease;
+}
+
+.orb-log-full-btn:active {
+  background-color: rgba(var(--decor-color-rgb), 0.28);
+}
+
+.orb-log-full-btn svg {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+}
+/* 1.7 终端配置子页：圆角 4px，间距交由外层 .theme-module 统一管辖 */
+.terminal-config-card {
+  border-radius: 4px;
+  margin-bottom: 0;
+}
+
+/* 开关行右侧操作区（问号 + 开关） */
+.terminal-config-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* 终端配置内嵌折叠说明抽屉：复用 psych-radar-manual-drawer，贴合卡片 */
+.terminal-config-drawer {
+  margin: 4px 0 6px;
+  padding: 8px 10px;
+  background-color: rgba(var(--bg-color-rgb), 0.45);
+  border-radius: 3px;
+}
+
+.terminal-config-drawer .terminal-config-hint {
+  padding: 0;
+  line-height: 1.6;
+}
+
+.terminal-config-hint {
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  opacity: 0.75;
+  padding: 2px 2px 0;
+}
+/* 后台服务状态自证行：小图标 + 一句人话，使用重点色（零分割线） */
+.terminal-keepalive-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 6px;
+  color: var(--primary-color);
+  opacity: 0.95;
+}
+.terminal-keepalive-status svg {
+  flex: 0 0 auto;
+  width: 13px;
+  height: 13px;
+  margin-top: 2px;
+  fill: currentColor;
+}
+.terminal-keepalive-status[hidden] {
+  display: none;
+}
+/* 提示行内嵌文字链：跳转悬浮球美化，使用重点色（纯文字按钮，零分割线零下划线） */
+.terminal-config-link-btn {
+  display: inline;
+  border: none;
+  background: transparent;
+  padding: 0 2px;
+  margin-left: 4px;
+  font: inherit;
+  color: var(--primary-color);
+  font-weight: 600;
+  cursor: pointer;
+  opacity: 0.9;
+  transition: opacity 0.15s ease;
+}
+.terminal-config-link-btn:hover {
+  opacity: 1;
+}
+.terminal-config-link-btn:active {
+  opacity: 0.6;
 }
 
 /* 2. Mini HUD 浮窗形态 (mode-mini) */

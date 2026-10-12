@@ -16,7 +16,9 @@
     api: document.getElementById('apiDetailSection'),
     theme: document.getElementById('themeDetailSection'),
     manual: document.getElementById('manualDetailSection'),
-    data: document.getElementById('dataDetailSection')
+    data: document.getElementById('dataDetailSection'),
+    apiLog: document.getElementById('apiLogDetailSection'),
+    terminal: document.getElementById('terminalDetailSection')
   };
 
   // 当前层级：0 = 主桌面，1 = 一级设置，2 = 二级子页
@@ -91,6 +93,16 @@
       // 进入数据管理页：渲染用量总览与分块卡片
       if (section === 'data' && window.DataVaultUI && typeof DataVaultUI.render === 'function') {
         DataVaultUI.render();
+      }
+
+      // 进入调用日志页：初始化日志控制器并拉取最新记录
+      if (section === 'apiLog' && window.ApiCallLogUI && typeof ApiCallLogUI.init === 'function') {
+        ApiCallLogUI.init();
+      }
+
+      // 进入终端配置页：回填随行中枢开关状态
+      if (section === 'terminal' && window.TerminalConfigUI && typeof TerminalConfigUI.init === 'function') {
+        TerminalConfigUI.init();
       }
     } else {
       if (detailView) {

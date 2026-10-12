@@ -969,6 +969,232 @@
 
   window.addEventListener('retroflow:serial-changed', updateFontPreview);
 
+  /* ---------------- 悬浮球美化工坊 ---------------- */
+  const orbSkinResetBtn = document.getElementById('orbSkinResetBtn');
+  const orbSkinPreviewOrb = document.getElementById('orbSkinPreviewOrb');
+  const orbSkinPreviewImg = document.getElementById('orbSkinPreviewImg');
+  const orbSkinNormalSlot = document.getElementById('orbSkinNormalSlot');
+  const orbSkinNormalSlotImg = document.getElementById('orbSkinNormalSlotImg');
+  const orbSkinNormalSlotEmpty = document.getElementById('orbSkinNormalSlotEmpty');
+  const orbSkinNormalClear = document.getElementById('orbSkinNormalClear');
+  const orbSkinDragSlot = document.getElementById('orbSkinDragSlot');
+  const orbSkinDragSlotImg = document.getElementById('orbSkinDragSlotImg');
+  const orbSkinDragSlotEmpty = document.getElementById('orbSkinDragSlotEmpty');
+  const orbSkinDragClear = document.getElementById('orbSkinDragClear');
+  const orbSkinScaleInput = document.getElementById('orbSkinScaleInput');
+  const orbSkinScaleValue = document.getElementById('orbSkinScaleValue');
+  const orbSkinBorderedCheckbox = document.getElementById('orbSkinBorderedCheckbox');
+  // 槽位缩略图 objectURL（重渲染时负责 revoke，防泄漏）
+  let orbSkinNormalUrl = null;
+  let orbSkinDragUrl = null;
+  let orbSkinPreviewUrl = null;
+
+  function revokeOrbSkinUrl(which) {
+    if (which === 'normal' && orbSkinNormalUrl) {
+      Storage.revokeAssetSrc(orbSkinNormalUrl);
+      orbSkinNormalUrl = null;
+    } else if (which === 'drag' && orbSkinDragUrl) {
+      Storage.revokeAssetSrc(orbSkinDragUrl);
+      orbSkinDragUrl = null;
+    } else if (which === 'preview' && orbSkinPreviewUrl) {
+      Storage.revokeAssetSrc(orbSkinPreviewUrl);
+      orbSkinPreviewUrl = null;
+    }
+  }
+
+  /** 预览小球跟随调校即时刷新（尺寸 / 边框 / 皮肤图）。
+   预览区只有 132px 宽，视觉缩放宽封顶 200%，避免 400% 时撑爆预览框；
+   右侧百分比标签仍显示真实值，由 setSkinCfg 钳制保证与真球一致。 */
+  const ORB_PREVIEW_MAX_SCALE = 200;
+  function renderOrbSkinPreview(cfg, normalSrc) {
+    if (!orbSkinPreviewOrb) return;
+    const previewScale = Math.min(cfg.scale, ORB_PREVIEW_MAX_SCALE);
+    orbSkinPreviewOrb.style.setProperty('--orb-scale', String(previewScale / 100));
+    orbSkinPreviewOrb.classList.toggle('orb-borderless', !cfg.bordered);
+    const hasSkin = Boolean(normalSrc);
+    orbSkinPreviewOrb.classList.toggle('has-skin', hasSkin);
+    if (orbSkinPreviewImg) {
+      if (hasSkin) {
+        orbSkinPreviewImg.src = normalSrc;
+        orbSkinPreviewImg.hidden = false;
+      } else {
+        orbSkinPreviewImg.removeAttribute('src');
+        orbSkinPreviewImg.hidden = true;
+      }
+    }
+  }
+
+  /** 从权威数据源回填整个工坊（槽位缩略图 / 滑杆 / 开关 / 预览） */
+  async function renderOrbSkinWorkbench() {
+    if (!orbSkinNormalSlot) return;
+    const cfg = (window.SystemChatOrb && SystemChatOrb.getSkinCfg)
+      ? SystemChatOrb.getSkinCfg()
+      : { scale: 100, bordered: true };
+    if (orbSkinScaleInput) orbSkinScaleInput.value = String(cfg.scale);
+    if (orbSkinScaleValue) orbSkinScaleValue.textContent = `${cfg.scale}%`;
+    if (orbSkinBorderedCheckbox) orbSkinBorderedCheckbox.checked = cfg.bordered;
+    // 槽位缩略图
+    let normalSrc = null;
+    let dragSrc = null;
+    try {
+      normalSrc = await Storage.getAssetSrc(DataRegistry.key.orbSkinNormal());
+      dragSrc = await Storage.getAssetSrc(DataRegistry.key.orbSkinDrag());
+    } catch (_) {}
+    revokeOrbSkinUrl('normal');
+    revokeOrbSkinUrl('drag');
+    revokeOrbSkinUrl('preview');
+    orbSkinNormalUrl = normalSrc && normalSrc.startsWith('blob:') ? normalSrc : null;
+    orbSkinDragUrl = dragSrc && dragSrc.startsWith('blob:') ? dragSrc : null;
+    orbSkinPreviewUrl = orbSkinNormalUrl;
+    if (orbSkinNormalSlotImg) {
+      orbSkinNormalSlotImg.src = normalSrc || '';
+      orbSkinNormalSlotImg.hidden = !normalSrc;
+    }
+    if (orbSkinNormalSlotEmpty) orbSkinNormalSlotEmpty.hidden = Boolean(normalSrc);
+    if (orbSkinNormalClear) orbSkinNormalClear.hidden = !normalSrc;
+    if (orbSkinDragSlotImg) {
+      orbSkinDragSlotImg.src = dragSrc || '';
+      orbSkinDragSlotImg.hidden = !dragSrc;
+    }
+    if (orbSkinDragSlotEmpty) orbSkinDragSlotEmpty.hidden = Boolean(dragSrc);
+    if (orbSkinDragClear) orbSkinDragClear.hidden = !dragSrc;
+    renderOrbSkinPreview(cfg, normalSrc);
+  }
+
+  /** 打开图片选择器并把结果写进指定皮肤位（原样存储不转码，保 GIF 动图） */
+  function pickOrbSkin(which) {
+    if (!window.ImagePicker || typeof ImagePicker.open !== 'function') return;
+    const isNormal = which === 'normal';
+    ImagePicker.open({
+      title: isNormal ? '上传悬浮球常态图' : '上传悬浮球拖拽图',
+      onSelect: async (res) => {
+        if (!res) return;
+        try {
+          const key = isNormal ? DataRegistry.key.orbSkinNormal() : DataRegistry.key.orbSkinDrag();
+          if (res.type === 'file' && res.file) {
+            await Storage.setAsset(key, res.file);
+          } else if (res.type === 'url' && res.url) {
+            await Storage.setAsset(key, res.url);
+          } else {
+            return;
+          }
+          if (window.SystemChatOrb && SystemChatOrb.refreshSkin) await SystemChatOrb.refreshSkin();
+          await renderOrbSkinWorkbench();
+          if (window.RetroToast) {
+            RetroToast.show({
+              tag: 'DECOR // 悬浮球美化',
+              message: isNormal ? '常态皮肤已换装' : '拖拽皮肤已换装',
+              type: 'success'
+            });
+          }
+        } catch (err) {
+          console.error('[ThemeUI] 悬浮球皮肤写入失败:', err);
+        }
+      }
+    });
+  }
+
+  /** 清除指定皮肤位（拖拽位清除后自动回退共用常态图） */
+  async function clearOrbSkin(which) {
+    try {
+      const key = which === 'normal' ? DataRegistry.key.orbSkinNormal() : DataRegistry.key.orbSkinDrag();
+      await Storage.removeAsset(key);
+      if (window.SystemChatOrb && SystemChatOrb.refreshSkin) await SystemChatOrb.refreshSkin();
+      await renderOrbSkinWorkbench();
+      if (window.RetroToast) {
+        RetroToast.show({
+          tag: 'DECOR // 悬浮球美化',
+          message: which === 'normal' ? '常态皮肤已清除，回到罗盘芯' : '拖拽皮肤已清除',
+          type: 'info'
+        });
+      }
+    } catch (err) {
+      console.error('[ThemeUI] 悬浮球皮肤清除失败:', err);
+    }
+  }
+
+  if (orbSkinNormalSlot) {
+    orbSkinNormalSlot.addEventListener('click', (e) => {
+      if (e.target.closest('.orb-skin-slot-clear')) return;
+      pickOrbSkin('normal');
+    });
+  }
+  if (orbSkinDragSlot) {
+    orbSkinDragSlot.addEventListener('click', (e) => {
+      if (e.target.closest('.orb-skin-slot-clear')) return;
+      pickOrbSkin('drag');
+    });
+  }
+  if (orbSkinNormalClear) {
+    orbSkinNormalClear.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const ok = await RetroModal.confirm({
+        message: '确认清除常态皮肤？',
+        detail: '清除后悬浮球回到默认罗盘芯。若已设拖拽图，会一并失去共用来源。',
+        confirmText: '清除',
+        cancelText: '取消',
+        danger: true
+      });
+      if (ok) await clearOrbSkin('normal');
+    });
+  }
+  if (orbSkinDragClear) {
+    orbSkinDragClear.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await clearOrbSkin('drag');
+    });
+  }
+  if (orbSkinScaleInput) {
+    orbSkinScaleInput.addEventListener('input', () => {
+      const scale = parseInt(orbSkinScaleInput.value, 10) || 100;
+      if (orbSkinScaleValue) orbSkinScaleValue.textContent = `${scale}%`;
+      if (window.SystemChatOrb && SystemChatOrb.setSkinCfg) {
+        SystemChatOrb.setSkinCfg({ scale });
+        renderOrbSkinPreview(SystemChatOrb.getSkinCfg(), orbSkinPreviewUrl);
+      }
+    });
+  }
+  if (orbSkinBorderedCheckbox) {
+    orbSkinBorderedCheckbox.addEventListener('change', () => {
+      if (window.SystemChatOrb && SystemChatOrb.setSkinCfg) {
+        SystemChatOrb.setSkinCfg({ bordered: orbSkinBorderedCheckbox.checked });
+        renderOrbSkinPreview(SystemChatOrb.getSkinCfg(), orbSkinPreviewUrl);
+      }
+    });
+  }
+  // 恢复默认：清双图 + 调校归位
+  if (orbSkinResetBtn) {
+    orbSkinResetBtn.addEventListener('click', async () => {
+      const ok = await RetroModal.confirm({
+        message: '确认恢复悬浮球默认外观？',
+        detail: '将清除常态图与拖拽图，尺寸回到 100%，圆形边框重新启用。此操作无法撤销。',
+        confirmText: '确认恢复',
+        cancelText: '取消',
+        danger: true
+      });
+      if (!ok) return;
+      orbSkinResetBtn.disabled = true;
+      try {
+        await Storage.removeAsset(DataRegistry.key.orbSkinNormal());
+        await Storage.removeAsset(DataRegistry.key.orbSkinDrag());
+        if (window.SystemChatOrb) {
+          if (SystemChatOrb.setSkinCfg) SystemChatOrb.setSkinCfg({ scale: 100, bordered: true });
+          if (SystemChatOrb.refreshSkin) await SystemChatOrb.refreshSkin();
+        }
+        await renderOrbSkinWorkbench();
+        if (window.RetroToast) {
+          RetroToast.show({
+            tag: 'DECOR // 恢复默认',
+            message: '悬浮球已恢复罗盘芯默认外观',
+            type: 'success'
+          });
+        }
+      } finally {
+        orbSkinResetBtn.disabled = false;
+      }
+    });
+  }
+
   // 主题配置在内存就绪后才能应用色彩、壁纸与字体
   Boot.onReady('theme', async () => {
     ThemeEngine.init();
@@ -989,6 +1215,8 @@
     // 初始化图标美化工坊
     renderTilePicker();
     renderTileWorkbench();
+    // 初始化悬浮球美化工坊（回填皮肤槽位与调校）
+    renderOrbSkinWorkbench();
   });
 
   window.addEventListener('resize', updateCursorPosition);
@@ -1143,6 +1371,8 @@
     recalibrate: () => {
       drawWheel();
       updateCursorPosition();
+      // 每次进页回填悬浮球美化最新状态（皮肤可能在别处被恢复默认过）
+      renderOrbSkinWorkbench();
     }
   };
 })();

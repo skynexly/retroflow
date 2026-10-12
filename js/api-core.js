@@ -80,6 +80,34 @@ window.RetroflowAPI = (() => {
     return e;
   }
 
+  /* ================= 调用日志埋点 ================= */
+  // 所有埋点统一走这两个出口：日志模块未加载 / 已暂停 / 记录异常时静默跳过，
+  // 绝不影响主调用链——日志是排查工具，不能反过来成为故障源。
+
+  function logCall(entry) {
+    try {
+      if (window.ApiCallLog && typeof ApiCallLog.record === 'function') {
+        window.ApiCallLog.record(entry);
+      }
+    } catch (_) {}
+  }
+
+  function reqSummary(bodyStr, meta) {
+    try {
+      if (window.ApiCallLog && typeof ApiCallLog.summarizeRequest === 'function') {
+        return ApiCallLog.summarizeRequest(bodyStr, meta);
+      }
+    } catch (_) {}
+    return String(bodyStr || '').slice(0, 2000);
+  }
+
+  /** 网络层异常的可读文案（超时 / 主动取消 / 不可达 分开表述） */
+  function describeCaughtError(err) {
+    if (err && err.isTimeout) return '超时 · 链路无响应';
+    if (err && err.name === 'AbortError') return '用户主动取消';
+    return (err && err.message) ? err.message : String(err);
+  }
+
   /* ================= 带超时的请求 ================= */
 
   async function request(url, options, timeout, externalSignal) {
@@ -122,17 +150,32 @@ window.RetroflowAPI = (() => {
    * 拉取 /models 列表
    * @returns {Promise<string[]>} 模型 id 数组（已去重排序）
    */
-  async function fetchModelList(baseUrl, apiKey, timeout) {
+  async function fetchModelList(baseUrl, apiKey, timeout, logTag) {
     const url = buildModelsUrl(baseUrl);
     if (!url) throw new Error('BASE URL 为空');
 
-    const resp = await request(url, {
-      method: 'GET',
-      headers: apiKey ? { Authorization: 'Bearer ' + apiKey } : {}
-    }, timeout);
+    const modelsStarted = Date.now();
+    const modelsLogBase = {
+      caller: logTag || '模型列表拉取',
+      kind: 'models',
+      url,
+      reqSummary: `GET ${url}`
+    };
+
+    let resp;
+    try {
+      resp = await request(url, {
+        method: 'GET',
+        headers: apiKey ? { Authorization: 'Bearer ' + apiKey } : {}
+      }, timeout);
+    } catch (err) {
+      logCall(Object.assign({}, modelsLogBase, { ok: false, status: 0, errorMessage: describeCaughtError(err), latency: Date.now() - modelsStarted }));
+      throw err;
+    }
 
     if (!resp.ok) {
       const body = await resp.text().catch(() => '');
+      logCall(Object.assign({}, modelsLogBase, { ok: false, status: resp.status, respBody: body, errorMessage: describeHttpError(resp.status, body), latency: Date.now() - modelsStarted }));
       const err = new Error(describeHttpError(resp.status, body));
       err.status = resp.status;
       throw err;
@@ -143,7 +186,10 @@ window.RetroflowAPI = (() => {
     const ids = raw
       .map((m) => (typeof m === 'string' ? m : (m.id || m.name || m.model || '')))
       .filter(Boolean);
-    return Array.from(new Set(ids)).sort();
+    const models = Array.from(new Set(ids)).sort();
+    // 成功只落计数摘要：模型列表原文可上百 KB，排查用不着全量
+    logCall(Object.assign({}, modelsLogBase, { ok: true, status: resp.status, respBody: `[模型列表 · ${models.length} 个] ${models.slice(0, 30).join(', ')}${models.length > 30 ? ' ...' : ''}`, latency: Date.now() - modelsStarted }));
+    return models;
   }
 
   /* ================= 链路探测 ================= */
@@ -160,7 +206,7 @@ window.RetroflowAPI = (() => {
 
     const started = Date.now();
     try {
-      const models = await fetchModelList(baseUrl, apiKey, timeout);
+      const models = await fetchModelList(baseUrl, apiKey, timeout, '链路探测');
       const latency = Date.now() - started;
       return {
         ok: true,
@@ -207,6 +253,7 @@ window.RetroflowAPI = (() => {
       const latency = Date.now() - started;
       if (!resp.ok) {
         const body = await resp.text().catch(() => '');
+        logCall({ caller: '链路探测（chat 探针）', kind: 'chat', url, model: modelId, reqSummary: 'max_tokens: 1 的最小探针', ok: false, status: resp.status, respBody: body, errorMessage: describeHttpError(resp.status, body), latency });
         return {
           ok: false,
           latency,
@@ -215,6 +262,7 @@ window.RetroflowAPI = (() => {
           models: []
         };
       }
+      logCall({ caller: '链路探测（chat 探针）', kind: 'chat', url, model: modelId, reqSummary: 'max_tokens: 1 的最小探针', ok: true, status: resp.status, respBody: '[探针通过 · 响应体省略]', latency });
       return {
         ok: true,
         latency,
@@ -260,23 +308,51 @@ window.RetroflowAPI = (() => {
     // 对话生成不设前端超时（传 0）：与流式策略一致，长提示词/慢模型十几分钟出字也不掐，
     // 由用户手动停止控制。调用方仍可显式传 options.timeout 覆盖。
     const chatTimeout = (options && typeof options.timeout === 'number') ? options.timeout : 0;
-    const resp = await request(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + (config.apiKey || '')
-      },
-      body: JSON.stringify(buildBody(config, messages, Object.assign({ stream: false }, options && options.extra)))
-    }, chatTimeout, options && options.signal);
+    const bodyStr = JSON.stringify(buildBody(config, messages, Object.assign({ stream: false }, options && options.extra)));
+    const started = Date.now();
+    const logBase = {
+      caller: (options && options.logTag) || '未标注调用',
+      kind: 'chat',
+      url,
+      model: config.modelId,
+      reqSummary: reqSummary(bodyStr)
+    };
+    let resp;
+    try {
+      resp = await request(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + (config.apiKey || '')
+        },
+        body: bodyStr
+      }, chatTimeout, options && options.signal);
+    } catch (err) {
+      // 用户主动取消不是故障，不进日志；超时 / 断网照记
+      if (!(err && err.name === 'AbortError' && !err.isTimeout)) {
+        logCall(Object.assign({}, logBase, { ok: false, status: 0, errorMessage: describeCaughtError(err), latency: Date.now() - started }));
+      }
+      throw err;
+    }
 
     if (!resp.ok) {
       const body = await resp.text().catch(() => '');
+      logCall(Object.assign({}, logBase, { ok: false, status: resp.status, respBody: body, errorMessage: describeHttpError(resp.status, body), latency: Date.now() - started }));
       const err = new Error(describeHttpError(resp.status, body));
       err.status = resp.status;
       throw err;
     }
 
-    const json = await resp.json();
+    // 先收原文再解析：日志要存服务端返回的原始 body（截断/掉格式排查全靠它）
+    const respText = await resp.text().catch(() => '');
+    let json;
+    try {
+      json = JSON.parse(respText);
+    } catch (_) {
+      logCall(Object.assign({}, logBase, { ok: false, status: resp.status, respBody: respText, errorMessage: '返回体不是合法 JSON', latency: Date.now() - started }));
+      throw new Error('返回体不是合法 JSON');
+    }
+    logCall(Object.assign({}, logBase, { ok: true, status: resp.status, respBody: respText, latency: Date.now() - started }));
     const choice = (json.choices && json.choices[0]) || {};
     const msg = choice.message || {};
     return {
@@ -302,18 +378,38 @@ window.RetroflowAPI = (() => {
       return res;
     }
 
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + (config.apiKey || '')
-      },
-      body: JSON.stringify(buildBody(config, messages, Object.assign({ stream: true }, options && options.extra))),
-      signal: options && options.signal
-    });
+    const streamBodyStr = JSON.stringify(buildBody(config, messages, Object.assign({ stream: true }, options && options.extra)));
+    const streamStarted = Date.now();
+    const streamLogBase = {
+      caller: (options && options.logTag) || '未标注调用',
+      kind: 'stream',
+      url,
+      model: config.modelId,
+      reqSummary: reqSummary(streamBodyStr),
+      streaming: true
+    };
+
+    let resp;
+    try {
+      resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + (config.apiKey || '')
+        },
+        body: streamBodyStr,
+        signal: options && options.signal
+      });
+    } catch (err) {
+      if (!(err && err.name === 'AbortError')) {
+        logCall(Object.assign({}, streamLogBase, { ok: false, status: 0, errorMessage: describeCaughtError(err), latency: Date.now() - streamStarted }));
+      }
+      throw err;
+    }
 
     if (!resp.ok) {
       const body = await resp.text().catch(() => '');
+      logCall(Object.assign({}, streamLogBase, { ok: false, status: resp.status, respBody: body, errorMessage: describeHttpError(resp.status, body), latency: Date.now() - streamStarted }));
       const err = new Error(describeHttpError(resp.status, body));
       err.status = resp.status;
       throw err;
@@ -371,6 +467,7 @@ window.RetroflowAPI = (() => {
       // 不整条丢弃报错——调用方已通过 onChunk 拿到这些字，正常收尾即可。
       // 一个字都没收到才说明是真·空链路，抛规范化错误让上层提示。
       if (!content.trim() && !reasoning.trim()) {
+        logCall(Object.assign({}, streamLogBase, { ok: false, status: 0, respBody: '', errorMessage: describeNetworkError(err) + '（流式连接建立后断流，未收到任何内容）', latency: Date.now() - streamStarted }));
         throw wrapNetworkError(err);
       }
       interrupted = true;
@@ -378,6 +475,14 @@ window.RetroflowAPI = (() => {
 
     // 兜底：部分思考模型把全部正文塞进 reasoning_content
     if (!content.trim() && reasoning.trim()) content = reasoning;
+
+    // 流式成功：没有原始响应 body 可存，落"已累积全文"（这正是判断截断/掉格式的依据）
+    logCall(Object.assign({}, streamLogBase, {
+      ok: true,
+      status: resp.status,
+      respBody: `[流式累积正文 · ${content.length} 字符${interrupted ? ' · 传输中途断流，已收到部分保留' : ' · 传输完整'}]\n\n${content}`,
+      latency: Date.now() - streamStarted
+    }));
 
     return {
       content: content,
@@ -558,9 +663,30 @@ window.RetroflowAPI = (() => {
     let downgraded = false;
     let resp;
 
+    const imgLogBase = {
+      caller: opts.logTag || '未标注调用',
+      kind: 'image',
+      url,
+      model: config.modelId || '',
+      reqSummary: reqSummary(JSON.stringify({
+        model: config.modelId,
+        prompt: finalPrompt,
+        n: 1,
+        response_format: 'b64_json',
+        negative_prompt: (config && config.negativePrompt) || undefined
+      }), `请求 size: ${opts.size || '（未传，服务端默认）'}${ratioHint ? ' · ratioHint: ' + ratioHint : ''}`)
+    };
+    // 网络层失败（三处 send 的 catch 共用）：主动取消不进日志
+    const logNetFail = (err) => {
+      if (!(err && err.name === 'AbortError')) {
+        logCall(Object.assign({}, imgLogBase, { ok: false, status: 0, errorMessage: describeCaughtError(err), latency: Date.now() - started }));
+      }
+    };
+
     try {
       resp = await send(usedSize);
     } catch (err) {
+      logNetFail(err);
       throw wrapNetworkError(err);
     }
 
@@ -576,6 +702,7 @@ window.RetroflowAPI = (() => {
         try {
           resp = await send(usedSize);
         } catch (err) {
+          logNetFail(err);
           throw wrapNetworkError(err);
         }
         // 还不行就彻底不传 size，交给服务端默认
@@ -584,10 +711,12 @@ window.RetroflowAPI = (() => {
           try {
             resp = await send(null);
           } catch (err) {
+            logNetFail(err);
             throw wrapNetworkError(err);
           }
         }
       } else {
+        logCall(Object.assign({}, imgLogBase, { ok: false, status: 400, respBody: errText, errorMessage: describeImageError(400, errText), latency: Date.now() - started }));
         const err = new Error(describeImageError(400, errText));
         err.status = 400;
         throw err;
@@ -596,20 +725,43 @@ window.RetroflowAPI = (() => {
 
     if (!resp.ok) {
       const errText = await resp.text().catch(() => '');
+      logCall(Object.assign({}, imgLogBase, { ok: false, status: resp.status, respBody: errText, errorMessage: describeImageError(resp.status, errText), latency: Date.now() - started }));
       const err = new Error(describeImageError(resp.status, errText));
       err.status = resp.status;
       throw err;
     }
 
-    const json = await resp.json();
+    // 先收原文再解析：b64 大块由日志模块替换成体积占位，报错体永远全量
+    const respText = await resp.text().catch(() => '');
+    let json;
+    try {
+      json = JSON.parse(respText);
+    } catch (_) {
+      logCall(Object.assign({}, imgLogBase, { ok: false, status: resp.status, respBody: respText, errorMessage: '返回体不是合法 JSON', latency: Date.now() - started }));
+      throw new Error('返回体不是合法 JSON');
+    }
     const list = (json.data || [])
       .map((d) => (d.b64_json ? { b64: d.b64_json } : (d.url ? { url: d.url } : null)))
       .filter(Boolean);
 
-    if (!list.length) throw new Error('服务端未返回图像数据');
+    if (!list.length) {
+      logCall(Object.assign({}, imgLogBase, { ok: false, status: resp.status, respBody: respText, errorMessage: '服务端未返回图像数据', latency: Date.now() - started }));
+      throw new Error('服务端未返回图像数据');
+    }
 
     const image = await toDisplayableImage(list[0]);
-    if (!image) throw new Error('图像数据解析失败');
+    if (!image) {
+      logCall(Object.assign({}, imgLogBase, { ok: false, status: resp.status, respBody: respText, errorMessage: '图像数据解析失败', latency: Date.now() - started }));
+      throw new Error('图像数据解析失败');
+    }
+
+    logCall(Object.assign({}, imgLogBase, {
+      ok: true,
+      status: resp.status,
+      respBody: respText,
+      reqMeta: `实际 size: ${usedSize}${downgraded ? '（服务端不支持请求尺寸，已自动降级）' : ''}`,
+      latency: Date.now() - started
+    }));
 
     return {
       image,
@@ -682,6 +834,20 @@ window.RetroflowAPI = (() => {
 
     const started = Date.now();
     let resp;
+
+    const editLogBase = {
+      caller: opts.logTag || '未标注调用',
+      kind: 'edits',
+      url,
+      model: config.modelId || '',
+      reqSummary: reqSummary(JSON.stringify({
+        model: config.modelId,
+        prompt: finalPrompt,
+        n: 1,
+        response_format: 'b64_json'
+      }), `参考图 ${refs.length} 张（multipart 上传）· size: ${usedSize}${ratioHint ? ' · ratioHint: ' + ratioHint : ''}${opts.faceLock === false ? ' · faceLock: off（调用方自带锁脸指令）' : ' · faceLock: on（内置锁脸句前置）'}`)
+    };
+
     try {
       resp = await fetch(url, {
         method: 'POST',
@@ -690,6 +856,9 @@ window.RetroflowAPI = (() => {
         signal: ctrl.signal
       });
     } catch (err) {
+      if (!(err && err.name === 'AbortError')) {
+        logCall(Object.assign({}, editLogBase, { ok: false, status: 0, errorMessage: describeCaughtError(err), latency: Date.now() - started }));
+      }
       throw wrapNetworkError(err);
     } finally {
       clearTimeout(timer);
@@ -697,20 +866,37 @@ window.RetroflowAPI = (() => {
 
     if (!resp.ok) {
       const errText = await resp.text().catch(() => '');
+      logCall(Object.assign({}, editLogBase, { ok: false, status: resp.status, respBody: errText, errorMessage: describeImageEditError(resp.status, errText), latency: Date.now() - started }));
       const err = new Error(describeImageEditError(resp.status, errText));
       err.status = resp.status;
       throw err;
     }
 
-    const json = await resp.json();
+    // 先收原文再解析：b64 大块由日志模块替换成体积占位，报错体永远全量
+    const respText = await resp.text().catch(() => '');
+    let json;
+    try {
+      json = JSON.parse(respText);
+    } catch (_) {
+      logCall(Object.assign({}, editLogBase, { ok: false, status: resp.status, respBody: respText, errorMessage: '返回体不是合法 JSON', latency: Date.now() - started }));
+      throw new Error('返回体不是合法 JSON');
+    }
     const list = (json.data || [])
       .map((d) => (d.b64_json ? { b64: d.b64_json } : (d.url ? { url: d.url } : null)))
       .filter(Boolean);
 
-    if (!list.length) throw new Error('服务端未返回图像数据');
+    if (!list.length) {
+      logCall(Object.assign({}, editLogBase, { ok: false, status: resp.status, respBody: respText, errorMessage: '服务端未返回图像数据', latency: Date.now() - started }));
+      throw new Error('服务端未返回图像数据');
+    }
 
     const image = await toDisplayableImage(list[0]);
-    if (!image) throw new Error('图像数据解析失败');
+    if (!image) {
+      logCall(Object.assign({}, editLogBase, { ok: false, status: resp.status, respBody: respText, errorMessage: '图像数据解析失败', latency: Date.now() - started }));
+      throw new Error('图像数据解析失败');
+    }
+
+    logCall(Object.assign({}, editLogBase, { ok: true, status: resp.status, respBody: respText, latency: Date.now() - started }));
 
     return {
       image,
@@ -840,6 +1026,17 @@ window.RetroflowAPI = (() => {
     if (!text) throw new Error('试音文本为空');
 
     const started = Date.now();
+    const ttsLogBase = {
+      caller: opts.logTag || '未标注调用',
+      kind: 'tts',
+      url,
+      model: cfg.modelId || MINIMAX_DEFAULT_MODEL,
+      reqSummary: reqSummary(JSON.stringify({
+        model: cfg.modelId || MINIMAX_DEFAULT_MODEL,
+        text,
+        voice_setting: { voice_id: cfg.voiceId || MINIMAX_DEFAULT_VOICE, speed: clampSpeed(cfg.speed), pitch: clampPitch(cfg.pitch) }
+      }))
+    };
     let resp;
     try {
       resp = await request(url, {
@@ -868,39 +1065,56 @@ window.RetroflowAPI = (() => {
         })
       }, TTS_TIMEOUT);
     } catch (err) {
+      logCall(Object.assign({}, ttsLogBase, { ok: false, status: 0, errorMessage: describeCaughtError(err), latency: Date.now() - started }));
       throw wrapNetworkError(err);
     }
 
     if (!resp.ok) {
       const body = await resp.text().catch(() => '');
+      logCall(Object.assign({}, ttsLogBase, { ok: false, status: resp.status, respBody: body, errorMessage: describeTtsError(resp.status, body), latency: Date.now() - started }));
       throw new Error(describeTtsError(resp.status, body));
     }
 
     const data = await resp.json().catch(() => null);
-    if (!data) throw new Error('返回体解析失败，非标准 JSON');
+    if (!data) {
+      logCall(Object.assign({}, ttsLogBase, { ok: false, status: resp.status, errorMessage: '返回体解析失败，非标准 JSON', latency: Date.now() - started }));
+      throw new Error('返回体解析失败，非标准 JSON');
+    }
 
     // MiniMax 业务错误：HTTP 200 但 base_resp 里带错误码
     const baseResp = data.base_resp || {};
     if (baseResp.status_code != null && Number(baseResp.status_code) !== 0) {
+      logCall(Object.assign({}, ttsLogBase, { ok: false, status: 200, respBody: JSON.stringify(baseResp), errorMessage: `${baseResp.status_code} · ${baseResp.status_msg || 'MiniMax 业务异常'}`, latency: Date.now() - started }));
       throw new Error(`${baseResp.status_code} · ${baseResp.status_msg || 'MiniMax 业务异常'}`);
     }
 
     const audioField = data.data && data.data.audio;
     if (!audioField) {
-      throw new Error(baseResp.status_msg || 'MiniMax 未返回音频数据');
+      const errMsg = baseResp.status_msg || 'MiniMax 未返回音频数据';
+      logCall(Object.assign({}, ttsLogBase, { ok: false, status: 200, respBody: JSON.stringify(data.base_resp || {}), errorMessage: errMsg, latency: Date.now() - started }));
+      throw new Error(errMsg);
     }
 
     // 服务端可能返回 CDN 链接（output_format=url）而非 hex，两种都要吃下
     let blob;
     if (/^https?:\/\//i.test(audioField)) {
       const audioResp = await fetch(audioField);
-      if (!audioResp.ok) throw new Error(`音频下载失败 (${audioResp.status})`);
+      if (!audioResp.ok) {
+        logCall(Object.assign({}, ttsLogBase, { ok: false, status: audioResp.status, errorMessage: `音频下载失败 (${audioResp.status})`, latency: Date.now() - started }));
+        throw new Error(`音频下载失败 (${audioResp.status})`);
+      }
       blob = await audioResp.blob();
     } else {
       blob = hexToAudioBlob(audioField);
     }
 
-    if (!blob || !blob.size) throw new Error('音频解码结果为空');
+    if (!blob || !blob.size) {
+      logCall(Object.assign({}, ttsLogBase, { ok: false, status: 200, errorMessage: '音频解码结果为空', latency: Date.now() - started }));
+      throw new Error('音频解码结果为空');
+    }
+
+    // 成功：音频 hex 大块由日志模块替换占位；这里只落一条轻量成功记录
+    logCall(Object.assign({}, ttsLogBase, { ok: true, status: 200, respBody: `[音频合成成功 · ${Math.round(blob.size / 1024)}KB mp3]`, latency: Date.now() - started }));
 
     return { blob, size: blob.size, latency: Date.now() - started };
   }

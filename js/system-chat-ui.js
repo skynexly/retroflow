@@ -100,6 +100,26 @@
   // 助手 read_file 单次返回的分页硬上限
   const FILE_TOOL_PAGE_CHARS = 30000;
 
+  // 副本场景下注入助手上下文的副本原文轮数（固定保留、不参与裁剪）。
+  // 更早的剧情由 recap 摘要兜底全程视野，原文只补最近 N 轮的细节质感。
+  // 手感不够时直接调大此值即可（例如 10 → 20）。
+  const FORK_RAW_TURNS = 10;
+
+  /**
+   * 取当前副本场景上下文：仅在副本页打开（ForkRunUI.isOpen）时非空。
+   * 日常助手页返回 null，助手上下文回落日常模式。
+   * 供 buildChatHistory（注入原文）与 buildSystemPrompt / buildDepthInjection（切场景）共用。
+   * @returns {Object|null} { fork, envoyCtx, missionCtx, runId }
+   */
+  function getForkSceneCtx() {
+    if (!window.ForkRunUI || typeof ForkRunUI.buildAsstSceneCtx !== 'function') return null;
+    try {
+      return ForkRunUI.buildAsstSceneCtx();
+    } catch (_) {
+      return null;
+    }
+  }
+
   const IMAGE_PLACEHOLDER_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4V4zm2 2v9.17l2.59-2.58L12 16l2.59-2.59L18 16.83V6H6zm3.5 5A1.5 1.5 0 109.5 8a1.5 1.5 0 000 3z"/><path d="M5.41 4L20 18.59 18.59 20 4 5.41 5.41 4z"/></svg>`;
 
   // TTS 单例播放状态：同一时间只允许一条助手语音占用播放器
@@ -226,7 +246,7 @@
       const result = await RetroflowTTSCache.resolve(
         config,
         cleanText,
-        () => RetroflowAPI.synthesizeSpeech(config, { text: cleanText })
+        () => RetroflowAPI.synthesizeSpeech(config, { text: cleanText, logTag: '系统助手 · TTS' })
       );
 
       // 请求期间若用户已停止、切换气泡或离开页面，旧结果不得抢播
@@ -2806,7 +2826,7 @@
         const noticeText = String(rec.content || '').trim();
         if (noticeText) {
           const noticeHeader = formattedTime ? `[系统通知时间：${formattedTime}]` : '[系统通知]';
-          history.push({ role: 'system', content: `${noticeHeader}\n${noticeText}。` });
+          history.push({ role: 'system', content: `${noticeHeader}\n${noticeText}。`, _createdAt: rec.createdAt });
         }
         continue;
       }
@@ -2820,7 +2840,7 @@
           imageId ? `图片 ID：${imageId}` : '',
           imagePrompt ? `生图提示词：${imagePrompt}` : ''
         ].filter(Boolean).join('\n');
-        if (imageText) history.push({ role: 'assistant', content: imageText });
+        if (imageText) history.push({ role: 'assistant', content: imageText, _createdAt: rec.createdAt });
         continue;
       }
 
@@ -2830,9 +2850,9 @@
         const toolOutput = String(rec.toolOutput || '').trim();
         if (toolOutput) {
           if (staleToolIds.has(String(rec.id || ''))) {
-            history.push({ role: 'system', content: `[工具结果 · ${toolName}]（结果已释放，如仍需要请重新调用工具）` });
+            history.push({ role: 'system', content: `[工具结果 · ${toolName}]（结果已释放，如仍需要请重新调用工具）`, _createdAt: rec.createdAt });
           } else {
-            history.push({ role: 'system', content: `[工具结果 · ${toolName}]\n${toolOutput}` });
+            history.push({ role: 'system', content: `[工具结果 · ${toolName}]\n${toolOutput}`, _createdAt: rec.createdAt });
           }
         }
         continue;
@@ -2871,14 +2891,132 @@
       const messageTime = formattedTime ? `[消息时间：${formattedTime}]` : '';
       const envStamp = role === 'user' ? envStampFor(rec) : '';
       const contextText = [messageTime, envStamp, quote, vision, fileBlock, text].filter(Boolean).join('\n').trim();
-      if (contextText) history.push({ role, content: contextText });
+      if (contextText) history.push({ role, content: contextText, _createdAt: rec.createdAt });
     }
 
-    // 末尾追加文件区常驻清单（只放文件名 + 大小），让助手知道有哪些文件可用工具读取。
+    // —— 时间线归并 ——
+    // 到这里 history 里都是带 _createdAt 的时间线条目（聊天消息 + 副本 recap 摘要）。
+    // 先把副本 recap 摘要并进来，再统一按时间升序排，最后才追加「尾部常驻块」
+    //（文件清单 / 副本原文）——尾部块不参与时间排序，恒定贴在末尾。
+
+    // 副本行动摘要注入：抽取当前活跃副本每轮 recap，按真实时间交错进助手时间线。
+    // 视作短期记忆，随日常对话自然被 fitMessagesToContext 从旧往新裁剪挤出。
+    // 日常页与副本页都注入——摘要管「全程远景」，副本页的原文管「最近细节」，两者互补。
+    if (window.ForkRunStore && typeof ForkRunStore.findOngoingActiveFork === 'function'
+      && window.ForkRunParser && typeof ForkRunParser.parseRunReply === 'function') {
+      try {
+        const activeRun = await ForkRunStore.findOngoingActiveFork();
+        if (activeRun && activeRun.runId) {
+          const runRecords = (typeof ForkRunStore.getRunRecords === 'function')
+            ? (await ForkRunStore.getRunRecords(activeRun.runId) || [])
+            : [];
+          const envoyName = (window.Store && Store.envoy && Store.envoy.identity && Store.envoy.identity.name)
+            ? String(Store.envoy.identity.name).trim()
+            : '执行员';
+          for (const rec of runRecords) {
+            if (!rec || rec.role !== 'narration' || !rec.content) continue;
+            const parsed = ForkRunParser.parseRunReply(rec.content);
+            const recap = (parsed && typeof parsed.recap === 'string') ? parsed.recap.trim() : '';
+            if (!recap) continue;
+            const recapTime = includeTime ? formatRealityDateTime(rec.createdAt) : '';
+            const recapHeader = recapTime ? `[副本行动 · ${recapTime}]` : '[副本行动]';
+            const recapContent = `${recapHeader}\n执行员「${envoyName}」在副本中的行动：\n${recap}`;
+            history.push({
+              role: 'system',
+              content: recapContent,
+              _createdAt: rec.createdAt
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('[System Chat] 副本行动摘要注入失败：', err);
+      }
+    }
+
+    // 统一按 createdAt 升序排序时间线，排完清掉内部时间戳字段。
+    history.sort((a, b) => {
+      const ta = (typeof a._createdAt === 'number') ? a._createdAt : 0;
+      const tb = (typeof b._createdAt === 'number') ? b._createdAt : 0;
+      return ta - tb;
+    });
+    for (const item of history) delete item._createdAt;
+
+    // —— 尾部常驻块（不参与时间排序，恒定贴在时间线之后）——
+
+    // 副本原文：在副本页内，注入当前副本最近 FORK_RAW_TURNS 轮的原文（剥掉 recap），
+    // 作为「执行员最新行动详情」。追加在时间线末尾 → 落入 fitMessagesToContext 的
+    // pending 强制保留区（末条助手消息之后的非助手消息永不裁），天然实现「固定保留十轮」。
+    const forkRawBlock = await buildForkRawTurnsBlock();
+    if (forkRawBlock) history.push({ role: 'system', content: forkRawBlock });
+
+    // 文件区常驻清单（只放文件名 + 大小），让助手知道有哪些文件可用工具读取。
     const vaultBlock = buildFileVaultManifest();
     if (vaultBlock) history.push({ role: 'system', content: vaultBlock });
 
     return history;
+  }
+
+  /**
+   * 副本原文块：仅副本页内（getForkSceneCtx 非空）生成。
+   * 取当前副本最近 FORK_RAW_TURNS 轮 narration 原文，剥掉 ::: recap 块（摘要已单独注入），
+   * 保留 scene / 正文 / state / npc 等结构块，让助手看到执行员最新行动的细节与现场。
+   * 一轮 = 一条 narration（AI 叙事）+ 它前面那条 envoy（执行员行动），成对取出。
+   * @returns {Promise<string>} 不在副本页或无原文时返回空串
+   */
+  async function buildForkRawTurnsBlock() {
+    const sceneCtx = getForkSceneCtx();
+    if (!sceneCtx || !sceneCtx.runId) return '';
+    if (!window.ForkRunStore || typeof ForkRunStore.getRunRecords !== 'function') return '';
+
+    let runRecords = [];
+    try {
+      runRecords = (await ForkRunStore.getRunRecords(sceneCtx.runId)) || [];
+    } catch (_) {
+      return '';
+    }
+    if (!runRecords.length) return '';
+
+    // 从尾部往前凑够 FORK_RAW_TURNS 条 narration，连同其间的 envoy 行动一并纳入（成对的往返）。
+    let narrationSeen = 0;
+    let startIdx = runRecords.length;
+    for (let i = runRecords.length - 1; i >= 0; i -= 1) {
+      const rec = runRecords[i];
+      if (rec && rec.role === 'narration') {
+        narrationSeen += 1;
+        if (narrationSeen > FORK_RAW_TURNS) break;
+      }
+      startIdx = i;
+    }
+    const slice = runRecords.slice(startIdx);
+    if (!slice.length) return '';
+
+    // 剥 recap：recap 块恒定收尾，用正则从 ::: recap 到结尾整块删除。
+    const stripRecap = (text) => String(text || '')
+      .replace(/:::\s*recap[\s\S]*?(?::::\s*$|:::\s*(?=\n)|$)/i, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+    const envoyName = (window.Store && Store.envoy && Store.envoy.identity && Store.envoy.identity.name)
+      ? String(Store.envoy.identity.name).trim()
+      : '执行员';
+
+    const parts = [];
+    for (const rec of slice) {
+      if (!rec || !rec.content) continue;
+      if (rec.role === 'envoy') {
+        const act = String(rec.content).trim();
+        if (act) parts.push(`【执行员行动】\n${act}`);
+      } else if (rec.role === 'narration') {
+        const body = stripRecap(rec.content);
+        if (body) parts.push(body);
+      }
+    }
+    if (!parts.length) return '';
+
+    return `[副本实况 · 执行员最新行动详情]
+以下是执行员「${envoyName}」在副本中最近 ${FORK_RAW_TURNS} 轮的现场原文（含场景、叙事与状态），供你详细了解他此刻的处境。这是只供你知悉的后台情报，执行员看不到，请勿复述或照搬，自然地理解即可：
+
+${parts.join('\n\n———\n\n')}`;
   }
 
   /** 组装当前轮要注入全文的文件块；超硬上限时只注入头部并提示分页读取。 */
@@ -3062,9 +3200,9 @@
     let res;
     try {
       if (faceRef) {
-        res = await RetroflowAPI.generateImageEdit(cfg, faceRef, { prompt: finalPrompt, size, ratioHint });
+        res = await RetroflowAPI.generateImageEdit(cfg, faceRef, { prompt: finalPrompt, size, ratioHint, logTag: '系统助手 · 锁脸生图' });
       } else {
-        res = await RetroflowAPI.generateImage(cfg, { prompt: finalPrompt, size, ratioHint });
+        res = await RetroflowAPI.generateImage(cfg, { prompt: finalPrompt, size, ratioHint, logTag: '系统助手 · 生图' });
       }
       if (!res || !res.image) throw new Error('服务端未返回图像');
     } catch (err) {
@@ -3443,8 +3581,9 @@
     // 深度注入必须在裁剪之后落位，否则可能被裁掉。
     // 插入点按「从末尾往前数」计算，所以也要在 pending 拼进来之后才做。
     let finalMessages = [systemMessage, ...(timeBaselineMessage ? [timeBaselineMessage] : []), ...keptOlder, ...pending];
+    const depthSceneCtx = getForkSceneCtx();
     const depthItems = (window.SystemChatPrompt && typeof SystemChatPrompt.buildDepthInjection === 'function')
-      ? SystemChatPrompt.buildDepthInjection(history)
+      ? SystemChatPrompt.buildDepthInjection(history, depthSceneCtx)
       : [];
     if (depthItems.length && window.WorldBookEngine && typeof WorldBookEngine.applyDepthInjection === 'function') {
       finalMessages = WorldBookEngine.applyDepthInjection(finalMessages, depthItems);
@@ -3503,7 +3642,7 @@
     if (!config || !config.baseUrl || !config.modelId) {
       throw new Error('尚未配置系统助手模型，或主模型配置不完整');
     }
-    const fitted = fitMessagesToContext(config, SystemChatPrompt.buildSystemPrompt(history), history);
+    const fitted = fitMessagesToContext(config, SystemChatPrompt.buildSystemPrompt(history, getForkSceneCtx()), history);
     const settings = window.SystemChatSettings && typeof SystemChatSettings.getSettings === 'function'
       ? SystemChatSettings.getSettings()
       : { streaming: true };
@@ -3521,9 +3660,9 @@
             reply += delta || '';
             if (typeof onChunk === 'function') onChunk(reply);
           }
-        }, { signal });
+        }, { signal, logTag: '系统助手' });
       } else {
-        const result = await RetroflowAPI.chat(config, fitted.messages, { signal });
+        const result = await RetroflowAPI.chat(config, fitted.messages, { signal, logTag: '系统助手' });
         reply = result && result.content ? result.content : '';
       }
       return String(stripEchoedTimePrefix(reply) || '').trim();
@@ -3625,7 +3764,7 @@
       throw new Error('尚未配置系统助手模型，或主模型配置不完整');
     }
 
-    const fitted = fitMessagesToContext(config, SystemChatPrompt.buildSystemPrompt(history), history);
+    const fitted = fitMessagesToContext(config, SystemChatPrompt.buildSystemPrompt(history, getForkSceneCtx()), history);
     const messages = fitted.messages;
     if (fitted.meta.trimmedCount > 0) {
       console.info(`[System Chat] 上下文容量 ${fitted.meta.contextLimit} tokens，已裁剪 ${fitted.meta.trimmedCount} 条旧消息`);
@@ -3935,7 +4074,7 @@
           { type: 'text', text: prompt },
           { type: 'image_url', image_url: { url: dataUrl } }
         ]
-      }], { timeout: 120000 });
+      }], { timeout: 120000, logTag: '系统助手 · 视觉识别' });
       const description = stripThinkingFromContext(result && result.content ? result.content : '');
       if (!description) throw new Error('视觉模型未返回有效描述');
       return description;

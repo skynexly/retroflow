@@ -1,5 +1,5 @@
 /**
- * 溯流计划 · API 算力接入界面控制器 (API UI Controller)
+ * 溯流计划 · API 设置界面控制器 (API UI Controller)
  * 三大视图：
  *   View A  apiListView      三大算力矩阵列表（右翼导轨切换：模型 / 功能 / 音画）
  *   View B  apiEditView      主模型节点编辑/新增（00 节点名称 + 01~03 + 测试）
@@ -424,7 +424,7 @@
         modelId: model,
         prompt: slotImagePrompt ? slotImagePrompt.value.trim() : '',
         negativePrompt: slotImageNegPrompt ? slotImageNegPrompt.value.trim() : ''
-      });
+      }, { logTag: 'API 设置 · 生图测试' });
 
       setStageState('image', res.image);
       if (slotTestResult && slotTestResultText) {
@@ -504,7 +504,7 @@
       const res = await RetroflowTTSCache.resolve(
         cfg,
         text,
-        () => RetroflowAPI.synthesizeSpeech(cfg, { text })
+        () => RetroflowAPI.synthesizeSpeech(cfg, { text, logTag: 'API 设置 · TTS 试音' })
       );
 
       const audio = getTtsAudio();

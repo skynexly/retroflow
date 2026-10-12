@@ -259,27 +259,9 @@
     if (backBtn) {
       backBtn.addEventListener('click', closeSettings);
     }
+// 随行悬浮球开关已迁往「设置 › 08 终端配置」（js/terminal-config.js），
+    // 权威状态仍存在 SystemChatOrb 自己的 localStorage 里，本页不再管理。
 
-    // 随行悬浮球开关：权威状态存在 SystemChatOrb 自己的 localStorage 里，
-    // 不进 settings 对象（它是视图层偏好，与模型/渲染配置无关）。
-    const orbToggle = document.getElementById('systemChatToggle_floatingOrb');
-    if (orbToggle) {
-      if (window.SystemChatOrb && typeof SystemChatOrb.isEnabled === 'function') {
-        orbToggle.checked = SystemChatOrb.isEnabled();
-      }
-      orbToggle.addEventListener('change', () => {
-        if (window.SystemChatOrb && typeof SystemChatOrb.setEnabled === 'function') {
-          SystemChatOrb.setEnabled(orbToggle.checked);
-        }
-        if (window.RetroToast) {
-          RetroToast.show({
-            tag: 'ORB // 随行中枢',
-            message: orbToggle.checked ? '悬浮球已启用' : '悬浮球已收起',
-            type: 'info'
-          });
-        }
-      });
-    }
 
     // 对话标题输入：写进当前对话的 title，不再存进全局 settings
     if (remarkInput) {
@@ -569,11 +551,7 @@
     }
     refreshConvCount();
 
-    // 悬浮球开关不在 toggles 表里（状态归 SystemChatOrb 管），每次开页单独回填
-    const orbToggleEl = document.getElementById('systemChatToggle_floatingOrb');
-    if (orbToggleEl && window.SystemChatOrb && typeof SystemChatOrb.isEnabled === 'function') {
-      orbToggleEl.checked = SystemChatOrb.isEnabled();
-    }
+    // 悬浮球开关已迁往「设置 › 08 终端配置」，本页不再回填
     if (memoryIntervalInput) memoryIntervalInput.value = currentSettings.memoryTokenInterval || 60000;
     if (toolLoopSlider) {
       toolLoopSlider.value = String(currentSettings.toolLoopLimit || 10);

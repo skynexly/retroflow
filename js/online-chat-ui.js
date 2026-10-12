@@ -1900,7 +1900,7 @@ const content = document.createElement('div');
         const result = await RetroflowTTSCache.resolve(
           config,
           cleanText,
-          () => RetroflowAPI.synthesizeSpeech(config, { text: cleanText })
+          () => RetroflowAPI.synthesizeSpeech(config, { text: cleanText, logTag: '线上联络 · TTS' })
         );
 
         // 合成期间用户已停止、点了别条或退出了会话
@@ -2886,9 +2886,9 @@ const records = await OnlineChatStore.listMessages(session.accountId, session.co
     let res;
     try {
       if (faceRef) {
-        res = await RetroflowAPI.generateImageEdit(cfg, faceRef, { prompt: finalPrompt, size, ratioHint, signal });
+        res = await RetroflowAPI.generateImageEdit(cfg, faceRef, { prompt: finalPrompt, size, ratioHint, signal, logTag: '线上联络 · 锁脸生图' });
       } else {
-        res = await RetroflowAPI.generateImage(cfg, { prompt: finalPrompt, size, ratioHint, signal });
+        res = await RetroflowAPI.generateImage(cfg, { prompt: finalPrompt, size, ratioHint, signal, logTag: '线上联络 · 生图' });
       }
       if (!res || !res.image) throw new Error('服务端未返回图像');
     } catch (err) {
@@ -3220,7 +3220,7 @@ const records = await OnlineChatStore.listMessages(session.accountId, session.co
       let loopCount = 0;
       const loopLimit = getToolLoopLimit();
       while (true) {
-        const result = await RetroflowAPI.chat(config, messages, { signal });
+        const result = await RetroflowAPI.chat(config, messages, { signal, logTag: '线上联络' });
         raw = (result && result.content) ? result.content : '';
 
         const extracted = (typeof OnlineChatPrompt.extractActions === 'function')
@@ -3654,7 +3654,7 @@ const records = await OnlineChatStore.listMessages(session.accountId, session.co
     const config = RetroflowApiUI.resolveSlot('vision');
     if (!config || !config.baseUrl || !config.modelId) throw new Error('尚未配置视觉模型或主模型');
     const prompt = ['请客观、详细地描述这张图片，供后续聊天记忆使用。', '描述主体、环境、动作、构图、可辨识文字及关键细节；不要回答图片之外的问题。', text ? `用户随图文字：${text}` : ''].filter(Boolean).join('\\n');
-    const result = await RetroflowAPI.chat(config, [{ role: 'user', content: [{ type: 'text', text: prompt }, { type: 'image_url', image_url: { url: await blobToDataUrl(blob) } }] }], { timeout: 120000 });
+    const result = await RetroflowAPI.chat(config, [{ role: 'user', content: [{ type: 'text', text: prompt }, { type: 'image_url', image_url: { url: await blobToDataUrl(blob) } }] }], { timeout: 120000, logTag: '线上联络 · 视觉识别' });
     const description = String(result && result.content || '').trim();
     if (!description) throw new Error('视觉模型未返回有效描述');
     return description;

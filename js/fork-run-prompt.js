@@ -1077,6 +1077,11 @@ ${segments.join('\n\n———\n\n')}`;
     buildEnvoyBlock,
     resolveOpening,
     buildPrologueBlock,
+    /** 对外暴露：按卷宗解析副本等级的展示文案（label），供系统助手副本信息头复用 */
+    resolveLevelLabel: (fork) => {
+      const lv = resolveLevel(fork);
+      return (lv && lv.label) || '';
+    },
     // 测试与调试用
     _internals: {
       IDENTITY,

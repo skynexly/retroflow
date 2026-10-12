@@ -5,16 +5,18 @@
  *   assets   图片等二进制资源，存 Blob（容量大、无 Base64 膨胀）
  *   docs     配置类文本，有界小数据（身份、马甲、角色卡、主题配置），全量装载
  *   records  流水类记录，无界增长（副本记录、聊天历史），只按索引取切片
+ *   memories 记忆库专属流水（事件记忆/角色记忆同库不同型），带关键词与在场角色反查索引
  *
  * records 本轮只建 schema 不写业务逻辑，等副本功能落地时再接。
  * 一次性把版本号推到位，避免以后再升 schema。
  */
 const Storage = (() => {
   const DB_NAME = 'retroflow';
-  const DB_VERSION = 2;
+  const DB_VERSION = 3;
   const STORE_ASSETS = 'assets';
   const STORE_DOCS = 'docs';
   const STORE_RECORDS = 'records';
+  const STORE_MEMORIES = 'memories';
 
   let dbPromise = null;
 
@@ -50,6 +52,20 @@ const Storage = (() => {
           records.createIndex('by_time', 'createdAt');
           records.createIndex('by_fork_time', ['forkId', 'createdAt']);
           records.createIndex('by_kind_time', ['kind', 'createdAt']);
+        }
+
+        // 记忆库：事件记忆与角色记忆同库不同型（memKind 判别），索引一次升到位
+        // 设计依据：design/记忆库架构与事件记忆规范.md「3.5 存储层设计」
+        if (!db.objectStoreNames.contains(STORE_MEMORIES)) {
+          const memories = db.createObjectStore(STORE_MEMORIES, { keyPath: 'id' });
+          memories.createIndex('by_kind_time', ['memKind', 'createdAt']);
+          memories.createIndex('by_fork_run', ['forkId', 'runId']);
+          memories.createIndex('by_status', 'status');
+          // multiEntry：keywords / witnessIds 是扁平数组，逐项入索引支持反查
+          memories.createIndex('by_keywords', 'keywords', { multiEntry: true });
+          memories.createIndex('by_witness', 'witnessIds', { multiEntry: true });
+          // 角色记忆主查询（本阶段暂不写入，索引先备好）
+          memories.createIndex('by_char_time', ['charId', 'createdAt']);
         }
       };
 
@@ -422,6 +438,73 @@ const Storage = (() => {
     });
   }
 
+  /* ---------------- 记忆库（IndexedDB memories） ---------------- */
+
+  /** 写入/更新一条记忆（事件或角色记忆，需含 id 与 memKind） */
+  async function putMemory(record) {
+    if (!record || !record.id) throw new Error('记忆记录缺少 id');
+    if (!record.memKind) throw new Error('记忆记录缺少 memKind');
+    await withAnyStore(STORE_MEMORIES, 'readwrite', (store) => store.put(record));
+    return record;
+  }
+
+  /** 按主键读取一条记忆 */
+  async function getMemory(id) {
+    try {
+      const record = await withAnyStore(STORE_MEMORIES, 'readonly', (store) => store.get(id));
+      return record || null;
+    } catch (err) {
+      console.warn('[Storage] 读取记忆失败：', id, err);
+      return null;
+    }
+  }
+
+  /**
+   * 按索引查询记忆（业务封装请走 MemoryStore，此处为底层通道）
+   * @param {string} indexName by_kind_time / by_fork_run / by_status / by_keywords / by_witness / by_char_time
+   * @param {IDBKeyRange|any} query 索引键或范围；数组复合键传数组
+   */
+  async function getMemoriesByIndex(indexName, query) {
+    try {
+      const db = await openDB();
+      return await new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_MEMORIES, 'readonly');
+        const index = tx.objectStore(STORE_MEMORIES).index(indexName);
+        const request = index.getAll(query);
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => reject(request.error);
+        tx.onerror = () => reject(tx.error);
+      });
+    } catch (err) {
+      console.warn('[Storage] 记忆索引查询失败：', indexName, err);
+      return [];
+    }
+  }
+
+  /** 全量读取记忆（供导出与假数据清理使用，业务读取仍应走索引） */
+  async function getAllMemories() {
+    try {
+      return await withAnyStore(STORE_MEMORIES, 'readonly', (store) => store.getAll()) || [];
+    } catch (err) {
+      console.warn('[Storage] 全量读取记忆失败：', err);
+      return [];
+    }
+  }
+
+  async function removeMemory(id) {
+    await withAnyStore(STORE_MEMORIES, 'readwrite', (store) => store.delete(id));
+    return true;
+  }
+
+  /** 清空记忆库，返回删除条数 */
+  async function clearAllMemories() {
+    const all = await getAllMemories();
+    const count = all.length;
+    if (!count) return 0;
+    await withAnyStore(STORE_MEMORIES, 'readwrite', (store) => store.clear());
+    return count;
+  }
+
   return {
     setAsset,
     getAssetSrc,
@@ -442,6 +525,12 @@ const Storage = (() => {
     removeRecord,
     removeRecordsByFork,
     removeRecordsByForkPrefix,
+    putMemory,
+    getMemory,
+    getMemoriesByIndex,
+    getAllMemories,
+    removeMemory,
+    clearAllMemories,
     compressImage
   };
 })();

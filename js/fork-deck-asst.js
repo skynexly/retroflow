@@ -575,7 +575,10 @@ window.ForkDeckAsst = (() => {
     if (!config || !config.baseUrl || !config.modelId) {
       throw new Error('尚未配置系统助手模型，或主模型配置不完整');
     }
-    const systemPrompt = SystemChatPrompt.buildSystemPrompt(history);
+    const sceneCtx = (window.ForkRunUI && typeof ForkRunUI.buildAsstSceneCtx === 'function')
+      ? ForkRunUI.buildAsstSceneCtx()
+      : null;
+    const systemPrompt = SystemChatPrompt.buildSystemPrompt(history, sceneCtx);
     const fitted = (window.SystemChatUI && typeof SystemChatUI.fitMessagesToContext === 'function')
       ? SystemChatUI.fitMessagesToContext(config, systemPrompt, history)
       : { messages: [{ role: 'system', content: systemPrompt }].concat(history) };
@@ -597,10 +600,11 @@ window.ForkDeckAsst = (() => {
             reply += delta || '';
             if (typeof onChunk === 'function') onChunk(reply);
           }
-        }, { signal: controller ? controller.signal : undefined });
+        }, { signal: controller ? controller.signal : undefined, logTag: 'DECK 助手舱' });
       } else {
         const result = await RetroflowAPI.chat(config, fitted.messages, {
-          signal: controller ? controller.signal : undefined
+          signal: controller ? controller.signal : undefined,
+          logTag: 'DECK 助手舱'
         });
         reply = result && result.content ? result.content : '';
       }
@@ -1836,9 +1840,9 @@ window.ForkDeckAsst = (() => {
     let res = null;
     try {
       if (faceRef) {
-        res = await RetroflowAPI.generateImageEdit(cfg, faceRef, { prompt: finalPrompt, size, ratioHint });
+        res = await RetroflowAPI.generateImageEdit(cfg, faceRef, { prompt: finalPrompt, size, ratioHint, logTag: 'DECK 助手舱 · 锁脸生图' });
       } else {
-        res = await RetroflowAPI.generateImage(cfg, { prompt: finalPrompt, size, ratioHint });
+        res = await RetroflowAPI.generateImage(cfg, { prompt: finalPrompt, size, ratioHint, logTag: 'DECK 助手舱 · 生图' });
       }
       if (!res || !res.image) throw new Error('服务端未返回图像');
     } catch (err) {

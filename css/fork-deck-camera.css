@@ -1,0 +1,1040 @@
+/* ============================================================================
+   DECK 系统相机舱 (Pane 6 · SYSTEM CAMERA // SNAP)
+   机能极简风 · 零分割线 · 纯矢量 SVG · iOS 灵动岛安全区保护
+   全卡片胶囊 4px 机能微圆角 · 主题装饰色 --decor-color 联动
+   ============================================================================ */
+
+/* 1. 多视口轨道扩充至 6 Pane (600%)，每 Pane 占 16.666667% */
+.fork-deck-viewport-track {
+  width: 600% !important;
+}
+
+.fork-deck-pane-primary,
+.fork-deck-pane-secondary,
+.fork-deck-pane-tertiary,
+.fork-deck-pane-quaternary,
+.fork-deck-pane-quinary,
+.fork-deck-pane-senary {
+  width: 16.666667% !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  flex-shrink: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.fork-deck-pane-senary {
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  background: transparent !important;
+}
+
+/* 6 档位移：
+   Pane 1 (主控台)   : 0
+   Pane 2 (态势舱)   : -16.666667%
+   Pane 3 (身份舱)   : -33.333333%
+   Pane 4 (任务看板) : -50%
+   Pane 5 (随行助手) : -66.666667%
+   Pane 6 (系统相机) : -83.333334% */
+.fork-run-deck-drawer.is-res-mode .fork-deck-viewport-track {
+  transform: translateX(-16.666667%) !important;
+}
+.fork-run-deck-drawer.is-identity-mode .fork-deck-viewport-track {
+  transform: translateX(-33.333333%) !important;
+}
+.fork-run-deck-drawer.is-mission-mode .fork-deck-viewport-track {
+  transform: translateX(-50%) !important;
+}
+.fork-run-deck-drawer.is-asst-mode .fork-deck-viewport-track {
+  transform: translateX(-66.666667%) !important;
+}
+.fork-run-deck-drawer.is-camera-mode .fork-deck-viewport-track {
+  transform: translateX(-83.333334%) !important;
+}
+
+/* 激活相机模式时主控台后撤景深 */
+.fork-run-deck-drawer.is-camera-mode .fork-deck-pane-primary {
+  transform: scale(0.95) !important;
+  opacity: 0.15 !important;
+  pointer-events: none;
+}
+
+/* 2. 相机舱体结构与深色主题口径 */
+.fork-cam-body {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  color: var(--bg-color, #e6ecf2);
+  position: relative;
+  overflow: hidden;
+}
+
+/* 顶栏 (零分割线，纯间距与色阶，带 iOS 灵动岛安全区保护) */
+.fork-cam-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 12px;
+  background: transparent;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+.fork-cam-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.fork-cam-title-block {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.fork-cam-title-zh {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--bg-color, #f0f4f8);
+  line-height: 1.2;
+}
+
+.fork-cam-title-en {
+  font-size: 9px;
+  font-family: var(--font-mono, monospace);
+  letter-spacing: 0.14em;
+  color: rgba(var(--bg-color-rgb, 230, 236, 242), 0.5);
+  margin-top: 2px;
+}
+
+/* 顶栏拍摄/相册切换胶囊 (4px 微圆角) */
+.fork-cam-tab-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2.5px;
+  border-radius: 4px;
+  background: rgba(var(--bg-color-rgb, 237, 235, 221), 0.08);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.fork-cam-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  color: rgba(var(--bg-color-rgb, 237, 235, 221), 0.6);
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  user-select: none;
+}
+
+.fork-cam-tab-btn.is-active {
+  background: var(--bg-color, #edebdd);
+  color: var(--secondary-color, #1b1717);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.fork-cam-album-count-badge {
+  font-size: 9.5px;
+  font-family: var(--font-mono, monospace);
+  padding: 1px 4.5px;
+  border-radius: 4px;
+  background: rgba(var(--secondary-color-rgb, 27, 23, 23), 0.25);
+  color: inherit;
+}
+
+/* 3. 拍摄视口容器与滚动布局 */
+.fork-cam-shoot-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 取景框容器 (扁平化无外层卡片包裹，纯折角标环绕) */
+.fork-cam-finder-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  border-radius: 4px;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+
+.fork-cam-finder-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 2px;
+}
+
+.fork-cam-finder-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fork-cam-finder-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--decor-color, #e6c280);
+  box-shadow: 0 0 6px rgba(var(--decor-color-rgb, 230, 194, 128), 0.8);
+  animation: forkCamPulse 2s infinite ease-in-out;
+}
+
+@keyframes forkCamPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+.fork-cam-finder-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--decor-color, #e6c280);
+}
+
+/* 智能精炼提示词微钮 (联动装饰色，4px 微圆角) */
+.fork-cam-refine-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: rgba(var(--decor-color-rgb, 230, 194, 128), 0.14);
+  color: var(--decor-color, #e6c280);
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 4px 9px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.fork-cam-refine-btn svg {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+}
+
+.fork-cam-refine-btn:active {
+  transform: scale(0.96);
+  background: rgba(var(--decor-color-rgb, 230, 194, 128), 0.25);
+}
+
+.fork-cam-refine-btn.is-refining {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* 场景描述文本框包装器 (带机能四角标，贴合手机相机取景框大比例) */
+.fork-cam-textarea-wrap {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.fork-cam-corner-mark {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  pointer-events: none;
+  border-color: var(--decor-color, #e6c280);
+  border-style: solid;
+  z-index: 2;
+  opacity: 0.85;
+}
+.fork-cam-corner-mark.top-left {
+  top: 4px; left: 4px;
+  border-width: 1.5px 0 0 1.5px;
+}
+.fork-cam-corner-mark.top-right {
+  top: 4px; right: 4px;
+  border-width: 1.5px 1.5px 0 0;
+}
+.fork-cam-corner-mark.bottom-left {
+  bottom: 4px; left: 4px;
+  border-width: 0 0 1.5px 1.5px;
+}
+.fork-cam-corner-mark.bottom-right {
+  bottom: 4px; right: 4px;
+  border-width: 0 1.5px 1.5px 0;
+}
+
+/* 扁平通透的取景输入框：无厚重实底，自然透出 DECK 毛玻璃，仅留四角折角标 */
+.fork-cam-scene-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(var(--bg-color-rgb, 237, 235, 221), 0.04);
+  border: none;
+  border-radius: 4px;
+  padding: 14px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--bg-color, #edebdd);
+  font-family: inherit;
+  resize: vertical;
+  min-height: 220px;
+  outline: none;
+  transition: background 0.18s ease, box-shadow 0.18s ease;
+  box-shadow: inset 0 0 0 0.5px rgba(var(--bg-color-rgb, 237, 235, 221), 0.08);
+}
+
+.fork-cam-scene-textarea:focus {
+  background: rgba(var(--bg-color-rgb, 237, 235, 221), 0.08);
+  box-shadow: inset 0 0 0 0.5px rgba(var(--decor-color-rgb, 230, 194, 128), 0.4);
+}
+
+.fork-cam-scene-textarea::placeholder {
+  color: rgba(var(--bg-color-rgb, 237, 235, 221), 0.35);
+}
+
+/* 4. 战术参数配置区 (机能卡片，零分割线，4px 微圆角) */
+.fork-cam-config-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 4px;
+  background: rgba(var(--bg-color-rgb, 237, 235, 221), 0.05);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: inset 0 0 0 0.5px rgba(var(--bg-color-rgb, 237, 235, 221), 0.1);
+}
+
+.fork-cam-config-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fork-cam-config-header {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.fork-cam-cfg-zh {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--bg-color, #edebdd);
+}
+
+.fork-cam-cfg-en {
+  font-size: 8.5px;
+  font-family: var(--font-mono, monospace);
+  letter-spacing: 0.1em;
+  color: rgba(var(--bg-color-rgb, 237, 235, 221), 0.4);
+}
+
+/* 比例切换组：双行紧凑机能网格，彻底避免横滑误触抽屉返回！4px 微圆角 */
+.fork-cam-ratio-group {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.fork-cam-ratio-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border: none;
+  border-radius: 4px;
+  background: rgba(var(--secondary-color-rgb, 27, 23, 23), 0.45);
+  color: rgba(var(--bg-color-rgb, 237, 235, 221), 0.65);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  user-select: none;
+  box-shadow: inset 0 0 0 0.5px rgba(var(--bg-color-rgb, 237, 235, 221), 0.06);
+}
+
+.fork-cam-ratio-sym {
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-mono, monospace);
+}
+
+.fork-cam-ratio-desc {
+  font-size: 9.5px;
+  opacity: 0.8;
+}
+
+/* 选中使用项目装饰色 --decor-color 联动 */
+.fork-cam-ratio-pill.is-active {
+  background: rgba(var(--decor-color-rgb, 230, 194, 128), 0.18);
+  color: var(--decor-color, #e6c280);
+  box-shadow: inset 0 0 0 1px rgba(var(--decor-color-rgb, 230, 194, 128), 0.45);
+}
+
+/* 锁脸角色卡列表 (4px 微圆角，装饰色高亮) */
+.fork-cam-cast-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.fork-cam-cast-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 6px;
+  border-radius: 4px;
+  background: rgba(var(--secondary-color-rgb, 27, 23, 23), 0.45);
+  color: rgba(var(--bg-color-rgb, 237, 235, 221), 0.7);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  user-select: none;
+  font-size: 11.5px;
+  box-shadow: inset 0 0 0 0.5px rgba(var(--bg-color-rgb, 237, 235, 221), 0.06);
+}
+
+.fork-cam-cast-chip.is-selected {
+  background: rgba(var(--decor-color-rgb, 230, 194, 128), 0.18);
+  color: var(--decor-color, #e6c280);
+  box-shadow: inset 0 0 0 1px rgba(var(--decor-color-rgb, 230, 194, 128), 0.45);
+}
+
+.fork-cam-cast-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  background: rgba(var(--bg-color-rgb, 237, 235, 221), 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.fork-cam-cast-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.fork-cam-cast-avatar svg {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+}
+
+.fork-cam-cast-role {
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(var(--bg-color-rgb, 237, 235, 221), 0.08);
+  color: rgba(var(--bg-color-rgb, 237, 235, 221), 0.55);
+}
+
+/* 无可锁脸角色空态提示（弱化待命，无分割线） */
+.fork-cam-cast-empty {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 4px;
+  background: rgba(var(--bg-color-rgb, 237, 235, 221), 0.04);
+  color: rgba(var(--bg-color-rgb, 237, 235, 221), 0.35);
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  user-select: none;
+}
+
+/* 5. 底部快门操作台 */
+.fork-cam-dock {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 12px 16px 8px;
+  margin-top: auto;
+  user-select: none;
+}
+
+.fork-cam-dock-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  color: rgba(var(--bg-color-rgb, 237, 235, 221), 0.6);
+  font-size: 10.5px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  padding: 8px 12px;
+  border-radius: 4px;
+}
+
+.fork-cam-dock-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.fork-cam-dock-btn:active {
+  transform: scale(0.94);
+  color: var(--bg-color, #edebdd);
+}
+
+/* 快门圆环（快门保留专业圆形光圈形态，内部触芯联动装饰色） */
+.fork-cam-shutter-btn {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: transform 0.12s ease;
+}
+
+.fork-cam-shutter-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid rgba(var(--bg-color-rgb, 237, 235, 221), 0.85);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+  transition: all 0.18s ease;
+}
+
+.fork-cam-shutter-core {
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: var(--decor-color, #e6c280);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--secondary-color, #1b1717);
+  transition: all 0.18s ease;
+  box-shadow: 0 2px 12px rgba(var(--decor-color-rgb, 230, 194, 128), 0.5);
+}
+
+.fork-cam-shutter-core svg {
+  width: 26px;
+  height: 26px;
+  fill: currentColor;
+}
+
+.fork-cam-shutter-btn:active {
+  transform: scale(0.92);
+}
+.fork-cam-shutter-btn:active .fork-cam-shutter-core {
+  transform: scale(0.88);
+  filter: brightness(0.9);
+}
+
+/* 显影中：快门进加载态，光圈环虚线旋转，触芯压暗锁定防连点 */
+.fork-cam-shutter-btn.is-developing {
+  pointer-events: none;
+}
+.fork-cam-shutter-btn.is-developing .fork-cam-shutter-ring {
+  border-style: dashed;
+  border-color: rgba(var(--decor-color-rgb, 230, 194, 128), 0.9);
+  animation: fork-cam-shutter-spin 1.2s linear infinite;
+}
+.fork-cam-shutter-btn.is-developing .fork-cam-shutter-core {
+  transform: scale(0.82);
+  filter: brightness(0.6) saturate(0.6);
+}
+
+@keyframes fork-cam-shutter-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* 6. 相册视口与拍立得网格 (4px 微圆角) */
+.fork-cam-album-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.fork-cam-album-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 16px calc(env(safe-area-inset-bottom, 0px) + 24px);
+  box-sizing: border-box;
+  -webkit-overflow-scrolling: touch;
+}
+
+.fork-cam-album-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+/* 拍立得式样卡片 (机能极简，零分割线，4px 微圆角) */
+.fork-cam-polaroid {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  border-radius: 4px;
+  background: rgba(var(--bg-color-rgb, 237, 235, 221), 0.05);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+  box-shadow: inset 0 0 0 0.5px rgba(var(--bg-color-rgb, 237, 235, 221), 0.08);
+}
+
+.fork-cam-polaroid:active {
+  transform: scale(0.97);
+}
+
+.fork-cam-polaroid-frame {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 4px;
+  background: rgba(var(--secondary-color-rgb, 27, 23, 23), 0.6);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.fork-cam-polaroid-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.fork-cam-polaroid-text-content {
+  padding: 10px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: rgba(var(--bg-color-rgb, 237, 235, 221), 0.8);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  text-overflow: ellipsis;
+}
+
+.fork-cam-polaroid-info {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fork-cam-polaroid-loc {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--bg-color, #edebdd);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fork-cam-polaroid-time {
+  font-size: 8.5px;
+  font-family: var(--font-mono, monospace);
+  color: rgba(var(--bg-color-rgb, 237, 235, 221), 0.45);
+}
+
+/* 相册空态 */
+.fork-cam-album-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  user-select: none;
+}
+
+.fork-cam-empty-icon {
+  width: 48px;
+  height: 48px;
+  color: rgba(var(--bg-color-rgb, 237, 235, 221), 0.25);
+  margin-bottom: 12px;
+}
+
+.fork-cam-empty-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.fork-cam-empty-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(var(--bg-color-rgb, 237, 235, 221), 0.7);
+  margin-bottom: 4px;
+}
+
+.fork-cam-empty-desc {
+  font-size: 11px;
+  color: rgba(var(--bg-color-rgb, 237, 235, 221), 0.4);
+}
+
+/* 7. 快门二次确认浮层 (Develop Confirmation Sheet，4px 微圆角) */
+.fork-cam-confirm-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(var(--secondary-color-rgb, 27, 23, 23), 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  animation: forkCamFadeIn 0.2s ease;
+}
+
+@keyframes forkCamFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.fork-cam-confirm-sheet {
+  background: var(--secondary-color, #1b1717);
+  border-radius: 4px 4px 0 0;
+  padding: 18px 20px calc(env(safe-area-inset-bottom, 0px) + 20px);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(var(--bg-color-rgb, 237, 235, 221), 0.1);
+  animation: forkCamSlideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes forkCamSlideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.fork-cam-confirm-header {
+  display: flex;
+  flex-direction: column;
+}
+
+.fork-cam-confirm-title-zh {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--bg-color, #edebdd);
+}
+
+.fork-cam-confirm-title-en {
+  font-size: 9px;
+  font-family: var(--font-mono, monospace);
+  letter-spacing: 0.12em;
+  color: rgba(var(--bg-color-rgb, 237, 235, 221), 0.45);
+  margin-top: 2px;
+}
+
+.fork-cam-confirm-meta-row {
+  display: flex;
+  gap: 12px;
+}
+
+/* 总结画面指导输入框 (机能卡片，零分割线，4px 微圆角) */
+.fork-cam-guidance-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fork-cam-guidance-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(var(--bg-color-rgb, 237, 235, 221), 0.7);
+  letter-spacing: 0.04em;
+}
+
+.fork-cam-guidance-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(var(--bg-color-rgb, 237, 235, 221), 0.05);
+  border: none;
+  border-radius: 4px;
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--bg-color, #edebdd);
+  font-family: inherit;
+  resize: vertical;
+  min-height: 124px;
+  outline: none;
+  box-shadow: inset 0 0 0 0.5px rgba(var(--bg-color-rgb, 237, 235, 221), 0.1);
+  transition: box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.fork-cam-guidance-textarea:focus {
+  background: rgba(var(--bg-color-rgb, 237, 235, 221), 0.08);
+  box-shadow: inset 0 0 0 0.5px rgba(var(--decor-color-rgb, 230, 194, 128), 0.4);
+}
+
+.fork-cam-guidance-textarea::placeholder {
+  color: rgba(var(--bg-color-rgb, 237, 235, 221), 0.35);
+}
+
+.fork-cam-guidance-tips {
+  font-size: 11px;
+  line-height: 1.5;
+  color: rgba(var(--bg-color-rgb, 237, 235, 221), 0.45);
+}
+
+.fork-cam-confirm-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(var(--bg-color-rgb, 237, 235, 221), 0.05);
+  box-shadow: inset 0 0 0 0.5px rgba(var(--bg-color-rgb, 237, 235, 221), 0.08);
+  font-size: 11px;
+}
+
+.fork-cam-tag-label {
+  color: rgba(var(--bg-color-rgb, 237, 235, 221), 0.5);
+}
+
+.fork-cam-tag-val {
+  color: var(--decor-color, #e6c280);
+  font-weight: 600;
+  font-family: var(--font-mono, monospace);
+}
+
+.fork-cam-confirm-prompt-box {
+  background: rgba(var(--secondary-color-rgb, 27, 23, 23), 0.65);
+  border-radius: 4px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: inset 0 0 0 0.5px rgba(var(--bg-color-rgb, 237, 235, 221), 0.08);
+}
+
+.fork-cam-prompt-box-label {
+  font-size: 10px;
+  font-family: var(--font-mono, monospace);
+  color: rgba(var(--bg-color-rgb, 237, 235, 221), 0.5);
+}
+
+.fork-cam-prompt-box-text {
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--bg-color, #edebdd);
+  min-height: 130px;
+  max-height: 240px;
+  overflow-y: auto;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.fork-cam-confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.fork-cam-confirm-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 4px;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.fork-cam-confirm-btn.is-cancel {
+  background: rgba(var(--bg-color-rgb, 237, 235, 221), 0.08);
+  color: rgba(var(--bg-color-rgb, 237, 235, 221), 0.7);
+}
+
+.fork-cam-confirm-btn.is-cancel:active {
+  background: rgba(var(--bg-color-rgb, 237, 235, 221), 0.14);
+}
+
+.fork-cam-confirm-btn.is-primary {
+  background: var(--decor-color, #e6c280);
+  color: var(--secondary-color, #1b1717);
+  box-shadow: 0 4px 16px rgba(var(--decor-color-rgb, 230, 194, 128), 0.4);
+}
+
+.fork-cam-confirm-btn.is-primary svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+.fork-cam-confirm-btn.is-primary:active {
+  transform: scale(0.98);
+  filter: brightness(0.9);
+}
+
+/* 8. 单张照片大卡详情模态 (Photo Detail Lightbox，4px 微圆角) */
+/* 注意：必须用 absolute 而非 fixed——祖先 .fork-deck-viewport-track 带
+   transform（多舱轨道平移），会劫持 fixed 的定位基准，导致弹窗铺满
+   600% 轨道、对话框被平移出屏幕只剩背板。absolute 落在 .fork-cam-body
+   （position: relative）上，与确认/总结浮层定位策略统一。 */
+.fork-cam-photo-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 10020;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+  animation: forkCamFadeIn 0.2s ease;
+}
+
+.fork-cam-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(var(--secondary-color-rgb, 27, 23, 23), 0.88);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.fork-cam-modal-dialog {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  max-height: 85vh;
+  border-radius: 4px;
+  background: var(--secondary-color, #1b1717);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), inset 0 0 0 0.5px rgba(var(--bg-color-rgb, 237, 235, 221), 0.1);
+  z-index: 1;
+}
+
+.fork-cam-modal-close-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  border: none;
+  background: rgba(var(--secondary-color-rgb, 27, 23, 23), 0.7);
+  color: var(--bg-color, #edebdd);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 5;
+}
+
+.fork-cam-modal-close-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.fork-cam-modal-img-wrap {
+  width: 100%;
+  max-height: 50vh;
+  /* 对话框是纵向 flex（max-height: 85vh）：信息区提示词过长时会触发
+     flex-shrink 压缩子项，图片区被压矮后 img 仍按 50vh 渲染，超出部分
+     被 overflow:hidden 上下裁掉。禁止收缩，空间不足由信息区自行滚动。 */
+  flex-shrink: 0;
+  background: rgba(var(--secondary-color-rgb, 27, 23, 23), 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* 大图自身遵守 50vh 上限并保持比例完整显示：
+   竖图顶到高度上限、宽度按比例收窄居中；横图铺满宽度、高度不足上限。
+   不能写 height:100%——容器只有 max-height 无确定高度，百分比解析失败
+   会退回自然尺寸，竖图超出部分被 overflow:hidden 裁掉。 */
+.fork-cam-modal-img-wrap img {
+  max-width: 100%;
+  max-height: 50vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.fork-cam-modal-info {
+  padding: 16px 18px calc(env(safe-area-inset-bottom, 0px) + 16px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+
+.fork-cam-modal-desc {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--bg-color, #edebdd);
+  word-break: break-word;
+}
+
+.fork-cam-modal-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  font-family: var(--font-mono, monospace);
+  color: rgba(var(--bg-color-rgb, 230, 236, 242), 0.45);
+}
+
+.fork-cam-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.fork-cam-modal-del-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: rgba(198, 40, 40, 0.15);
+  color: #ef5350;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.fork-cam-modal-del-btn svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
