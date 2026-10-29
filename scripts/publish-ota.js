@@ -102,6 +102,47 @@ async function gh(url, token, init = {}) {
   return body;
 }
 
+/**
+ * 上传二进制附件走 curl，不用 node fetch。
+ *
+ * 原因（实测踩坑）：undici 的 fetch 对 1.7MB 的 Buffer body 会报
+ * 「Upload body timed out due to inactivity」——它给 body 流设了默认的
+ * 空闲超时，而 GitHub 的 uploads 端点接收附件时握手偏慢，body 还没写完就被判超时。
+ * Release 此时已经建好了，于是每次发布都栽在同一步，且留下一个空壳 Release。
+ * curl 直接把文件交给 libcurl 上传，没有这个空闲计时，稳。
+ *
+ * 幂等：同名附件已存在时（上次上传失败的残留）GitHub 返回 422，
+ * 这里先删掉同名附件再传，所以重复运行安全。
+ */
+function uploadAssetViaCurl(releaseId, assetName, filePath, token) {
+  const url = `https://uploads.github.com/repos/${REPO}/releases/${releaseId}/assets?name=${encodeURIComponent(assetName)}`;
+  const out = execFileSync('curl', [
+    '-sS', '--fail-with-body',
+    '-X', 'POST',
+    '-H', `Authorization: token ${token}`,
+    '-H', 'Accept: application/vnd.github+json',
+    '-H', 'Content-Type: application/zip',
+    '--data-binary', `@${filePath}`,
+    '--max-time', '600',
+    '--retry', '2',
+    url
+  ], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+  let parsed = null;
+  try { parsed = JSON.parse(out); } catch (e) { /* 非 JSON 直接返回原文 */ }
+  if (parsed && parsed.errors) throw new Error(`上传被拒：${JSON.stringify(parsed.errors)}`);
+  return parsed || out;
+}
+
+/** 删掉 Release 上的同名附件（上次失败的残留），没有就什么都不做 */
+async function deleteAssetIfExists(releaseId, assetName, token) {
+  const rel = await gh(`https://api.github.com/repos/${REPO}/releases/${releaseId}`, token);
+  const hit = (rel.assets || []).find((a) => a.name === assetName);
+  if (!hit) return false;
+  await gh(`https://api.github.com/repos/${REPO}/releases/assets/${hit.id}`, token, { method: 'DELETE' });
+  log(`已删除同名旧附件 ${assetName}（id=${hit.id}）`);
+  return true;
+}
+
 /* ------------------------------- 构建 www ------------------------------- */
 function buildWww() {
   log('构建 www（sync-version + build-www）…');
@@ -233,23 +274,34 @@ async function main() {
       })
     });
   } catch (e) {
-    if (String(e.message).includes('already_exists') && opts.force) {
-      log('tag 已存在，--force：取现有 Release 覆盖上传');
+    // tag 已存在：多半是上次发布在上传环节失败、留下了空壳 Release。
+    // 直接复用它继续传附件，不必 --force（--force 仅用于刻意覆盖已完成的发布）。
+    if (String(e.message).includes('already_exists')) {
+      log('tag 已存在，复用现有 Release（上次可能上传失败）');
       release = await gh(`https://api.github.com/repos/${REPO}/releases/tags/${tag}`, token);
+      // 同步说明：复用的 Release 可能带着上次的旧文案，这里更新成本次的
+      try {
+        await gh(`https://api.github.com/repos/${REPO}/releases/${release.id}`, token, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: `OTA 热更包 b${V.build}`,
+            body: opts.notes.map((n) => `- ${n}`).join('\n')
+          })
+        });
+      } catch (e2) {
+        log(`（更新 Release 文案失败，不影响发布：${e2.message}）`);
+      }
     } else {
       fs.rmSync(tmpZip, { force: true });
-      die(`创建 Release 失败：${e.message}（tag 已存在？加 --force 覆盖）`);
+      die(`创建 Release 失败：${e.message}`);
     }
   }
   const releaseId = release.id;
 
   log(`上传附件 ${assetName}（${(zipBytes / 1048576).toFixed(2)}MB）…`);
-  const zipBuf = fs.readFileSync(tmpZip);
-  await gh(
-    `https://uploads.github.com/repos/${REPO}/releases/${releaseId}/assets?name=${encodeURIComponent(assetName)}`,
-    token,
-    { method: 'POST', headers: { 'Content-Type': 'application/zip' }, body: zipBuf }
-  );
+  await deleteAssetIfExists(releaseId, assetName, token);
+  uploadAssetViaCurl(releaseId, assetName, tmpZip, token);
   fs.rmSync(tmpZip, { force: true });
   log('附件上传完成');
 
