@@ -10,7 +10,8 @@
     "cap:sync": "node scripts/sync-version.js && node scripts/build-www.js && npx cap sync android",
     "cap:open": "npx cap open android",
     "android:debug": "node scripts/sync-version.js && cd android && ./gradlew assembleDebug",
-    "android:release": "node scripts/sync-version.js && cd android && ./gradlew assembleRelease"
+    "android:release": "node scripts/sync-version.js && cd android && ./gradlew assembleRelease",
+    "ota:publish": "node scripts/publish-ota.js"
   },
   "devDependencies": {
     "@capacitor/android": "6.2.2",

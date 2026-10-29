@@ -42470,11 +42470,33 @@ html:not(.is-native) #otaUpdateModule { display: none !important; }
   padding: 6px 2px 2px;
 }
 
-/* 检查更新按钮：中性色；立即更新按钮：重点色（深绯红） */
-.ota-check-btn {
-  color: var(--text-color);
-  background-color: rgba(var(--secondary-color-rgb), 0.1);
+/* 检查更新：纯文字链（零底色零边框零下划线），与 .terminal-config-link-btn 同语汇。
+   用 <button> 只为可聚焦 / 可读屏，外观上完全是一行小字。 */
+.ota-check-text {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  padding: 4px 0 4px 8px;
+  margin: 0;
+  font-family: var(--mono-font, monospace);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: var(--primary-color);
+  cursor: pointer;
+  opacity: 0.9;
+  transition: opacity 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
 }
+.ota-check-text:active { opacity: 0.55; }
+/* 检查中：文字变灰、不可点，不再用转圈图标 */
+.ota-check-text:disabled {
+  color: var(--text-muted);
+  cursor: default;
+  opacity: 0.7;
+}
+
+/* 立即更新按钮：重点色（深绯红） */
 .ota-apply-btn {
   color: #fff;
   background-color: var(--primary-color);
@@ -42483,12 +42505,6 @@ html:not(.is-native) #otaUpdateModule { display: none !important; }
   opacity: 0.45;
   cursor: not-allowed;
 }
-
-/* 检查中转圈：图标持续旋转 */
-.ota-check-btn.is-spinning #otaCheckIcon {
-  animation: otaSpin 0.9s linear infinite;
-}
-@keyframes otaSpin { to { transform: rotate(360deg); } }
 
 /* 状态行：图标 + 文案，按语义着色 */
 .ota-status {

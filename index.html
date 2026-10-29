@@ -3230,13 +3230,14 @@
                   </div>
                 </div>
 
-                <!-- 检查更新按钮行 -->
-                <div class="ota-action-row">
-                  <button type="button" class="data-vault-op-btn ota-check-btn" id="otaCheckBtn">
-                    <svg id="otaCheckIcon" viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M12 4V1L8 5l4 4V6a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8z"/>
-                    </svg>
-                    <span id="otaCheckLabel">检查更新</span>
+                <!-- 检查更新行：与「当前版本」同结构，右侧是纯文字（非按钮外观），点字即拉取 -->
+                <div class="chat-bento-row">
+                  <div class="chat-bento-label">
+                    <span class="chat-bento-zh">检查更新</span>
+                    <span class="chat-bento-en">CHECK FOR UPDATE</span>
+                  </div>
+                  <button type="button" class="ota-check-text" id="otaCheckBtn">
+                    <span id="otaCheckLabel">拉取新版本</span>
                   </button>
                 </div>
 
@@ -11155,6 +11156,7 @@
   <script src="js/api-call-log-ui.js?v=2"></script>
   <script src="js/terminal-config.js?v=6"></script>
   <script src="js/ota-updater.js?v=1"></script>
+  <script src="js/ota-engine.js?v=1"></script>
   <script src="js/ota-ui.js?v=1"></script>
   <script src="js/settings.js?v=191"></script>
   <script src="js/persona-ui.js?v=189"></script>

@@ -36,7 +36,6 @@
       module: document.getElementById('otaUpdateModule'),
       versionText: document.getElementById('otaVersionText'),
       checkBtn: document.getElementById('otaCheckBtn'),
-      checkIcon: document.getElementById('otaCheckIcon'),
       checkLabel: document.getElementById('otaCheckLabel'),
       statusRow: document.getElementById('otaStatusRow'),
       statusIcon: document.getElementById('otaStatusIcon'),
@@ -62,10 +61,10 @@
     els.versionText.textContent = (v && v.label) ? v.label : 'v?.?.? (b?)';
   }
 
-  function setCheckButton(label, disabled, spinning) {
+  /** 检查更新文字：检查中换文案并禁用（纯文字，无转圈图标） */
+  function setCheckButton(label, disabled) {
     if (!els.checkBtn) return;
     els.checkBtn.disabled = Boolean(disabled);
-    els.checkBtn.classList.toggle('is-spinning', Boolean(spinning));
     if (label && els.checkLabel) els.checkLabel.textContent = label;
   }
 
@@ -156,7 +155,7 @@
       return;
     }
     busy = true;
-    setCheckButton('检查中', true, true);
+    setCheckButton('拉取中…', true);
     setStatus('M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z', '正在检查更新……', 'muted');
     try {
       const res = await RetroflowUpdate.checkForUpdate();
@@ -165,32 +164,57 @@
       renderResult({ status: 'unavailable', message: '更新服务暂时不可用，请稍后再试' });
     } finally {
       busy = false;
-      setCheckButton('检查更新', false, false);
+      setCheckButton('拉取新版本', false);
     }
   }
 
-  /** 立即更新：阶段 2 的应用引擎接管。当前引擎缺失时按钮已禁用，这里仅兜底 */
+  /** 立即更新：交给原生应用引擎。防重入 + 分阶段进度文案。 */
+  let applying = false;
+  const PHASE_TEXT = {
+    download: (p) => `正在下载 ${Math.round(p)}%`,
+    verify: () => '正在校验更新包',
+    unzip: () => '正在解压更新包',
+    install: () => '正在应用更新'
+  };
   async function onApply() {
-    if (window.RetroflowOTA && typeof RetroflowOTA.applyUpdate === 'function') {
-      try {
-        await RetroflowOTA.applyUpdate(lastCheck, {
-          onProgress(p) {
-            if (els.progressRow && Number.isFinite(p.percent)) {
-              els.progressRow.hidden = false;
-              if (els.progressBar) els.progressBar.style.width = Math.round(p.percent) + '%';
-              if (els.progressText) {
-                els.progressText.textContent = p.percent >= 100
-                  ? '安装完成，即将重启'
-                  : `正在下载 ${Math.round(p.percent)}%`;
-              }
+    if (applying) return;
+    if (!window.RetroflowOTA || typeof RetroflowOTA.applyUpdate !== 'function') return;
+    applying = true;
+    if (els.applyBtn) els.applyBtn.disabled = true;
+    if (els.checkBtn) els.checkBtn.disabled = true;
+    try {
+      await RetroflowOTA.applyUpdate(lastCheck, {
+        onProgress(p) {
+          const phase = p && p.phase;
+          const pct = Number.isFinite(p && p.percent) ? p.percent : 0;
+          if (els.progressRow) {
+            els.progressRow.hidden = false;
+            // download 阶段按百分比推进；verify/unzip/install 无百分比，条保持满
+            if (els.progressBar) {
+              els.progressBar.style.width = (phase === 'download' ? Math.round(pct) : 100) + '%';
+            }
+            if (els.progressText) {
+              const fn = PHASE_TEXT[phase];
+              els.progressText.textContent = fn ? fn(pct) : '正在更新…';
             }
           }
-        });
-      } catch (err) {
-        setStatus('M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z', (err && err.message) || '更新失败，请稍后重试', 'warn');
-      }
+        }
+      });
+      // 成功：applyUpdate 内部会延时 reload，这里给出可见的收尾文案
+      if (els.progressText) els.progressText.textContent = '安装完成，即将重启';
+      if (els.progressBar) els.progressBar.style.width = '100%';
+      setStatus('M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z', '更新已安装，正在重启应用', 'ok');
+    } catch (err) {
+      if (els.progressRow) els.progressRow.hidden = true;
+      setStatus('M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z', (err && err.message) || '更新失败，请稍后重试', 'warn');
+      // 失败恢复可点，让用户重试
+      if (els.applyBtn) els.applyBtn.disabled = false;
+      if (els.checkBtn) els.checkBtn.disabled = false;
+      applying = false;
     }
+    // 成功路径不恢复按钮：马上要 reload，保持禁用避免重复点击
   }
+
 
   function bindHelpDrawer() {
     const btn = els.helpBtn;
