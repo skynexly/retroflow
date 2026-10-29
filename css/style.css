@@ -42463,6 +42463,30 @@ html:not(.is-native) #otaUpdateModule { display: none !important; }
   background-color: rgba(var(--secondary-color-rgb), 0.08);
 }
 
+/* 热更标记：当前跑的是覆盖层资源（而非 APK 内置）时出现。
+   用主色 + 闪电 SVG 区分，让人一眼看出「这个版本是拉下来的，不是装进去的」。
+   无覆盖层时保持 hidden，界面与纯内置版完全一致。 */
+.ota-hot-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--mono-font, monospace);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: var(--primary-color);
+  background-color: rgba(var(--primary-color-rgb), 0.1);
+}
+
+.ota-hot-chip svg {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  fill: currentColor;
+}
+
 /* 动作行（检查 / 立即更新按钮所在行） */
 .ota-action-row {
   display: flex;
