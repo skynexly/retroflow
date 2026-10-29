@@ -3,7 +3,8 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
+# 注意：package-lock.json 故意入库（公开仓库需可复现的依赖树，npm ci）。
+# 已确认其中无任何 authToken / 私有 registry 凭证，resolved 全部指向 registry.npmjs.org。
 yarn.lock
 
 # Build output
@@ -48,3 +49,15 @@ _design/
 # 工具平台私有目录（对话备份 1.7G + 平台配置，含隐私，严禁入库）
 .backup/
 .operit/
+
+# Capacitor 构建产物（www/ 由 scripts/build-www.js 生成；android 构建中间产物）
+www/
+android/app/build/
+android/build/
+android/.gradle/
+android/app/src/main/assets/public/
+android/local.properties
+*.apk
+*.aab
+*.keystore
+*.jks

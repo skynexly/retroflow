@@ -5,6 +5,16 @@
 (() => {
   if (!('serviceWorker' in navigator)) return;
 
+  // Capacitor 原生壳守卫：APK 里 WebView 跑在 https://localhost 虚拟域，
+  // 资源全是随包/OTA 下发的本地文件，秒开且天然离线。此时既不需要 SW 缓存，
+  // 且 SW 会与自建 OTA 的资源更新抢缓存、导致热更后仍读旧壳。原生壳直接跳过注册。
+  // 纯 Web / 已安装 PWA 环境（window.Capacitor 不存在）行为完全不变。
+  if (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function'
+    && window.Capacitor.isNativePlatform()) {
+    console.log('[Retroflow] 检测到 Capacitor 原生壳，跳过 Service Worker 注册（离线能力由壳 + OTA 提供）');
+    return;
+  }
+
   // 刻意不监听 controllerchange 做整页重载：
   // 新 SW 接管是异步的，往往落在用户刚点进某个功能的瞬间，
   // 那一下重载会把人打回桌面（hash 没有启动恢复逻辑），且首帧还会闪一下默认配色。

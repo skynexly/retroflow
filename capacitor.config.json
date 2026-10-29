@@ -1,0 +1,12 @@
+{
+  "appId": "com.retroflow.project",
+  "appName": "溯流计划",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}
