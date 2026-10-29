@@ -1,0 +1,225 @@
+/**
+ * ============================================================================
+ * 溯流计划 · UPDATE // 检查更新 · UI 控制器
+ * ============================================================================
+ *
+ * 挂在设置 → 终端配置，第三个模块。排版复用 terminal-config 系列类，
+ * 灵动岛/刘海保护由所在详情页 .settings-header 的 safe-area padding 继承，
+ * 本模块不新增任何安全区 padding。
+ *
+ * 可见性：
+ *   HTML 里默认 hidden，仅当 <html> 带 is-native 类时显示。
+ *   类由 boot 早期打上（Capacitor 原生壳判定）；浏览器/PWA 里永不显示，
+ *   那边的更新走 Service Worker，显示这个模块只会误导。
+ *
+ * 三态（+下载中）：
+ *   up-to-date        已是最新版本
+ *   update-available  发现新版本 + 更新说明 + 「立即更新」
+ *   unavailable       更新服务暂时不可用，请稍后再试
+ *   binary-too-old / schema-too-new  需要重装安装包的两种提示
+ *   checking          检查中（按钮转圈禁用）
+ *   downloading       进度条 + 百分比（阶段 2 引擎接管后出现）
+ *
+ * 「立即更新」在应用引擎（RetroflowOTA）就绪前一律禁用并如实标注，
+ * 绝不假装更新成功。规范：零 Emoji、零分割线、纯 SVG。
+ * ============================================================================
+ */
+(() => {
+  'use strict';
+
+  let els = {};
+  let lastCheck = null;
+  let busy = false;
+
+  function cacheEls() {
+    els = {
+      module: document.getElementById('otaUpdateModule'),
+      versionText: document.getElementById('otaVersionText'),
+      checkBtn: document.getElementById('otaCheckBtn'),
+      checkIcon: document.getElementById('otaCheckIcon'),
+      checkLabel: document.getElementById('otaCheckLabel'),
+      statusRow: document.getElementById('otaStatusRow'),
+      statusIcon: document.getElementById('otaStatusIcon'),
+      statusText: document.getElementById('otaStatusText'),
+      notesDrawer: document.getElementById('otaNotesDrawer'),
+      notesList: document.getElementById('otaNotesList'),
+      applyRow: document.getElementById('otaApplyRow'),
+      applyBtn: document.getElementById('otaApplyBtn'),
+      applyLabel: document.getElementById('otaApplyLabel'),
+      progressRow: document.getElementById('otaProgressRow'),
+      progressBar: document.getElementById('otaProgressBar'),
+      progressText: document.getElementById('otaProgressText'),
+      helpBtn: document.getElementById('otaHelpBtn'),
+      manualDrawer: document.getElementById('otaManualDrawer')
+    };
+    return els.module;
+  }
+
+  /** 当前版本行：读 RetroflowVersion（app-version.js 同步生成，同源可信赖） */
+  function fillVersion() {
+    if (!els.versionText) return;
+    const v = window.RetroflowVersion;
+    els.versionText.textContent = (v && v.label) ? v.label : 'v?.?.? (b?)';
+  }
+
+  function setCheckButton(label, disabled, spinning) {
+    if (!els.checkBtn) return;
+    els.checkBtn.disabled = Boolean(disabled);
+    els.checkBtn.classList.toggle('is-spinning', Boolean(spinning));
+    if (label && els.checkLabel) els.checkLabel.textContent = label;
+  }
+
+  /**
+   * 更新状态行的图标与文案。
+   * 图标一律整体重建为单个 path —— 不用 querySelector 改 d：
+   * 若原图标是 circle，给 circle 设 d 是无效属性，会静默不生效。
+   */
+  function setStatus(iconPath, text, kind) {
+    if (els.statusRow) els.statusRow.hidden = false;
+    if (els.statusIcon && iconPath) {
+      els.statusIcon.innerHTML = `<path d="${iconPath}"></path>`;
+    }
+    if (els.statusText) els.statusText.textContent = text;
+    if (els.statusRow) {
+      els.statusRow.className = `terminal-config-hint ota-status ${kind ? 'ota-status-' + kind : ''}`;
+    }
+  }
+
+  function hideStatus() {
+    if (els.statusRow) els.statusRow.hidden = true;
+    if (els.statusText) els.statusText.textContent = '';
+  }
+
+  function hideNotes() {
+    if (els.notesDrawer) els.notesDrawer.hidden = true;
+    if (els.applyRow) els.applyRow.hidden = true;
+  }
+
+  function renderNotes(notes) {
+    if (!els.notesList) return;
+    els.notesList.textContent = '';
+    (Array.isArray(notes) ? notes : []).forEach((n) => {
+      if (typeof n !== 'string' || !n.trim()) return;
+      const li = document.createElement('li');
+      li.textContent = n;
+      li.className = 'ota-note-item';
+      els.notesList.appendChild(li);
+    });
+    if (els.notesList.children.length && els.notesDrawer) {
+      els.notesDrawer.hidden = false;
+    }
+  }
+
+  /** 三态渲染入口 */
+  function renderResult(res) {
+    lastCheck = res;
+    hideNotes();
+    if (els.progressRow) els.progressRow.hidden = true;
+
+    switch (res.status) {
+      case 'up-to-date': {
+        setStatus('M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z', res.message, 'ok');
+        break;
+      }
+      case 'update-available': {
+        setStatus('M12 2 4 4v13a6 6 0 0 0 5 5.9V22h2v-3.1a6 6 0 0 0 5-5.9l-1.5 0A5.5 5.5 0 0 1 12 17.5 5.5 5.5 0 0 1 6.5 12V5.4L12 4l6 1.4V8h2V4z', res.message, 'info');
+        renderNotes(res.remote && res.remote.notes);
+        // 阶段 1：引擎未就绪时如实禁用，不假装
+        if (els.applyRow) {
+          const ready = window.RetroflowUpdate && RetroflowUpdate.isEngineReady();
+          els.applyRow.hidden = false;
+          if (els.applyBtn) {
+            els.applyBtn.disabled = !ready;
+            if (els.applyLabel) {
+              els.applyLabel.textContent = ready ? '立即更新' : '更新引擎未就绪（待装机版升级）';
+            }
+          }
+        }
+        break;
+      }
+      case 'binary-too-old':
+      case 'schema-too-new': {
+        setStatus('M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z', res.message, 'warn');
+        break;
+      }
+      default: { // unavailable 及一切未预期状态
+        setStatus('M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z', res.message || '更新服务暂时不可用，请稍后再试', 'warn');
+      }
+    }
+  }
+
+  /** 检查动作：按钮防重入，检查中转圈 */
+  async function onCheck() {
+    if (busy) return;
+    if (!window.RetroflowUpdate) {
+      setStatus('M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z', '更新模块未加载', 'warn');
+      return;
+    }
+    busy = true;
+    setCheckButton('检查中', true, true);
+    setStatus('M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z', '正在检查更新……', 'muted');
+    try {
+      const res = await RetroflowUpdate.checkForUpdate();
+      renderResult(res);
+    } catch (err) {
+      renderResult({ status: 'unavailable', message: '更新服务暂时不可用，请稍后再试' });
+    } finally {
+      busy = false;
+      setCheckButton('检查更新', false, false);
+    }
+  }
+
+  /** 立即更新：阶段 2 的应用引擎接管。当前引擎缺失时按钮已禁用，这里仅兜底 */
+  async function onApply() {
+    if (window.RetroflowOTA && typeof RetroflowOTA.applyUpdate === 'function') {
+      try {
+        await RetroflowOTA.applyUpdate(lastCheck, {
+          onProgress(p) {
+            if (els.progressRow && Number.isFinite(p.percent)) {
+              els.progressRow.hidden = false;
+              if (els.progressBar) els.progressBar.style.width = Math.round(p.percent) + '%';
+              if (els.progressText) {
+                els.progressText.textContent = p.percent >= 100
+                  ? '安装完成，即将重启'
+                  : `正在下载 ${Math.round(p.percent)}%`;
+              }
+            }
+          }
+        });
+      } catch (err) {
+        setStatus('M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z', (err && err.message) || '更新失败，请稍后重试', 'warn');
+      }
+    }
+  }
+
+  function bindHelpDrawer() {
+    const btn = els.helpBtn;
+    const drawer = els.manualDrawer;
+    if (!btn || !drawer) return;
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const willShow = drawer.hidden;
+      drawer.hidden = !willShow;
+      btn.classList.toggle('active', willShow);
+    });
+  }
+
+  function init() {
+    if (!cacheEls()) return;
+    // 可见性开关：<html> 带 is-native（boot.js 顶层打标）才解除 hidden。
+    // 浏览器 / PWA 里保持隐藏并直接返回——那边更新走 Service Worker，
+    // 不绑事件、不发请求，避免误导用户去点一个永远不可用的更新。
+    if (!document.documentElement.classList.contains('is-native')) {
+      return;
+    }
+    els.module.hidden = false;
+    fillVersion();
+    if (els.checkBtn) els.checkBtn.addEventListener('click', onCheck);
+    if (els.applyBtn) els.applyBtn.addEventListener('click', onApply);
+    bindHelpDrawer();
+    hideStatus();
+    hideNotes();
+  }
+
+  window.OTAUI = { init, renderResult };
+})();

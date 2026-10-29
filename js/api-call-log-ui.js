@@ -208,18 +208,22 @@ window.ApiCallLogUI = (() => {
     try {
       const json = await ApiCallLog.exportJson();
       const blob = new Blob([json], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      const pad = (n) => String(n).padStart(2, '0');
-      const d = new Date();
-      a.download = `retroflow_api_log_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}.json`;
-      a.rel = 'noopener';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      // 延后释放，给 WebView 留取数窗口（与 Downloader 同款策略）
-      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      // 统一走 Downloader：原生壳 Filesystem 直写落盘才 resolve，
+      // 浏览器 <a download>，且文件名符合「溯流计划-{类型}-{时间戳}」规范。
+      if (window.Downloader && typeof Downloader.save === 'function') {
+        await Downloader.save(blob, 'API日志', 'json');
+      } else {
+        // 兜底：Downloader 未加载（正常启动顺序不会走到）
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `retroflow_api_log_${Date.now()}.json`;
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+      }
       if (window.RetroToast) {
         RetroToast.show({ tag: 'LOG // EXPORT', message: '调用日志已导出为 JSON', type: 'success' });
       }

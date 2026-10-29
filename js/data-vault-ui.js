@@ -176,17 +176,44 @@ const DataVaultUI = (() => {
 
   /* ---------------- 导出 ---------------- */
 
+  let exporting = false;
+
   async function doExport() {
+    // 防重入：原生壳分块写大备份要数秒到数十秒，期间再点必须挡住
+    if (exporting) return;
+    exporting = true;
+    const exportBtn = $('dataVaultExportBtn');
+    const origLabel = exportBtn ? exportBtn.textContent : '';
+    if (exportBtn) {
+      exportBtn.disabled = true;
+      exportBtn.textContent = '正在导出…';
+    }
+    // 节流进度刷新：每 200ms 最多更新一次按钮文案，避免高频 DOM 写
+    let lastTick = 0;
+    const onProgress = ({ loaded, total }) => {
+      const now = Date.now();
+      if (now - lastTick < 200 || !exportBtn) return;
+      lastTick = now;
+      exportBtn.textContent = `正在写入 ${Math.round((loaded / total) * 100)}%`;
+    };
     try {
+      const opts = { onProgress };
       if (selectedScope === 'all') {
-        await DataVault.exportAll();
+        await DataVault.exportAll(opts);
         toast('EXPORT // 全量导出', '完整备份已导出为 JSON', 'success');
       } else {
-        await DataVault.exportScope(selectedScope);
+        await DataVault.exportScope(selectedScope, opts);
         toast('EXPORT // 导出完成', `「${DataVault.scopeLabel(selectedScope)}」已导出为 JSON`, 'success');
       }
     } catch (err) {
       toast('EXPORT // 导出失败', '导出过程出错，请重试', 'warning');
+    } finally {
+      exporting = false;
+      if (exportBtn) {
+        exportBtn.textContent = origLabel || '导出';
+        // 恢复可用性：与顶部禁用判定同口径（scopeStat 按当前选中范围算 bytes）
+        exportBtn.disabled = scopeStat().bytes === 0;
+      }
     }
   }
 

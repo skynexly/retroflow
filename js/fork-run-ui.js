@@ -5807,17 +5807,20 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
     if (dlBtn) {
       dlBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        try {
-          const a = document.createElement('a');
-          a.href = srcList[index].src;
-          a.download = `retroflow-vision-${Date.now()}-${pad(index + 1)}.png`;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          toast('VISION // 已导出', '影像已保存', '文件已写入设备下载目录', 'success');
-        } catch (_) {
-          toast('VISION // 导出失败', '影像保存未完成', '可长按图片使用系统菜单保存', 'warning');
-        }
+        // 统一走 Downloader.saveImage：原生壳 Filesystem 直写落盘才 resolve，
+        // 浏览器 objectURL <a download>。裸 <a download> 在装机版 WebView
+        // 里会被静默丢弃（无 DownloadListener），必须收编。
+        (async () => {
+          try {
+            if (!window.Downloader || typeof Downloader.saveImage !== 'function') {
+              throw new Error('下载模块尚未加载');
+            }
+            await Downloader.saveImage(srcList[index].src, `副本影像-${pad(index + 1)}`, 'png');
+            toast('VISION // 已导出', '影像已保存', '文件已写入设备存储', 'success');
+          } catch (_) {
+            toast('VISION // 导出失败', '影像保存未完成', '可长按图片使用系统菜单保存', 'warning');
+          }
+        })();
       });
     }
 

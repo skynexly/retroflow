@@ -71,17 +71,123 @@ const Downloader = (() => {
     return fallback || '';
   }
 
+  /* ---------------- 原生壳直写（Capacitor Filesystem） ----------------
+   *
+   * 装机版 WebView 没有下载器（Capacitor 6 的 BridgeWebView 从不挂
+   * DownloadListener），blob: 的 <a download> 会被静默丢弃——这就是
+   * 「APK 里点导出没有文件」的根因。原生壳下改走 Filesystem 插件直接写盘。
+   *
+   * 目录策略（Filesystem 6.0.4 的 getDirectory 不支持 DOWNLOADS，
+   * 传了会 reject INVALID_DIR，所以用 EXTERNAL_STORAGE + 相对路径）：
+   *   首选  EXTERNAL_STORAGE/Download/{name}  —— 公共下载目录。
+   *         Android 11+ 经 FUSE 重定向直写、免任何权限；
+   *         Android 10 依赖 requestLegacyExternalStorage + 存储权限；
+   *         Android 9- 靠 Manifest 声明的 WRITE_EXTERNAL_STORAGE 运行时请求。
+   *   回退  DOCUMENTS/{name} —— 插件对 DOCUMENTS 有完整的权限请求与
+   *         MediaScanner 索引逻辑，作为写 Download 失败时的兜底。
+   * 写失败抛错，由调用方如实提示——绝不假装成功。
+   */
+
+  function nativeFs() {
+    return (window.Capacitor && window.Capacitor.Plugins &&
+      window.Capacitor.Plugins.Filesystem) || null;
+  }
+
+  /** 原生保存可用判定：壳标记 + 插件已注册，二者缺一都退回浏览器路径 */
+  function isNativeSave() {
+    return Boolean(nativeFs()) &&
+      document.documentElement.classList.contains('is-native');
+  }
+
+  /** Blob → 纯 base64（不含 data: 前缀），Filesystem.writeFile 只收这种 */
+  function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const s = String(reader.result || '');
+        const i = s.indexOf(',');
+        resolve(i >= 0 ? s.slice(i + 1) : s);
+      };
+      reader.onerror = () => reject(new Error('文件内容读取失败'));
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  /** 分块大小（原始字节）。必须是 3 的倍数：
+   * 每块独立 base64 编码后，各块拼接仍可无损解码还原。
+   * 3MB 原始 → 4MB base64/桥消息。真机实测教训：108MB 备份整串过桥
+   * 时，原生 MessageHandler 解析 JSON 直接 OOM（256MB 堆上限）崩掉整个
+   * app——分块就是为这个 OOM 设计的，单条桥消息必须保持在个位数 MB。 */
+  const CHUNK_BYTES = 3 * 1024 * 1024;
+
+  /** 任意来源收敛成 Blob 后分块写盘；失败清理半截文件再抛错 */
+  async function writeViaFilesystem(name, blob, onProgress) {
+    const FS = nativeFs();
+    if (!blob || !blob.size) throw new Error('文件内容为空');
+    const total = blob.size;
+
+    const attempt = async (path, directory) => {
+      let wrote = false;
+      try {
+        for (let offset = 0; offset < total; offset += CHUNK_BYTES) {
+          const end = Math.min(offset + CHUNK_BYTES, total);
+          const b64 = await blobToBase64(blob.slice(offset, end));
+          if (!wrote) {
+            // 首块创建文件（recursive 顺带建目录）
+            await FS.writeFile({ path, data: b64, directory, recursive: true });
+            wrote = true;
+          } else {
+            await FS.appendFile({ path, data: b64, directory });
+          }
+          if (onProgress) onProgress({ loaded: end, total });
+        }
+        return true;
+      } catch (err) {
+        // 清理半截文件：残留的截断 JSON 备份若被日后导入 = 静默数据损坏
+        if (wrote) {
+          try { await FS.deleteFile({ path, directory }); } catch (_) { /* 尽力而为 */ }
+        }
+        throw err;
+      }
+    };
+
+    try {
+      await attempt(`Download/${name}`, 'EXTERNAL_STORAGE');
+      return { name, via: 'native', dir: 'Download' };
+    } catch (err) {
+      // Download 写不进（老设备权限被拒 / 厂商魔改限制）→ Documents 兜底
+    }
+    await attempt(name, 'DOCUMENTS');
+    return { name, via: 'native', dir: 'Documents' };
+  }
+
   /**
-   * 触发下载
+   * 触发保存。
+   * 原生壳：Filesystem 分块直写公共目录，Promise 在文件真正落盘后才 resolve。
+   * 浏览器/PWA：<a download> + objectURL，行为与原来完全一致。
+   *
    * @param {string|Blob} data dataURL / blob: / http(s) 链接，或 Blob
    * @param {string} label 类型标签，如 '头像'
    * @param {string} [ext] 扩展名，省略时自动推断
-   * @returns {string} 实际使用的文件名
+   * @param {{onProgress?:function({loaded:number,total:number}):void}} [opts] 大文件进度回调
+   * @returns {Promise<{name:string, via:'native'|'objecturl', dir?:string}>}
    */
-  function save(data, label, ext) {
-    if (!data) return '';
+  async function save(data, label, ext, opts) {
+    if (!data) return { name: '', via: 'none' };
 
     const isBlob = typeof Blob !== 'undefined' && data instanceof Blob;
+
+    // 原生壳：收敛成 Blob 后分块直写，不走 <a download>。
+    // 任何来源（dataURL / objectURL / http）都先 toBlob——
+    // 整串 base64 一次过桥会撑爆原生 MessageHandler（实测 108MB OOM 崩溃）。
+    if (isNativeSave()) {
+      const finalExt = ext || extFromSrc(isBlob ? '' : String(data), isBlob ? extFromMime(data.type) : '');
+      const name = buildName(label, finalExt);
+      const blob = isBlob ? data : await toBlob(data);
+      if (!blob) throw new Error('文件内容读取失败');
+      return await writeViaFilesystem(name, blob, opts && opts.onProgress);
+    }
+
     // Blob 需要临时 objectURL，用完必须释放，否则整页生命周期内一直占内存
     const href = isBlob ? URL.createObjectURL(data) : String(data);
     const finalExt = ext || extFromSrc(isBlob ? '' : href, isBlob ? extFromMime(data.type) : '');
@@ -99,7 +205,7 @@ const Downloader = (() => {
       // 立即 revoke 会让部分浏览器来不及取数据，延后一拍更稳
       setTimeout(() => URL.revokeObjectURL(href), 4000);
     }
-    return name;
+    return { name, via: 'objecturl' };
   }
 
   function extFromMime(mime) {
@@ -122,11 +228,15 @@ const Downloader = (() => {
   }
 
   /**
-   * 保存图片。为 standalone PWA（无浏览器 UI 的 WebView）做了三级降级：
+   * 保存图片。
    *
+   * 原生壳（is-native + Filesystem 插件）：收敛成 Blob 后直写文件系统，
+   * 目录策略与 save() 相同（Download 首选、Documents 兜底），落盘才 resolve。
+   *
+   * 浏览器 / standalone PWA 保持三级降级：
    *   1. objectURL + <a download> —— 下载按钮直接保存，不主动唤起分享面板；
    *   2. dataURL 直下 —— 兼容不支持 objectURL 下载的环境；
-   *   3. navigator.share 不由下载按钮调用，避免“保存图片”被错误变成分享。
+   *   3. navigator.share 不由下载按钮调用，避免"保存图片"被错误变成分享。
    *
    * 为什么不直接用第 3 级：768x1024 的 PNG 转 base64 后 href 长达数 MB，
    * WebView 的下载管理器对超长 dataURL 处理不稳定，表现为「时灵时不灵」。
@@ -134,7 +244,7 @@ const Downloader = (() => {
    * @param {string|Blob} data 图片来源
    * @param {string} label 类型标签，如 '头像'
    * @param {string} [ext] 扩展名，省略时按 mime 推断
-   * @returns {Promise<{name:string, via:'objecturl'|'dataurl'}>}
+   * @returns {Promise<{name:string, via:'native'|'objecturl'|'dataurl', dir?:string}>}
    */
   async function saveImage(data, label, ext) {
     if (!data) throw new Error('没有可保存的影像');
@@ -144,6 +254,11 @@ const Downloader = (() => {
 
     const finalExt = ext || extFromMime(blob.type) || 'png';
     const name = buildName(label, finalExt);
+
+    // 原生壳：Filesystem 分块直写，落盘才返回
+    if (isNativeSave()) {
+      return await writeViaFilesystem(name, blob);
+    }
 
     // 1) objectURL：下载按钮应直接保存，不主动调用 navigator.share。
     // 句柄很短，可以规避超长 dataURL 在 WebView 中的不稳定行为。

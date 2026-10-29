@@ -1,0 +1,60 @@
+{
+  "_comment": [
+    "溯流计划 · OTA 热更发布清单（固定入口）。",
+    "",
+    "客户端通过固定 URL 拉取本文件，与自身 RetroflowVersion 比对后决定是否提示更新：",
+    "  https://raw.githubusercontent.com/skynexly/retroflow/main/ota/version.json",
+    "  https://cdn.jsdelivr.net/gh/skynexly/retroflow@main/ota/version.json",
+    "多源按顺序回退，任一可达即用（raw 优先：大陆裸网实测 raw 可连、jsDelivr 不稳）。raw/CDN 有缓存，客户端请求时带时间戳参数 + cache:'no-store'。",
+    "",
+    "重要：本文件入库，但【不进 www、不打包进 APK】——客户端必须查远端最新清单，",
+    "包里自带一份会过期误判。build-www.js 的白名单里没有 ota。",
+    "",
+    "更新包（zip）不提交进仓库（47MB 级，会把 git 历史撑爆），挂在 GitHub Release 附件上，",
+    "由本文件的 packages.*.url 指向。发布动作由 scripts/publish-ota.js 生成，见该脚本。",
+    "",
+    "字段语义：",
+    "  schemaVersion  清单格式版本。客户端遇到高于自身支持的版本应拒绝应用并提示升级 APK，",
+    "                 而不是按旧格式猜着解析。",
+    "  channel        发布通道，当前只有 stable。",
+    "  latest.build   资源构建号，客户端比对的主键（对应 RetroflowVersion.build）。",
+    "                 远端 build > 本地 build 即为有更新。",
+    "  latest.minBinary  应用本次更新所需的最低原生壳版本（Android versionCode）。",
+    "                 本地 versionCode < minBinary 时【禁止热更】，提示重装 APK。",
+    "                 用途：新网页代码若调用了旧壳没有的原生插件，热更后会直接崩，",
+    "                 必须挡住。只改 Web 资源时应把 minBinary 保持在当前壳版本。",
+    "  latest.packages.full   全量包，含完整 www（首次播种失败时的兜底）。",
+    "  latest.packages.patch  差分包，只含自 sinceBuild 起改动的文件，体积通常几十 KB。",
+    "                 客户端优先取 patch，校验失败再退 full。",
+    "  sha256 一律为文件内容的 SHA-256 十六进制小写；客户端下载后必须逐包校验再应用。"
+  ],
+  "schemaVersion": 1,
+  "channel": "stable",
+  "latest": {
+    "version": "1.2.0",
+    "build": 1278,
+    "minBinary": 3,
+    "releasedAt": "2026-10-29T14:00:00Z",
+    "notes": [
+      "记忆库（MEMORY BANK）上线：桌面 02 卡片，事件记忆与角色回响双维度沉淀。",
+      "修复助手与副本助手舱的延续指令误拼：刚发完消息再点推演不再被拼上「本轮没有发送新的文字」。",
+      "修复多窗口导出遗漏：助手对话的窗口列表现在会随聊天记录一并打包，旧备份导入后也能自动找回窗口。",
+      "APK 装机版接入：原生壳跳过 Service Worker 注册，离线能力由壳提供。",
+      "修复装机版导出没有文件、以及导出大备份时整个应用闪退的问题。导出文件保存在手机的 Download 目录。"
+    ],
+    "packages": {
+      "full": {
+        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1278/retroflow-ota-full-b1278.zip",
+        "sha256": "",
+        "size": 0
+      },
+      "patch": {
+        "sinceBuild": 0,
+        "url": "",
+        "sha256": "",
+        "size": 0
+      }
+    }
+  },
+  "_status": "阶段 1 占位：packages 的 sha256/size/url 待 scripts/publish-ota.js 首次发布时填入。客户端在此状态下检查更新会得到「已是最新」，不会误触发下载。"
+}

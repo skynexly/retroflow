@@ -19,7 +19,7 @@
 
   <!-- 样式资产（带构建版本戳穿透 HTTP 磁盘缓存） -->
   <link rel="stylesheet" href="css/variables.css?v=190">
-  <link rel="stylesheet" href="css/style.css?v=894">
+  <link rel="stylesheet" href="css/style.css?v=895">
   <link rel="stylesheet" href="css/fork-deck-camera.css?v=3">
   <link rel="stylesheet" href="css/api-call-log.css?v=4">
 
@@ -3197,6 +3197,87 @@
                 <div class="terminal-config-hint terminal-keepalive-status" id="terminalKeepaliveStatus" hidden>
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
                   <span id="terminalKeepaliveStatusText">待机</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 模块 3：检查更新（UPDATE // 检查更新）
+                 仅装机版（原生壳）可见：<html> 带 is-native 类时才解除 hidden。
+                 浏览器 / PWA 端更新走 Service Worker，显示本模块只会误导，故默认隐藏。
+                 灵动岛/刘海保护由本页 .settings-header 的 safe-area padding 继承，此处不新增。 -->
+            <div class="theme-module" id="otaUpdateModule" hidden>
+              <div class="module-label-row">
+                <span class="module-label-en">UPDATE</span>
+                <span class="module-label-slash">//</span>
+                <span class="module-label-zh">检查更新</span>
+              </div>
+              <div class="chat-bento-card terminal-config-card">
+                <!-- 当前版本行 -->
+                <div class="chat-bento-row">
+                  <div class="chat-bento-label">
+                    <span class="chat-bento-zh">当前版本</span>
+                    <span class="chat-bento-en">CURRENT BUILD</span>
+                  </div>
+                  <div class="terminal-config-row-actions">
+                    <button type="button" class="psych-help-circle-btn" id="otaHelpBtn" aria-label="查看更新说明" title="查看更新说明">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                        <path d="M12 17h.01"/>
+                      </svg>
+                    </button>
+                    <span class="ota-version-chip" id="otaVersionText">v?.?.? (b?)</span>
+                  </div>
+                </div>
+
+                <!-- 检查更新按钮行 -->
+                <div class="ota-action-row">
+                  <button type="button" class="data-vault-op-btn ota-check-btn" id="otaCheckBtn">
+                    <svg id="otaCheckIcon" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 4V1L8 5l4 4V6a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8z"/>
+                    </svg>
+                    <span id="otaCheckLabel">检查更新</span>
+                  </button>
+                </div>
+
+                <!-- 状态行（三态 + 检查中）：图标 + 一句人话 -->
+                <div class="terminal-config-hint ota-status" id="otaStatusRow" hidden>
+                  <svg id="otaStatusIcon" viewBox="0 0 24 24" aria-hidden="true"><path d=""/></svg>
+                  <span id="otaStatusText"></span>
+                </div>
+
+                <!-- 下载进度条（阶段 2 引擎接管后出现）：色块填充，无分割线 -->
+                <div class="ota-progress-row" id="otaProgressRow" hidden>
+                  <div class="ota-progress-track" aria-hidden="true">
+                    <span class="ota-progress-fill" id="otaProgressBar"></span>
+                  </div>
+                  <span class="ota-progress-text" id="otaProgressText">正在下载 0%</span>
+                </div>
+
+                <!-- 更新说明抽屉（发现新版本时展开） -->
+                <div class="psych-radar-manual-drawer terminal-config-drawer ota-notes-drawer" id="otaNotesDrawer" hidden>
+                  <div class="ota-notes-head">
+                    <span class="ota-notes-zh">更新内容</span>
+                    <span class="ota-notes-en">RELEASE NOTES</span>
+                  </div>
+                  <ul class="ota-notes-list" id="otaNotesList"></ul>
+                </div>
+
+                <!-- 立即更新行（有更新且引擎就绪时可点） -->
+                <div class="ota-action-row" id="otaApplyRow" hidden>
+                  <button type="button" class="data-vault-op-btn ota-apply-btn" id="otaApplyBtn" disabled>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M5 20h14v-2H5v2zm7-18L5.33 9h3.34v4h4.66V9h3.34L12 2z"/>
+                    </svg>
+                    <span id="otaApplyLabel">立即更新</span>
+                  </button>
+                </div>
+
+                <!-- 问号说明抽屉（默认收起，点问号展开） -->
+                <div class="psych-radar-manual-drawer terminal-config-drawer" id="otaManualDrawer" hidden>
+                  <div class="terminal-config-hint">
+                    检查装机版是否有新版本。有更新时点「立即更新」，下载完成后终端会自动重启并切换到新版本；若更新失败会自动退回当前版本，数据不受影响。更新仅替换界面与逻辑资源，不会清除你的存档。
+                  </div>
                 </div>
               </div>
             </div>
@@ -11033,7 +11114,8 @@
   <script src="js/store.js?v=258"></script>
   <script src="js/psych-store.js?v=191"></script>
   <script src="js/psych-archive-app.js?v=198"></script>
-  <script src="js/boot.js?v=186"></script>
+  <script src="js/app-version.js?v=1"></script>
+  <script src="js/boot.js?v=187"></script>
   <script src="js/keepalive-core.js?v=4"></script>
   <script src="js/downloader.js?v=188"></script>
   <script src="js/chat-shot.js?v=4"></script>
@@ -11072,7 +11154,9 @@
   <script src="js/api-call-log.js?v=1"></script>
   <script src="js/api-call-log-ui.js?v=2"></script>
   <script src="js/terminal-config.js?v=6"></script>
-  <script src="js/settings.js?v=190"></script>
+  <script src="js/ota-updater.js?v=1"></script>
+  <script src="js/ota-ui.js?v=1"></script>
+  <script src="js/settings.js?v=191"></script>
   <script src="js/persona-ui.js?v=189"></script>
   <script src="js/resonance-ui.js?v=296"></script>
   <script src="js/fork-archive-ui.js?v=35"></script>

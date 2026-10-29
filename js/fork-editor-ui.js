@@ -4680,7 +4680,9 @@
       const titlePart = currentData.title || '未命名副本';
       const label = `副本-${codePart}-${titlePart}`;
 
-      const name = Downloader.save(blob, label, 'json');
+      // save 现在返回 Promise<{name,via}>：原生壳下 await 完成即文件已落盘
+      const saved = await Downloader.save(blob, label, 'json');
+      const name = (saved && saved.name) || '';
 
       const sizeText = formatBytes(blob.size);
       const coverText = cover ? '含封面' : '无封面';

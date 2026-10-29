@@ -42434,12 +42434,139 @@ button.fork-run-mission-action-card:active,
   line-height: 1.1;
   letter-spacing: 0.3px;
 }
-
 .mem-shuttle-sub {
   font-family: var(--mono-font, monospace);
   font-size: 7.5px;
   letter-spacing: 0.8px;
   opacity: 0.85;
 }
+
+/* ============================================================
+   UPDATE // 检查更新（终端配置 · 模块 3）
+   排版复用 terminal-config / data-vault-op-btn，仅补该模块专属件。
+   配色一律走 CSS 变量，无硬编码色值；无分割线；图标全 SVG。
+   灵动岛保护由详情页 .settings-header 的 safe-area padding 继承。
+   ============================================================ */
+
+/* 仅装机版可见：非原生壳下模块强制隐藏（HTML 默认 hidden，双保险） */
+html:not(.is-native) #otaUpdateModule { display: none !important; }
+
+/* 当前版本胶囊 */
+.ota-version-chip {
+  font-family: var(--mono-font, monospace);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  color: var(--text-color);
+  background-color: rgba(var(--secondary-color-rgb), 0.08);
+}
+
+/* 动作行（检查 / 立即更新按钮所在行） */
+.ota-action-row {
+  display: flex;
+  justify-content: flex-end;
+  padding: 6px 2px 2px;
+}
+
+/* 检查更新按钮：中性色；立即更新按钮：重点色（深绯红） */
+.ota-check-btn {
+  color: var(--text-color);
+  background-color: rgba(var(--secondary-color-rgb), 0.1);
+}
+.ota-apply-btn {
+  color: #fff;
+  background-color: var(--primary-color);
+}
+.ota-apply-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* 检查中转圈：图标持续旋转 */
+.ota-check-btn.is-spinning #otaCheckIcon {
+  animation: otaSpin 0.9s linear infinite;
+}
+@keyframes otaSpin { to { transform: rotate(360deg); } }
+
+/* 状态行：图标 + 文案，按语义着色 */
+.ota-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+.ota-status svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  fill: currentColor;
+}
+.ota-status-ok { color: var(--text-muted); }
+.ota-status-info { color: var(--primary-color); opacity: 1; }
+.ota-status-warn { color: var(--primary-color); opacity: 1; }
+.ota-status-muted { opacity: 0.6; }
+
+/* 下载进度条：色块填充，无分割线 */
+.ota-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.ota-progress-track {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  overflow: hidden;
+  background-color: rgba(var(--secondary-color-rgb), 0.12);
+}
+.ota-progress-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background-color: var(--primary-color);
+  transition: width 0.2s ease;
+}
+.ota-progress-text {
+  font-family: var(--mono-font, monospace);
+  font-size: 10px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* 更新说明抽屉 */
+.ota-notes-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+.ota-notes-zh {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-color);
+}
+.ota-notes-en {
+  font-family: var(--mono-font, monospace);
+  font-size: 8px;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+.ota-notes-list {
+  margin: 0;
+  padding-left: 16px;
+  list-style: disc;
+}
+.ota-note-item {
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  opacity: 0.85;
+}
+
 
 

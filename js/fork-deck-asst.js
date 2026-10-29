@@ -1354,12 +1354,15 @@ window.ForkDeckAsst = (() => {
         const res = await Downloader.saveImage(payload, '生成图');
         if (window.RetroToast) {
           const isShare = res.via === 'share';
+          const isNative = res.via === 'native';
           RetroToast.show({
             tag: 'IMAGE // 导出影像',
-            message: isShare ? '已唤起系统保存' : '已触发下载',
+            message: isShare ? '已唤起系统保存' : (isNative ? '影像已保存到设备存储' : '已触发下载'),
             detail: isShare
               ? `${res.name}｜在面板里选择「保存到相册」或任意应用。`
-              : `${res.name}｜若相册未出现可长按大图另存。`,
+              : (isNative
+                ? `${res.name}｜已写入「${res.dir || 'Download'}」目录，可在文件管理中查看。`
+                : `${res.name}｜若相册未出现可长按大图另存。`),
             type: 'success'
           });
         }

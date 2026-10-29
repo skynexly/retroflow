@@ -579,7 +579,7 @@ const DataVault = (() => {
   /** 导出界面主题包并触发下载 */
   async function exportTheme() {
     const pkg = await buildThemeExport();
-    download(pkg, '界面主题包');
+    await download(pkg, '界面主题包');
     return true;
   }
 
@@ -642,12 +642,15 @@ const DataVault = (() => {
     return { ok: true, docCount, assetCount };
   }
 
-  /** 触发浏览器下载一个 JSON 包，文件名统一交给 Downloader */
-  function download(pkg, label) {
+  /** 保存一个 JSON 包，文件名统一交给 Downloader。
+   *  原生壳下 Downloader.save 是 Filesystem 分块直写，必须 await——
+   *  resolve 即代表文件真正落盘，toast 才敢报「已导出」。
+   *  opts.onProgress 供 UI 显示大文件写入进度（透传给 Downloader）。 */
+  async function download(pkg, label, opts) {
     const json = JSON.stringify(pkg);
     const blob = new Blob([json], { type: 'application/json' });
     if (window.Downloader && typeof Downloader.save === 'function') {
-      return Downloader.save(blob, label, 'json');
+      return await Downloader.save(blob, label, 'json', opts);
     }
 
     // Downloader 未加载时的兼容回退，正常启动顺序不会走到这里。
@@ -660,14 +663,14 @@ const DataVault = (() => {
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    return name;
+    return { name, via: 'objecturl' };
   }
 
   /** 导出单块并下载 */
   async function exportBlock(blockId) {
     if (!BLOCKS[blockId]) return false;
     const pkg = await buildExport([blockId]);
-    download(pkg, `${BLOCKS[blockId].zh}备份`);
+    await download(pkg, `${BLOCKS[blockId].zh}备份`);
     return true;
   }
 
@@ -675,19 +678,19 @@ const DataVault = (() => {
    * 按作用域（单块或合并组）导出并下载。
    * 合并组一次打包多块，例如「线上数据」= 聊天记录 + 线上联络。
    */
-  async function exportScope(scopeId) {
-    if (scopeId === 'all') return exportAll();
+  async function exportScope(scopeId, opts) {
+    if (scopeId === 'all') return exportAll(opts);
     const ids = resolveScope(scopeId);
     if (!ids.length) return false;
     const pkg = await buildExport(ids);
-    download(pkg, `${scopeLabel(scopeId)}备份`);
+    await download(pkg, `${scopeLabel(scopeId)}备份`, opts);
     return true;
   }
 
   /** 全量导出并下载 */
-  async function exportAll() {
+  async function exportAll(opts) {
     const pkg = await buildExport(BLOCK_IDS);
-    download(pkg, '数据备份');
+    await download(pkg, '数据备份', opts);
     return true;
   }
 

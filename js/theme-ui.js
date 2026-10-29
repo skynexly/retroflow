@@ -1261,7 +1261,7 @@
     }
     try {
       await DataVault.exportTheme();
-      themeToast('THEME // 导出主题包', '主题包已生成并触发下载', 'info');
+      themeToast('THEME // 导出主题包', '主题包已导出保存', 'info');
     } catch (_) {
       themeToast('THEME // 导出失败', '主题包生成过程出错', 'warning');
     }

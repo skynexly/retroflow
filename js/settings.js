@@ -104,6 +104,11 @@
       if (section === 'terminal' && window.TerminalConfigUI && typeof TerminalConfigUI.init === 'function') {
         TerminalConfigUI.init();
       }
+
+      // 同页第三个模块：检查更新（仅原生壳下 OTAUI.init 会解除隐藏并绑定事件）
+      if (section === 'terminal' && window.OTAUI && typeof OTAUI.init === 'function') {
+        OTAUI.init();
+      }
     } else {
       if (detailView) {
         detailView.classList.remove('active');

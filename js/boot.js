@@ -18,6 +18,19 @@
 const Boot = (() => {
   'use strict';
 
+  // 原生壳标记（全站唯一判定点）：Capacitor 装机版在 <html> 上打 is-native 类。
+  // 放在模块顶层、脚本一加载即执行，早于任何视图渲染，避免 UPDATE 等
+  // 「仅装机版可见」的模块先显示再隐藏造成闪动。浏览器 / PWA 不打此类。
+  // 其他模块（如 ota-ui.js）只读这个类，不再各自重复 isNativePlatform 判定。
+  try {
+    if (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function'
+      && window.Capacitor.isNativePlatform()) {
+      document.documentElement.classList.add('is-native');
+    }
+  } catch (err) {
+    // 判定失败一律按非原生处理，不影响启动
+  }
+
   const callbacks = [];
   let ready = false;
   let bootPromise = null;

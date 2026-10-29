@@ -61,3 +61,14 @@ android/local.properties
 *.aab
 *.keystore
 *.jks
+
+# 签名密钥与口令（严禁入库：公开仓库泄露即等于交出签名权）
+# keystore.properties 存 storePassword/keyPassword；release.keystore 是签名本体。
+# 二者只存在于本机与离线备份，任何情况下都不提交。
+keystore.properties
+android/keystore.properties
+release.keystore
+*.keystore.backup
+# 本机签名材料的离线备份目录（若放在工作区内）
+secrets/
+.signing/

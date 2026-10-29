@@ -4,15 +4,20 @@
   "private": true,
   "description": "溯流计划 · 执行员终端 PWA（Capacitor Android 壳）",
   "scripts": {
-    "build:www": "node scripts/build-www.js",
-    "cap:sync": "node scripts/build-www.js && npx cap sync android",
+    "version:sync": "node scripts/sync-version.js",
+    "version:check": "node scripts/sync-version.js --check",
+    "build:www": "node scripts/sync-version.js && node scripts/build-www.js",
+    "cap:sync": "node scripts/sync-version.js && node scripts/build-www.js && npx cap sync android",
     "cap:open": "npx cap open android",
-    "android:debug": "cd android && ./gradlew assembleDebug",
-    "android:release": "cd android && ./gradlew assembleRelease"
+    "android:debug": "node scripts/sync-version.js && cd android && ./gradlew assembleDebug",
+    "android:release": "node scripts/sync-version.js && cd android && ./gradlew assembleRelease"
   },
   "devDependencies": {
-    "@capacitor/cli": "6.2.2",
     "@capacitor/android": "6.2.2",
+    "@capacitor/cli": "6.2.2",
     "@capacitor/core": "6.2.2"
+  },
+  "dependencies": {
+    "@capacitor/filesystem": "6.0.4"
   }
 }

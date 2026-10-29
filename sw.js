@@ -8,7 +8,7 @@
  *   3. skipWaiting 同步调用，不等 addAll 完成，新 SW 立即接管；
  *   4. 只有 resp.ok 才写入缓存，避免把 404 / 5xx 固化下来。
  */
-const CACHE_NAME = 'retroflow-shell-v1274';
+const CACHE_NAME = 'retroflow-shell-v1279';
 const SHELL_ASSETS = [
   './',
   './index.html',
@@ -23,6 +23,7 @@ const SHELL_ASSETS = [
   './js/memory-bank-app.js',
   './js/preset-assistants.js',
   './js/store.js',
+  './js/app-version.js',
   './js/boot.js',
   './js/downloader.js',
   './js/chat-shot.js',
@@ -61,6 +62,8 @@ const SHELL_ASSETS = [
   './js/api-call-log.js',
   './js/api-call-log-ui.js',
   './js/terminal-config.js',
+  './js/ota-updater.js',
+  './js/ota-ui.js',
   './js/keepalive-core.js',
   './assets/audio/silence.m4a',
   './css/api-call-log.css',
