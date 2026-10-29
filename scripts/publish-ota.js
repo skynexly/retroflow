@@ -96,8 +96,13 @@ async function gh(url, token, init = {}) {
   let body = null;
   try { body = text ? JSON.parse(text) : null; } catch (e) { body = text; }
   if (!resp.ok) {
+    // GitHub 常把真正的原因放在 errors 数组里，message 只是笼统的「Validation Failed」。
+    // 两段都带上，否则排查时只看到一句没有信息量的话。
     const msg = (body && body.message) ? body.message : `HTTP ${resp.status}`;
-    throw new Error(`${url} -> ${msg}`);
+    const detail = (body && Array.isArray(body.errors) && body.errors.length)
+      ? ` | errors=${JSON.stringify(body.errors)}`
+      : '';
+    throw new Error(`${url} -> ${msg}${detail}`);
   }
   return body;
 }
@@ -158,9 +163,14 @@ function makeZip(outZip) {
 import zipfile, os, sys
 www = sys.argv[1]; out = sys.argv[2]; fontRel = sys.argv[3]
 fontAbs = os.path.join(www, fontRel)
+# 固定时间戳：www 每次重建，文件 mtime 都会变，若按真实 mtime 写入 zip 元数据，
+# 同样的源码每次产出的字节都不同，sha256 无法复现，也没法核对「这包是不是这份代码打的」。
+# 固定成 1980-01-01（zip 格式能表示的最早时间）即可让打包结果确定。
+FIXED = (1980, 1, 1, 0, 0, 0)
 n = 0; skipped = 0
 with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
     for root, dirs, files in os.walk(www):
+        dirs.sort(); files.sort()   # 遍历顺序也要确定，否则条目次序随文件系统而变
         # 跳过字体目录（常驻 APK，不热更）
         if os.path.abspath(root) == os.path.abspath(fontAbs) or os.path.abspath(root).startswith(os.path.abspath(fontAbs) + os.sep):
             skipped += len(files); continue
@@ -168,7 +178,12 @@ with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
             if fn.startswith('.'): continue
             full = os.path.join(root, fn)
             arc = os.path.relpath(full, www)
-            z.write(full, arc); n += 1
+            zi = zipfile.ZipInfo(arc.replace(os.sep, '/'), date_time=FIXED)
+            zi.compress_type = zipfile.ZIP_DEFLATED
+            zi.external_attr = 0o644 << 16
+            with open(full, 'rb') as f:
+                z.writestr(zi, f.read(), compresslevel=9)
+            n += 1
 print('ZIP_FILES=%d ZIP_SKIPPED_FONTS=%d' % (n, skipped))
 `;
   const res = execFileSync('python3', ['-c', py, WWW, outZip, FONT_DIR_REL], { cwd: ROOT, encoding: 'utf8' });
@@ -259,40 +274,47 @@ async function main() {
 
   // 建 Release + 上传附件
   const token = readToken();
-  log('创建 GitHub Release…');
-  let release;
+
+  // 先查 tag 是否已存在：上次发布可能在上传环节失败、留下 assets=0 的空壳 Release。
+  // 主动查比解析创建失败的错误文本可靠——GitHub 把冲突详情放在 errors 数组里，
+  // message 只是笼统的「Validation Failed」，据此判断会漏。
+  let release = null;
   try {
-    release = await gh(`https://api.github.com/repos/${REPO}/releases`, token, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        tag_name: tag,
-        name: `OTA 热更包 b${V.build}`,
-        body: opts.notes.map((n) => `- ${n}`).join('\n'),
-        draft: false,
-        prerelease: false
-      })
-    });
+    release = await gh(`https://api.github.com/repos/${REPO}/releases/tags/${tag}`, token);
+    log(`tag ${tag} 已存在（id=${release.id}，现有附件 ${(release.assets || []).length} 个），复用之`);
   } catch (e) {
-    // tag 已存在：多半是上次发布在上传环节失败、留下了空壳 Release。
-    // 直接复用它继续传附件，不必 --force（--force 仅用于刻意覆盖已完成的发布）。
-    if (String(e.message).includes('already_exists')) {
-      log('tag 已存在，复用现有 Release（上次可能上传失败）');
-      release = await gh(`https://api.github.com/repos/${REPO}/releases/tags/${tag}`, token);
-      // 同步说明：复用的 Release 可能带着上次的旧文案，这里更新成本次的
-      try {
-        await gh(`https://api.github.com/repos/${REPO}/releases/${release.id}`, token, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: `OTA 热更包 b${V.build}`,
-            body: opts.notes.map((n) => `- ${n}`).join('\n')
-          })
-        });
-      } catch (e2) {
-        log(`（更新 Release 文案失败，不影响发布：${e2.message}）`);
-      }
-    } else {
+    release = null; // 404 = 尚不存在，正常路径
+  }
+
+  if (release) {
+    // 复用的 Release 可能带着上次失败的旧文案，同步成本次的
+    try {
+      release = await gh(`https://api.github.com/repos/${REPO}/releases/${release.id}`, token, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: `OTA 热更包 b${V.build}`,
+          body: opts.notes.map((n) => `- ${n}`).join('\n')
+        })
+      });
+    } catch (e) {
+      log(`（更新 Release 文案失败，不影响发布：${e.message}）`);
+    }
+  } else {
+    log('创建 GitHub Release…');
+    try {
+      release = await gh(`https://api.github.com/repos/${REPO}/releases`, token, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tag_name: tag,
+          name: `OTA 热更包 b${V.build}`,
+          body: opts.notes.map((n) => `- ${n}`).join('\n'),
+          draft: false,
+          prerelease: false
+        })
+      });
+    } catch (e) {
       fs.rmSync(tmpZip, { force: true });
       die(`创建 Release 失败：${e.message}`);
     }
