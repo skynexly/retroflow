@@ -4251,6 +4251,31 @@ ${parts.join('\n\n———\n\n')}`;
     }
   }
 
+  /**
+   * 判定上下文尾部是否已有一条「未被回应」的用户消息。
+   *
+   * 只看对话双方（user / assistant）的最后一条：跳过 system 条目
+   * （撤回通知、工具结果、副本 recap、尾部常驻块等都不是对话本身）。
+   * 尾部是 user → 用户刚发过话还没等到回应，模型直接对它回复即可，
+   * 绝不能拼「用户本轮没有发送新的文字」的延续指令（否则上下文自相矛盾）。
+   * 尾部是 assistant 或整段没有对话消息 → 才需要延续指令让助手主动开口。
+   *
+   * 导出给 DECK 随行助手舱复用，保证两端「继续」的判定口径永远一致。
+   * @param {Array<{role: string}>} history buildChatHistory 装配好的消息数组
+   * @returns {boolean}
+   */
+  function historyEndsWithUnansweredUser(history) {
+    if (!Array.isArray(history)) return false;
+    for (let i = history.length - 1; i >= 0; i -= 1) {
+      const item = history[i];
+      const role = item && item.role;
+      if (role === 'user') return true;
+      if (role === 'assistant') return false;
+      // system 条目跳过，继续往前找
+    }
+    return false;
+  }
+
   async function handleInfer() {
     if (activeAbortController) return;
     if (!textarea || textarea.disabled) return;
@@ -4260,7 +4285,9 @@ ${parts.join('\n\n———\n\n')}`;
     await restoreChatHistory();
     const history = await buildChatHistory();
     const hasUnsentDraft = Boolean(textarea.value.trim());
-    if (!hasUnsentDraft) {
+    // 延续指令只在「用户确实没说话」时拼：输入框空 且 历史尾部没有待回应的用户消息。
+    // 用户刚用发送键发过消息再按推演键 → 直接对那条消息回复，一个字都不加。
+    if (!hasUnsentDraft && !historyEndsWithUnansweredUser(history)) {
       history.push({ role: 'user', content: buildSilentContinuationInstruction() });
     }
 
@@ -5148,6 +5175,9 @@ ${parts.join('\n\n———\n\n')}`;
     // 空输入 INFER（= 让助手接着说）的延续指令。阅后即焚地拼进 history 尾部，
     // 不落库不上屏。DECK 的 INFER 必须用这同一句，否则两端"继续"的行为会分叉。
     buildSilentContinuationInstruction,
+    // 延续指令的拼接前置判定：上下文尾部是否已有未回应的用户消息。
+    // 有 → 直接对它回复，不拼指令。DECK 的 INFER 同步修复时必须复用这同一判定。
+    historyEndsWithUnansweredUser,
     // 重写用：上下文窗口裁剪 + 错误文案。两个都是纯函数，导出无副作用。
     // DECK 自己跑一份精简流式请求（generateReplacementReply 绑死在本页输入框与
     // 发送按钮状态上，拿过去会操作到助手页的 DOM），但裁剪口径必须共用。

@@ -2447,8 +2447,10 @@ window.ForkDeckAsst = (() => {
    * 两种语义，与助手页 handleInfer 完全一致：
    *   · 输入框里还有草稿 —— 把草稿作为本轮用户输入带进上下文（不另外上屏落库，
    *     因为它是"这一句我还没发，但你先按它回"的临时输入，口径同助手页）。
-   *   · 输入框是空的 —— 拼一条阅后即焚的延续指令，让助手接着刚才的话题说下去。
-   *     这就是「继续」，不落库、不上屏，库里永远看不到这条指令。
+   *   · 输入框是空的 且 历史尾部没有待回应的用户消息 —— 拼一条阅后即焚的延续指令，
+   *     让助手接着刚才的话题说下去。这就是「继续」，不落库、不上屏。
+   *     判定复用助手页导出的 historyEndsWithUnansweredUser，两端永远同口径：
+   *     用户刚发过消息再点 INFER → 直接对那条消息回复，不拼指令。
    * 推理进行中再点 = 中断本轮。
    */
   async function infer() {
@@ -2479,8 +2481,11 @@ window.ForkDeckAsst = (() => {
     if (draft) {
       // 有草稿：作为本轮输入临时带上（与助手页 hasUnsentDraft 分支同口径）
       history.push({ role: 'user', content: draft });
-    } else if (typeof SystemChatUI.buildSilentContinuationInstruction === 'function') {
-      // 空输入：延续指令，让助手接着说。阅后即焚，不落库不上屏。
+    } else if (typeof SystemChatUI.buildSilentContinuationInstruction === 'function'
+      && !(typeof SystemChatUI.historyEndsWithUnansweredUser === 'function'
+        && SystemChatUI.historyEndsWithUnansweredUser(history))) {
+      // 空输入 且 尾部没有未回应的用户消息：延续指令，让助手接着说。阅后即焚，不落库不上屏。
+      // 尾部判定函数缺失（理论上不会，防御性兜底）时退回旧行为，保证「继续」永远可用。
       history.push({ role: 'user', content: SystemChatUI.buildSilentContinuationInstruction() });
     }
 

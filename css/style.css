@@ -41747,3 +41747,699 @@ button.fork-run-mission-action-card:active,
   display: none !important;
 }
 
+/* ============================================================================
+ * 溯流计划 · 数据归档 // 记忆库 (MemoryBankApp) 样式规范
+ * 方案 A：底部悬浮「因果双模微型梭芯」（Tactical Shuttle Pill）
+ * 零 Emoji、零物理分割线、纯矢量 SVG、iOS 灵动岛保护
+ * 色彩体系严格跟随主题变量（零硬编码色值）：
+ *   - 全局界面、微标、标签、激活态统一使用重点色（--primary-color）
+ *   - 底部悬浮台底色使用反色（--secondary-color），未激活文字使用背景色（--bg-color）
+ *   - 底部选中项保留装饰色（--decor-color）高亮
+ * ============================================================================ */
+
+/* 1. 全屏模态容器 */
+.mem-app-container {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+  background-color: var(--bg-color);
+  color: var(--secondary-color);
+  z-index: 1200; /* 与全屏 App 视图层级对齐 */
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(16px);
+  transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              visibility 0.22s;
+  pointer-events: none;
+}
+
+.mem-app-container.is-open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.mem-app-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 2. 战术顶栏 + iOS 灵动岛保护 */
+.mem-header {
+  flex-shrink: 0;
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) 14px 10px;
+  background: rgba(var(--bg-color-rgb), 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 20;
+}
+
+.mem-header-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mem-title-block {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mem-code-tag {
+  font-family: var(--mono-font, monospace);
+  font-size: 10px;
+  color: var(--primary-color);
+  letter-spacing: 1.2px;
+  font-weight: 700;
+  opacity: 0.9;
+}
+
+.mem-title-text {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  color: var(--secondary-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mem-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: rgba(var(--primary-color-rgb), 0.08);
+  border: none;
+  border-radius: 8px;
+  color: var(--primary-color);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+  box-shadow: inset 0 0 0 0.5px rgba(var(--primary-color-rgb), 0.22);
+}
+
+.mem-icon-btn:active {
+  transform: scale(0.94);
+  background: rgba(var(--primary-color-rgb), 0.16);
+}
+
+/* 搜索栏展开态 */
+.mem-search-bar {
+  margin-top: 10px;
+}
+
+.mem-search-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(var(--primary-color-rgb), 0.05);
+  box-shadow: inset 0 0 0 0.5px rgba(var(--primary-color-rgb), 0.25);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+.mem-search-icon {
+  color: var(--primary-color);
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+}
+
+.mem-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--secondary-color);
+}
+
+.mem-search-input::placeholder {
+  color: rgba(var(--secondary-color-rgb), 0.4);
+}
+
+.mem-search-clear-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: rgba(var(--secondary-color-rgb), 0.6);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+/* 3. 滚动主视口 */
+.mem-viewport {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding: 10px 14px calc(env(safe-area-inset-bottom, 0px) + 88px);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* 4. 统计概览微仪表区（无厚框，纯轻量小标并列） */
+.mem-stats-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.mem-stats-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.mem-stat-pill {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  background: rgba(var(--primary-color-rgb), 0.06);
+  box-shadow: inset 0 0 0 0.5px rgba(var(--primary-color-rgb), 0.18);
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.mem-stat-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--primary-color);
+}
+
+.mem-stat-num {
+  font-family: var(--mono-font, monospace);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.mem-stat-label {
+  color: rgba(var(--secondary-color-rgb), 0.7);
+}
+
+.mem-stat-canon {
+  background: rgba(var(--primary-color-rgb), 0.1);
+  box-shadow: inset 0 0 0 0.5px rgba(var(--primary-color-rgb), 0.32);
+}
+
+.mem-stat-canon .mem-stat-num {
+  color: var(--primary-color);
+}
+
+/* 5. 筛选区：正史过滤 + 关键词云 */
+.mem-filter-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mem-subfilter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mem-status-filter-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mem-status-pill {
+  background: transparent;
+  border: none;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: rgba(var(--secondary-color-rgb), 0.65);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: inset 0 0 0 0.5px rgba(var(--secondary-color-rgb), 0.18);
+}
+
+.mem-status-pill.is-active {
+  color: var(--primary-color);
+  background: rgba(var(--primary-color-rgb), 0.1);
+  box-shadow: inset 0 0 0 0.5px rgba(var(--primary-color-rgb), 0.4);
+  font-weight: 700;
+}
+
+.mem-keyword-cloud {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.mem-kw-title {
+  font-size: 10.5px;
+  font-family: var(--mono-font, monospace);
+  color: rgba(var(--secondary-color-rgb), 0.55);
+  margin-right: 2px;
+}
+
+.mem-kw-chip {
+  background: rgba(var(--primary-color-rgb), 0.04);
+  border: none;
+  padding: 2px 7px;
+  font-size: 10.5px;
+  font-family: var(--mono-font, monospace);
+  color: rgba(var(--secondary-color-rgb), 0.75);
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 0.5px rgba(var(--secondary-color-rgb), 0.16);
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.mem-kw-chip.is-active {
+  color: var(--primary-color);
+  background: rgba(var(--primary-color-rgb), 0.12);
+  box-shadow: inset 0 0 0 0.5px rgba(var(--primary-color-rgb), 0.45);
+  font-weight: 700;
+}
+
+/* 6. 角色抽屉与角色名牌 */
+.mem-char-selector-drawer {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.mem-char-selector-drawer::-webkit-scrollbar {
+  display: none;
+}
+
+.mem-char-chip {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(var(--primary-color-rgb), 0.05);
+  box-shadow: inset 0 0 0 0.5px rgba(var(--primary-color-rgb), 0.2);
+  border: none;
+  border-radius: 4px;
+  padding: 5px 9px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mem-char-chip.is-active {
+  background: rgba(var(--primary-color-rgb), 0.14);
+  box-shadow: inset 0 0 0 0.5px rgba(var(--primary-color-rgb), 0.5);
+}
+
+.mem-char-chip-name {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--secondary-color);
+}
+
+.mem-char-chip.is-active .mem-char-chip-name {
+  color: var(--primary-color);
+  font-weight: 700;
+}
+
+.mem-char-chip-threat,
+.mem-char-chip-count {
+  font-family: var(--mono-font, monospace);
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 2px;
+  background: rgba(var(--secondary-color-rgb), 0.1);
+  color: rgba(var(--secondary-color-rgb), 0.75);
+}
+
+.mem-char-profile-card {
+  padding: 12px;
+  border-radius: 6px;
+  background: rgba(var(--primary-color-rgb), 0.06);
+  box-shadow: inset 0 0 0 0.5px rgba(var(--primary-color-rgb), 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.mem-char-pro-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mem-char-pro-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.mem-char-pro-code {
+  font-family: var(--mono-font, monospace);
+  font-size: 10px;
+  color: rgba(var(--secondary-color-rgb), 0.6);
+}
+
+.mem-char-pro-threat {
+  margin-left: auto;
+  font-family: var(--mono-font, monospace);
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 3px;
+  background: rgba(var(--primary-color-rgb), 0.15);
+  color: var(--primary-color);
+  box-shadow: inset 0 0 0 0.5px rgba(var(--primary-color-rgb), 0.35);
+}
+
+.mem-char-pro-role {
+  font-size: 11px;
+  color: rgba(var(--secondary-color-rgb), 0.8);
+}
+
+.mem-char-pro-desc {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: rgba(var(--secondary-color-rgb), 0.65);
+}
+
+.mem-char-stream-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: rgba(var(--secondary-color-rgb), 0.65);
+  padding: 4px 2px;
+}
+
+.mem-char-stream-count {
+  font-family: var(--mono-font, monospace);
+  color: var(--primary-color);
+  font-weight: 700;
+}
+
+/* 7. 记忆卡片流（零分割线，纯卡片底衬与 gap） */
+.mem-stream-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mem-card {
+  padding: 12px 13px;
+  border-radius: 6px;
+  background: rgba(var(--primary-color-rgb), 0.04);
+  box-shadow: inset 0 0 0 0.5px rgba(var(--primary-color-rgb), 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  transition: transform 0.12s ease;
+}
+
+.mem-card.is-canonical {
+  background: rgba(var(--primary-color-rgb), 0.07);
+  box-shadow: inset 0 0 0 0.5px rgba(var(--primary-color-rgb), 0.32);
+}
+
+.mem-card.is-abandoned {
+  opacity: 0.75;
+  background: rgba(var(--secondary-color-rgb), 0.04);
+  box-shadow: inset 0 0 0 0.5px rgba(var(--secondary-color-rgb), 0.15);
+}
+
+.mem-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mem-card-head-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.mem-card-fork-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--secondary-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mem-card-run-badge {
+  font-family: var(--mono-font, monospace);
+  font-size: 9.5px;
+  padding: 1px 4px;
+  border-radius: 2px;
+  background: rgba(var(--secondary-color-rgb), 0.08);
+  color: rgba(var(--secondary-color-rgb), 0.75);
+}
+
+.mem-card-head-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.mem-canon-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--primary-color);
+  background: rgba(var(--primary-color-rgb), 0.12);
+  box-shadow: inset 0 0 0 0.5px rgba(var(--primary-color-rgb), 0.4);
+  padding: 2px 5px;
+  border-radius: 3px;
+}
+
+.mem-candidate-badge {
+  font-size: 9.5px;
+  color: rgba(var(--secondary-color-rgb), 0.55);
+  background: rgba(var(--secondary-color-rgb), 0.06);
+  padding: 2px 5px;
+  border-radius: 3px;
+}
+
+.mem-imp-tag {
+  font-family: var(--mono-font, monospace);
+  font-size: 9.5px;
+  color: rgba(var(--secondary-color-rgb), 0.55);
+}
+
+.mem-card-summary {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--secondary-color);
+  word-break: break-word;
+}
+
+.mem-card-keywords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.mem-card-kw-pill {
+  font-family: var(--mono-font, monospace);
+  font-size: 10px;
+  color: var(--primary-color);
+  background: rgba(var(--primary-color-rgb), 0.08);
+  padding: 2px 6px;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 0.5px rgba(var(--primary-color-rgb), 0.2);
+}
+
+.mem-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10.5px;
+}
+
+.mem-card-witnesses {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.mem-witness-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: rgba(var(--secondary-color-rgb), 0.6);
+  font-size: 10px;
+}
+
+.mem-witness-chip {
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-size: 10px;
+  background: rgba(var(--primary-color-rgb), 0.08);
+  color: var(--secondary-color);
+  box-shadow: inset 0 0 0 0.5px rgba(var(--primary-color-rgb), 0.25);
+}
+
+.mem-witness-chip.threat-critical {
+  color: var(--primary-color);
+  background: rgba(var(--primary-color-rgb), 0.15);
+  box-shadow: inset 0 0 0 0.5px rgba(var(--primary-color-rgb), 0.45);
+  font-weight: 700;
+}
+
+.mem-card-time {
+  font-family: var(--mono-font, monospace);
+  font-size: 10px;
+  color: rgba(var(--secondary-color-rgb), 0.5);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.mem-empty-box {
+  padding: 40px 16px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mem-empty-code {
+  font-family: var(--mono-font, monospace);
+  font-size: 11px;
+  color: var(--primary-color);
+  opacity: 0.8;
+  letter-spacing: 1px;
+  font-weight: 700;
+}
+
+.mem-empty-text {
+  font-size: 12px;
+  color: rgba(var(--secondary-color-rgb), 0.55);
+}
+
+/* 8. 方案 A：底部悬浮「因果双模微型梭芯」（Tactical Shuttle Pill）
+ * - 悬浮台底色：反色（--secondary-color）
+ * - 未激活项文字：背景色（--bg-color），绝无黑吃黑
+ * - 激活项（滑块）：选中项保留装饰色（--decor-color）高亮
+ */
+.mem-shuttle-wrapper {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 30;
+  padding: 0 16px;
+}
+
+.mem-shuttle-pill {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: rgba(var(--secondary-color-rgb), 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28),
+              inset 0 0 0 0.5px rgba(var(--bg-color-rgb), 0.2);
+  border-radius: 28px;
+  padding: 3px;
+  pointer-events: auto;
+  width: 250px;
+  user-select: none;
+}
+
+.mem-shuttle-slider {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc(50% - 3px);
+  background: rgba(var(--decor-color-rgb), 0.22);
+  box-shadow: inset 0 0 0 0.5px rgba(var(--decor-color-rgb), 0.55);
+  border-radius: 24px;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.mem-shuttle-item {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 24px;
+  cursor: pointer;
+  /* 悬浮台是反色，未激活项文字使用背景色（--bg-color），清晰可读 */
+  color: rgba(var(--bg-color-rgb), 0.65);
+  transition: color 0.18s ease;
+  z-index: 2;
+}
+
+/* 激活项：保留选中的装饰色高亮 */
+.mem-shuttle-item.is-active {
+  color: var(--decor-color);
+}
+
+.mem-shuttle-icon {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1px;
+}
+
+.mem-shuttle-label {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.3px;
+}
+
+.mem-shuttle-sub {
+  font-family: var(--mono-font, monospace);
+  font-size: 7.5px;
+  letter-spacing: 0.8px;
+  opacity: 0.85;
+}
+
+

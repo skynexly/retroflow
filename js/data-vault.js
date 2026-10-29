@@ -54,8 +54,13 @@ const DataVault = (() => {
       desc: '执行员身份、马甲、角色/NPC/助手、关系与心智档案',
       docKeys: [
         K.envoyIdentity, K.envoyMasks, K.envoyPsych,
-        K.rosterCharacters, K.rosterNpcs, K.rosterAssistants, K.rosterRelations
+        K.rosterCharacters, K.rosterNpcs, K.rosterAssistants, K.rosterRelations,
+        // 旧版占位角色的一次性清理标记（resonance-ui purgeLegacySeedData）。
+        // 跟角色表同进同出：导到新设备后不会再对导入的角色表跑一遍清理。
+        K.metaLegacyPurged
       ],
+      // 清理档案时保留该标记：删了的话重载会把它当成首次运行再扫一次（虽无害，但没必要）
+      keepOnClearKeys: [K.metaLegacyPurged],
       assetPrefixes: ['envoy/', 'roster/'],
       localKeys: [],
       records: false
@@ -78,6 +83,11 @@ const DataVault = (() => {
       en: 'CHAT // CONVERSATION LOG',
       desc: '系统助手与私聊角色的全部对话流水及各自会话设置',
       docKeys: [],
+      // 助手多窗口的元信息：sysChat/index（窗口列表 + 当前活跃窗口）
+      // 与 sysChat/doc.<convId>（每个窗口的标题、时间、消息数）。
+      // 流水本体在 records 的 system-chat:<convId> 分区，必须与元信息同进同出：
+      // 只导流水不导索引，导入后窗口列表里只剩主对话，其余窗口的消息无处挂载。
+      docPrefixes: ['sysChat/'],
       assetPrefixes: [],
       // 助手页与私聊页各存一份对话设置：
       // 私聊那份是按联系人隔离的表（工具开关、循环上限、结果保留轮数）。

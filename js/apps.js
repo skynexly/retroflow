@@ -70,6 +70,10 @@
       if (window.GalleryApp && typeof GalleryApp.open === 'function') {
         GalleryApp.open();
       }
+    } else if (appId === 'memory') {
+      if (window.MemoryBankApp && typeof MemoryBankApp.open === 'function') {
+        MemoryBankApp.open();
+      }
     } else {
       if (window.RetroToast) {
         RetroToast.show({

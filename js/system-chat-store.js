@@ -144,6 +144,88 @@ const SystemChatStore = (() => {
     return index.convIds.length;
   }
 
+  /* ---------------- 孤儿流水自愈 ---------------- */
+
+  /**
+   * 把「有流水、但不在窗口列表里」的对话补登记回索引。
+   *
+   * 来源：早期数据包只导出 records 流水，没带 sysChat/ 下的窗口元信息。
+   * 这种包导入后，非主对话窗口的消息完好地躺在 records 里，但索引里没有它们，
+   * 助手页的窗口列表就看不见。这里按 forkId 反推 convId，给每个孤儿补一份元信息：
+   *   · 标题统一为「恢复的对话」，执行员可自行改名；
+   *   · createdAt / updatedAt 取该窗口最早 / 最晚一条流水的时间，列表排序与原来一致；
+   *   · msgCount 直接数流水条数。
+   * 已在索引里的窗口一律不碰，所以重复调用是幂等的。
+   *
+   * @returns {Promise<number>} 本次恢复的窗口数
+   */
+  async function recoverOrphanConvs() {
+    if (!window.Storage || typeof Storage.getRecordsByForkPrefix !== 'function') return 0;
+
+    let records = [];
+    try {
+      records = (await Storage.getRecordsByForkPrefix(FORK_PREFIX)) || [];
+    } catch (err) {
+      console.warn('[SystemChatStore] 孤儿流水扫描失败：', err);
+      return 0;
+    }
+    if (!records.length) return 0;
+
+    // 按 convId 聚合：条数 + 首末时间
+    const groups = new Map();
+    for (const rec of records) {
+      const forkId = rec && typeof rec.forkId === 'string' ? rec.forkId : '';
+      if (!forkId.startsWith(FORK_PREFIX)) continue;
+      const convId = trimStr(forkId.slice(FORK_PREFIX.length));
+      if (!convId) continue;
+      const ts = Number(rec.createdAt) || 0;
+      const g = groups.get(convId) || { count: 0, first: 0, last: 0 };
+      g.count += 1;
+      if (ts && (!g.first || ts < g.first)) g.first = ts;
+      if (ts > g.last) g.last = ts;
+      groups.set(convId, g);
+    }
+    if (!groups.size) return 0;
+
+    const index = await getIndex();
+    // 索引完全为空 = 首次初始化，交给 ensureInit 原有分支建 main（它会继承旧备注当标题）。
+    // 这里若先把 main 登记了，原分支就走不到，备注会丢。ensureInit 建完 main 后会再调一次本函数收其余孤儿。
+    if (!index.convIds.length) return 0;
+    const known = new Set(index.convIds);
+    const recovered = [];
+
+    for (const [convId, g] of groups) {
+      if (known.has(convId)) continue;
+      // 本体还在只是索引丢了：直接挂回索引，不覆盖原标题
+      const existing = await getConv(convId);
+      if (!existing) {
+        const now = Date.now();
+        const conv = normalizeConv({
+          id: convId,
+          title: convId === LEGACY_CONV_ID ? '主对话' : '恢复的对话',
+          createdAt: g.first || now,
+          updatedAt: g.last || g.first || now,
+          msgCount: g.count
+        });
+        const ok = await Storage.setDoc(docKey(conv.id), conv);
+        if (!ok) continue;
+      }
+      recovered.push(convId);
+    }
+
+    if (!recovered.length) return 0;
+
+    const written = await putIndex({
+      ...index,
+      convIds: [...index.convIds, ...recovered],
+      // 原本就没有任何窗口时，活跃指针交给 normalizeIndex 落到第一条
+      activeConvId: index.activeConvId
+    });
+    if (!written) return 0;
+    console.info(`[SystemChatStore] 已从流水恢复 ${recovered.length} 个未登记的对话窗口`);
+    return recovered.length;
+  }
+
   /* ---------------- 初始化 ---------------- */
 
   /**
@@ -153,11 +235,18 @@ const SystemChatStore = (() => {
    * 老流水的 forkId 就是 `system-chat:main`，不搬数据，只补一份元信息。
    * 标题优先沿用执行员以前在设置里填过的「备注」，没填则用默认名。
    *
+   * 进入正常流程前先跑一次孤儿流水自愈（见 recoverOrphanConvs），
+   * 让旧数据包导入后丢失的窗口重新出现在列表里。
+   *
    * @param {string} [legacyRemark] 旧 settings.remark，用作 main 的初始标题
    * @returns {Promise<Object|null>} 当前活跃对话
    */
   async function ensureInit(legacyRemark) {
     if (!window.Storage) return null;
+    // 自愈失败不能挡住助手页打开，吞掉异常继续走原流程
+    try { await recoverOrphanConvs(); } catch (err) {
+      console.warn('[SystemChatStore] 孤儿对话自愈失败：', err);
+    }
     const index = await getIndex();
 
     if (index.convIds.length) {
@@ -196,6 +285,9 @@ const SystemChatStore = (() => {
       await Storage.removeDoc(docKey(conv.id));
       return null;
     }
+    // 首次初始化刚建好 main，索引已非空：此时再收一次其余孤儿窗口。
+    // 典型场景是旧格式备包导入到全新设备，一次打开就能看到全部窗口，不必等下次启动。
+    try { await recoverOrphanConvs(); } catch (_) { /* 自愈失败不影响 main 可用 */ }
     return conv;
   }
 
@@ -325,6 +417,7 @@ const SystemChatStore = (() => {
     listConvs,
     countConvs,
     ensureInit,
+    recoverOrphanConvs,
     createConv,
     updateConv,
     renameConv,
