@@ -32,21 +32,19 @@
   "channel": "stable",
   "latest": {
     "version": "1.2.0",
-    "build": 1278,
-    "minBinary": 3,
-    "releasedAt": "2026-10-29T14:00:00Z",
+    "build": 1282,
+    "minBinary": 5,
+    "releasedAt": "2026-10-29T23:59:50Z",
     "notes": [
-      "记忆库（MEMORY BANK）上线：桌面 02 卡片，事件记忆与角色回响双维度沉淀。",
-      "修复助手与副本助手舱的延续指令误拼：刚发完消息再点推演不再被拼上「本轮没有发送新的文字」。",
-      "修复多窗口导出遗漏：助手对话的窗口列表现在会随聊天记录一并打包，旧备份导入后也能自动找回窗口。",
-      "APK 装机版接入：原生壳跳过 Service Worker 注册，离线能力由壳提供。",
-      "修复装机版导出没有文件、以及导出大备份时整个应用闪退的问题。导出文件保存在手机的 Download 目录。"
+      "热更引擎上线（阶段 2）：原生下载/校验/解压/回滚守卫",
+      "检查更新 UI 改版：拉取新版本改为纯文字行",
+      "版本行新增「热更」标记，区分内置与覆盖层资源"
     ],
     "packages": {
       "full": {
-        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1278/retroflow-ota-full-b1278.zip",
-        "sha256": "",
-        "size": 0
+        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1282/retroflow-ota-full-b1282.zip",
+        "sha256": "ab44e30ce8a2ca213cffec63b33d8acb7409c7723184454322c2074e5db12007",
+        "size": 1827917
       },
       "patch": {
         "sinceBuild": 0,
@@ -56,5 +54,5 @@
       }
     }
   },
-  "_status": "阶段 1 占位：packages 的 sha256/size/url 待 scripts/publish-ota.js 首次发布时填入。客户端在此状态下检查更新会得到「已是最新」，不会误触发下载。"
+  "_status": "已发布 build 1282（全量包，字体常驻不打包）。patch 差分留待后续。"
 }
