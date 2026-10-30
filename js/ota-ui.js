@@ -14,13 +14,15 @@
  *
  * 三态（+下载中）：
  *   up-to-date        已是最新版本
- *   update-available  发现新版本 + 更新说明 + 「立即更新」
+ *   update-available  发现新版本 + 更新说明 + 按钮变身「立即更新」
  *   unavailable       更新服务暂时不可用，请稍后再试
  *   binary-too-old / schema-too-new  需要重装安装包的两种提示
- *   checking          检查中（按钮转圈禁用）
+ *   checking          检查中（按钮变「拉取中…」禁用）
  *   downloading       进度条 + 百分比（阶段 2 引擎接管后出现）
  *
- * 「立即更新」在应用引擎（RetroflowOTA）就绪前一律禁用并如实标注，
+ * 单按钮两态：#otaCheckBtn 默认是「拉取新版本」（只检查）；查到新版后就地
+ * 变身「立即更新」（走原生下载/校验/安装），mode 变量决定点击分派。
+ * 两态外观完全一致（零底色零边框零图标），引擎未就绪时如实禁用并标注，
  * 绝不假装更新成功。规范：零 Emoji、零分割线、纯 SVG。
  * ============================================================================
  */
@@ -30,6 +32,8 @@
   let els = {};
   let lastCheck = null;
   let busy = false;
+  // 单按钮模式机：'check'=点击跑检查；'apply'=点击跑安装（lastCheck 为数据源）
+  let mode = 'check';
 
   function cacheEls() {
     els = {
@@ -44,9 +48,6 @@
       statusText: document.getElementById('otaStatusText'),
       notesDrawer: document.getElementById('otaNotesDrawer'),
       notesList: document.getElementById('otaNotesList'),
-      applyRow: document.getElementById('otaApplyRow'),
-      applyBtn: document.getElementById('otaApplyBtn'),
-      applyLabel: document.getElementById('otaApplyLabel'),
       progressRow: document.getElementById('otaProgressRow'),
       progressBar: document.getElementById('otaProgressBar'),
       progressText: document.getElementById('otaProgressText'),
@@ -118,7 +119,12 @@
 
   function hideNotes() {
     if (els.notesDrawer) els.notesDrawer.hidden = true;
-    if (els.applyRow) els.applyRow.hidden = true;
+  }
+
+  /** 单按钮回到初始态：文案「拉取新版本」、模式 check、可点 */
+  function resetCheckButton() {
+    mode = 'check';
+    setCheckButton('拉取新版本', false);
   }
 
   function renderNotes(notes) {
@@ -136,7 +142,7 @@
     }
   }
 
-  /** 三态渲染入口 */
+  /** 三态渲染入口。本函数是按钮文案/禁用/模式的唯一来源。 */
   function renderResult(res) {
     lastCheck = res;
     hideNotes();
@@ -145,36 +151,38 @@
     switch (res.status) {
       case 'up-to-date': {
         setStatus('M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z', res.message, 'ok');
+        resetCheckButton();
         break;
       }
       case 'update-available': {
         setStatus('M12 2 4 4v13a6 6 0 0 0 5 5.9V22h2v-3.1a6 6 0 0 0 5-5.9l-1.5 0A5.5 5.5 0 0 1 12 17.5 5.5 5.5 0 0 1 6.5 12V5.4L12 4l6 1.4V8h2V4z', res.message, 'info');
         renderNotes(res.remote && res.remote.notes);
-        // 阶段 1：引擎未就绪时如实禁用，不假装
-        if (els.applyRow) {
-          const ready = window.RetroflowUpdate && RetroflowUpdate.isEngineReady();
-          els.applyRow.hidden = false;
-          if (els.applyBtn) {
-            els.applyBtn.disabled = !ready;
-            if (els.applyLabel) {
-              els.applyLabel.textContent = ready ? '立即更新' : '更新引擎未就绪（待装机版升级）';
-            }
-          }
+        // 按钮就地变身：引擎就绪 →「立即更新」可点；未就绪（旧壳）→ 如实禁用，
+        // 长句原因交给下方状态行说，按钮里只留短语，免得窄槽挤爆。
+        const ready = window.RetroflowUpdate && RetroflowUpdate.isEngineReady();
+        if (ready) {
+          mode = 'apply';
+          setCheckButton('立即更新', false);
+        } else {
+          mode = 'check';
+          setCheckButton('需升级安装包', true);
         }
         break;
       }
       case 'binary-too-old':
       case 'schema-too-new': {
         setStatus('M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z', res.message, 'warn');
+        resetCheckButton();
         break;
       }
       default: { // unavailable 及一切未预期状态
         setStatus('M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z', res.message || '更新服务暂时不可用，请稍后再试', 'warn');
+        resetCheckButton();
       }
     }
   }
 
-  /** 检查动作：按钮防重入，检查中转圈 */
+  /** 检查动作：按钮防重入。文案交给 renderResult 统一收口，这里只管「拉取中…」过场 */
   async function onCheck() {
     if (busy) return;
     if (!window.RetroflowUpdate) {
@@ -191,7 +199,7 @@
       renderResult({ status: 'unavailable', message: '更新服务暂时不可用，请稍后再试' });
     } finally {
       busy = false;
-      setCheckButton('拉取新版本', false);
+      // 不在这里恢复文案：renderResult 已按结果设好「拉取新版本」或「立即更新」
     }
   }
 
@@ -207,8 +215,7 @@
     if (applying) return;
     if (!window.RetroflowOTA || typeof RetroflowOTA.applyUpdate !== 'function') return;
     applying = true;
-    if (els.applyBtn) els.applyBtn.disabled = true;
-    if (els.checkBtn) els.checkBtn.disabled = true;
+    setCheckButton('更新中…', true);
     try {
       await RetroflowOTA.applyUpdate(lastCheck, {
         onProgress(p) {
@@ -234,9 +241,9 @@
     } catch (err) {
       if (els.progressRow) els.progressRow.hidden = true;
       setStatus('M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z', (err && err.message) || '更新失败，请稍后重试', 'warn');
-      // 失败恢复可点，让用户重试
-      if (els.applyBtn) els.applyBtn.disabled = false;
-      if (els.checkBtn) els.checkBtn.disabled = false;
+      // 失败恢复：按钮退回「立即更新」可点，让用户重试（lastCheck 仍在，不必重新检查）
+      mode = 'apply';
+      setCheckButton('立即更新', false);
       applying = false;
     }
     // 成功路径不恢复按钮：马上要 reload，保持禁用避免重复点击
@@ -265,8 +272,13 @@
     }
     els.module.hidden = false;
     fillVersion();
-    if (els.checkBtn) els.checkBtn.addEventListener('click', onCheck);
-    if (els.applyBtn) els.applyBtn.addEventListener('click', onApply);
+    // 单按钮：点击按 mode 分派——check 跑检查，apply 跑安装
+    if (els.checkBtn) {
+      els.checkBtn.addEventListener('click', () => {
+        if (mode === 'apply') onApply();
+        else onCheck();
+      });
+    }
     bindHelpDrawer();
     hideStatus();
     hideNotes();

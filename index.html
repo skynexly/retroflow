@@ -3234,7 +3234,9 @@
                   </div>
                 </div>
 
-                <!-- 检查更新行：与「当前版本」同结构，右侧是纯文字（非按钮外观），点字即拉取 -->
+                <!-- 检查更新行：与「当前版本」同结构，右侧是纯文字（非按钮外观）。
+                     单按钮两态：默认「拉取新版本」只检查；查到新版后就地变身「立即更新」，
+                     点击走原生下载/校验/安装。两态外观完全一致（零底色零边框零图标）。 -->
                 <div class="chat-bento-row">
                   <div class="chat-bento-label">
                     <span class="chat-bento-zh">检查更新</span>
@@ -3268,20 +3270,10 @@
                   <ul class="ota-notes-list" id="otaNotesList"></ul>
                 </div>
 
-                <!-- 立即更新行（有更新且引擎就绪时可点） -->
-                <div class="ota-action-row" id="otaApplyRow" hidden>
-                  <button type="button" class="data-vault-op-btn ota-apply-btn" id="otaApplyBtn" disabled>
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M5 20h14v-2H5v2zm7-18L5.33 9h3.34v4h4.66V9h3.34L12 2z"/>
-                    </svg>
-                    <span id="otaApplyLabel">立即更新</span>
-                  </button>
-                </div>
-
                 <!-- 问号说明抽屉（默认收起，点问号展开） -->
                 <div class="psych-radar-manual-drawer terminal-config-drawer" id="otaManualDrawer" hidden>
                   <div class="terminal-config-hint">
-                    检查装机版是否有新版本。有更新时点「立即更新」，下载完成后终端会自动重启并切换到新版本；若更新失败会自动退回当前版本，数据不受影响。更新仅替换界面与逻辑资源，不会清除你的存档。
+                    检查装机版是否有新版本。点「拉取新版本」检查，发现新版后按钮会变成「立即更新」，再点即开始下载，完成后终端会自动重启并切换到新版本；若更新失败会自动退回当前版本，数据不受影响。更新仅替换界面与逻辑资源，不会清除你的存档。
                   </div>
                 </div>
               </div>
