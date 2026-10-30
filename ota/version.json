@@ -32,19 +32,19 @@
   "channel": "stable",
   "latest": {
     "version": "1.2.0",
-    "build": 1282,
+    "build": 1283,
     "minBinary": 5,
-    "releasedAt": "2026-10-29T23:59:50Z",
+    "releasedAt": "2026-10-30T01:02:26Z",
     "notes": [
-      "热更引擎上线（阶段 2）：原生下载/校验/解压/回滚守卫",
-      "检查更新 UI 改版：拉取新版本改为纯文字行",
-      "版本行新增「热更」标记，区分内置与覆盖层资源"
+      "检查更新改为单按钮两态：拉取新版本发现新版后就地变身「立即更新」",
+      "去掉深红填充块与图标，两态外观完全一致（纯文字）",
+      "修复：检查完成后按钮文案被强制写回、盖掉「立即更新」的问题"
     ],
     "packages": {
       "full": {
-        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1282/retroflow-ota-full-b1282.zip",
-        "sha256": "ab44e30ce8a2ca213cffec63b33d8acb7409c7723184454322c2074e5db12007",
-        "size": 1827917
+        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1283/retroflow-ota-full-b1283.zip",
+        "sha256": "5b1d68cc625b7fc4efd4c6a7a80896f718947211465dec9ab1d2a86eccedde48",
+        "size": 1828296
       },
       "patch": {
         "sinceBuild": 0,
@@ -54,5 +54,5 @@
       }
     }
   },
-  "_status": "已发布 build 1282（全量包，字体常驻不打包）。patch 差分留待后续。"
+  "_status": "已发布 build 1283（全量包，字体常驻不打包）。patch 差分留待后续。"
 }
