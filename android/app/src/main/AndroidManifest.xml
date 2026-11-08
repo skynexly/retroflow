@@ -25,6 +25,18 @@
 
         </activity>
 
+        <!-- 后台驻留前台服务（KeepaliveService）。
+             specialUse：用户主动开启的常驻驻留，无时长上限；下方 property 是系统要求的用途说明。
+             exported=false：只由本 app 的插件启动。 -->
+        <service
+            android:name=".KeepaliveService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="用户主动开启的后台驻留：保持 AI 文本生成与后续主动消息在切到后台或锁屏后继续运行" />
+        </service>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -39,6 +51,14 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- 后台驻留（KeepaliveService）：前台服务本体 + specialUse 类型 + 常驻通知 +
+         「忽略电池优化」系统对话框 + 服务期间持有 CPU 唤醒所需 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <!-- 导出文件写公共目录（Download/Documents）：
          Android 11+ 经 FUSE/MediaStore 免权限直写；

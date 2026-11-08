@@ -215,6 +215,49 @@ const Downloader = (() => {
     return clean;
   }
 
+  /* ---------------- 系统相册（原生 RetroflowMedia 插件） ----------------
+   * 装机版图片写进 Pictures/溯流计划/，相册里显示为独立的「溯流计划」相册。
+   * MediaStore 写自己的媒体免权限；分块过桥，块大小与 Download 直写一致。
+   * 只有图片走这里，备份 / 日志等文件仍由 save() 写 Download。 */
+
+  let mediaInfo = null;
+
+  /** 可用则返回插件，否则 null（浏览器 / 旧壳无插件 / Android 9- 不支持） */
+  async function nativeMedia() {
+    const p = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.RetroflowMedia;
+    if (!p || typeof p.beginImage !== 'function') return null;
+    if (!mediaInfo) {
+      try { mediaInfo = await p.getInfo(); } catch (_) { mediaInfo = { supported: false }; }
+    }
+    return mediaInfo && mediaInfo.supported ? p : null;
+  }
+
+  function mimeFromExt(ext) {
+    const e = String(ext || '').toLowerCase();
+    if (e === 'jpg' || e === 'jpeg') return 'image/jpeg';
+    if (e === 'webp') return 'image/webp';
+    if (e === 'gif') return 'image/gif';
+    return 'image/png';
+  }
+
+  async function writeToAlbum(media, name, blob, ext) {
+    const mime = (blob.type && blob.type.indexOf('image/') === 0) ? blob.type : mimeFromExt(ext);
+    const { id } = await media.beginImage({ name, mime });
+    try {
+      for (let offset = 0; offset < blob.size; offset += CHUNK_BYTES) {
+        const end = Math.min(offset + CHUNK_BYTES, blob.size);
+        await media.appendImage({ id, data: await blobToBase64(blob.slice(offset, end)) });
+      }
+      await media.finishImage({ id });
+    } catch (err) {
+      // 半截记录必须删掉，否则相册里会留一张打不开的图
+      try { await media.abortImage({ id }); } catch (_) { /* 尽力而为 */ }
+      throw err;
+    }
+    const album = (mediaInfo && mediaInfo.album) || BRAND;
+    return { name, via: 'native', dir: `相册 · ${album}`, album };
+  }
+
   /* ---------------- 图片专用：多级降级保存 ---------------- */
 
   /** 任意图片来源（dataURL / blob: / http(s) / Blob）统一收敛成 Blob */
@@ -230,8 +273,8 @@ const Downloader = (() => {
   /**
    * 保存图片。
    *
-   * 原生壳（is-native + Filesystem 插件）：收敛成 Blob 后直写文件系统，
-   * 目录策略与 save() 相同（Download 首选、Documents 兜底），落盘才 resolve。
+   * 原生壳（is-native）：优先经 RetroflowMedia 写入系统相册「溯流计划」，
+   * 返回 {album}；插件缺失或写入失败时退回 Filesystem 直写 Download / Documents。
    *
    * 浏览器 / standalone PWA 保持三级降级：
    *   1. objectURL + <a download> —— 下载按钮直接保存，不主动唤起分享面板；
@@ -244,7 +287,7 @@ const Downloader = (() => {
    * @param {string|Blob} data 图片来源
    * @param {string} label 类型标签，如 '头像'
    * @param {string} [ext] 扩展名，省略时按 mime 推断
-   * @returns {Promise<{name:string, via:'native'|'objecturl'|'dataurl', dir?:string}>}
+   * @returns {Promise<{name:string, via:'native'|'objecturl'|'dataurl', dir?:string, album?:string}>}
    */
   async function saveImage(data, label, ext) {
     if (!data) throw new Error('没有可保存的影像');
@@ -255,8 +298,16 @@ const Downloader = (() => {
     const finalExt = ext || extFromMime(blob.type) || 'png';
     const name = buildName(label, finalExt);
 
-    // 原生壳：Filesystem 分块直写，落盘才返回
+    // 原生壳：优先写进系统相册「溯流计划」；旧壳 / Android 9- / 写入失败退回 Download 直写
     if (isNativeSave()) {
+      const media = await nativeMedia();
+      if (media) {
+        try {
+          return await writeToAlbum(media, name, blob, finalExt);
+        } catch (err) {
+          console.warn('[Downloader] 写入相册失败，改存 Download：', err);
+        }
+      }
       return await writeViaFilesystem(name, blob);
     }
 

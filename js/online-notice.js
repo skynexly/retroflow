@@ -206,12 +206,236 @@ window.RetroflowOnlineNotice = (() => {
     const contactId = trimStr(p.contactId) || (kind === 'system' ? 'system-chat:main' : '');
     if (kind !== 'system' && !contactId) return false;
 
+    // 页面不可见（app 在后台 / 锁屏）：横幅没人看得见，改走系统通知。
+    // 「正开着这个会话」在此时不算数——人停在私聊窗口切走，回复到了照样要提醒
+    if (pageHidden()) {
+      sysNotify(Object.assign({}, p, { kind, accountId, contactId }));
+      return true;
+    }
+
     // 人就在这个会话里看着，没必要再弹一次
     if (!p.force && isViewingSession(accountId, contactId, kind)) return false;
 
     queue.push(Object.assign({}, p, { kind, accountId, contactId }));
     scheduleDrain();
     return true;
+  }
+
+  /* ================= 系统通知（仅装机版） =================
+   * 页面在后台时，由原生 RetroflowKeepalive 插件发系统通知（见 MessageNotifier.java）。
+   * 一个会话一条：tag 即会话键，同会话连发替换内容、累加条数；进入会话或点通知后清零。
+   * 两颗开关存 retroflow_notice_v1：enabled 总闸 / content 是否显示消息正文
+   * （关掉时正文换占位，名字与头像保留）。浏览器 / 旧壳没有插件，整段静默跳过。 */
+
+  const SYS_STORAGE_KEY = 'retroflow_notice_v1';
+  /** 头像缩到这个边长再过桥：几 KB，远离 JS↔原生桥的 OOM 红线 */
+  const SYS_AVATAR_PX = 128;
+  /** 会话键 → 未读条数（只记本次进程内发出的系统通知） */
+  const sysCounts = new Map();
+  /** 头像键 → 缩好的 data URL，避免同一个人每条消息都重新缩一次 */
+  const sysAvatarCache = new Map();
+  let sysCfg = null;
+
+  function sysLoadCfg() {
+    if (sysCfg) return sysCfg;
+    let raw = null;
+    try { raw = JSON.parse(localStorage.getItem(SYS_STORAGE_KEY) || 'null'); } catch (_) {}
+    const o = raw && typeof raw === 'object' ? raw : {};
+    // 两颗都默认开：消息提醒是装机版的基本预期，显示内容是用户明确要的默认
+    sysCfg = { enabled: o.enabled !== false, content: o.content !== false };
+    return sysCfg;
+  }
+  function sysSaveCfg() {
+    try { localStorage.setItem(SYS_STORAGE_KEY, JSON.stringify(sysCfg)); } catch (_) {}
+  }
+
+  function sysPlugin() {
+    if (!document.documentElement.classList.contains('is-native')) return null;
+    const p = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.RetroflowKeepalive;
+    // 旧壳（v6 及以前）的插件没有消息通知方法：按缺失处理
+    return p && typeof p.notifyMessage === 'function' ? p : null;
+  }
+
+  function pageHidden() {
+    return document.visibilityState === 'hidden';
+  }
+
+  function sysTag(accountId, contactId) {
+    return `${accountId}|${contactId}`;
+  }
+
+  /** 把头像缩成 128px 的 JPEG data URL；取不到就返回空串，通知照发（只是没大图标） */
+  function sysAvatar(avatarKey) {
+    if (!avatarKey || !window.Storage || typeof Storage.getAssetSrc !== 'function') {
+      return Promise.resolve('');
+    }
+    if (sysAvatarCache.has(avatarKey)) return Promise.resolve(sysAvatarCache.get(avatarKey));
+    return Storage.getAssetSrc(avatarKey).then((src) => new Promise((resolve) => {
+      if (!src) { resolve(''); return; }
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const side = Math.min(img.naturalWidth, img.naturalHeight);
+          if (!side) { resolve(''); return; }
+          const canvas = document.createElement('canvas');
+          canvas.width = SYS_AVATAR_PX;
+          canvas.height = SYS_AVATAR_PX;
+          const ctx = canvas.getContext('2d');
+          // 居中裁成正方形再缩：立绘多是竖图，直接缩会被系统圆形遮罩切掉脸
+          const sx = (img.naturalWidth - side) / 2;
+          const sy = (img.naturalHeight - side) / 2;
+          ctx.drawImage(img, sx, sy, side, side, 0, 0, SYS_AVATAR_PX, SYS_AVATAR_PX);
+          const url = canvas.toDataURL('image/jpeg', 0.85);
+          sysAvatarCache.set(avatarKey, url);
+          resolve(url);
+        } catch (_) {
+          resolve('');
+        }
+      };
+      img.onerror = () => resolve('');
+      img.src = src;
+    })).catch(() => '');
+  }
+
+  function sysNotify(p) {
+    const plugin = sysPlugin();
+    if (!plugin || !sysLoadCfg().enabled) return;
+
+    const kind = p.kind;
+    const contact = kind === 'system' ? null : resolveContact(p.contactId);
+    const identity = kind === 'system' ? resolveSystemIdentity() : null;
+    const title = kind === 'system'
+      ? identity.name
+      : (trimStr(contact && contact.displayName) || '未知联系人');
+    const text = sysLoadCfg().content
+      ? (previewOf(p) || '发来一条消息')
+      : '发来一条消息';
+    const tag = sysTag(p.accountId, p.contactId);
+    const count = (sysCounts.get(tag) || 0) + 1;
+    sysCounts.set(tag, count);
+    const avatarKey = kind === 'system'
+      ? trimStr(identity && identity.avatarKey)
+      : trimStr(contact && contact.avatarKey);
+
+    sysAvatar(avatarKey).then((avatar) => {
+      return plugin.notifyMessage({
+        tag,
+        title,
+        text,
+        count,
+        avatar,
+        when: Number(p.createdAt) || Date.now(),
+        kind,
+        accountId: p.accountId,
+        contactId: p.contactId,
+        rosterId: trimStr(contact && contact.rosterId),
+        rosterType: trimStr(contact && contact.rosterType) || 'char'
+      });
+    }).catch(() => {});
+  }
+
+  function sysCancel(accountId, contactId) {
+    const tag = sysTag(accountId, contactId);
+    sysCounts.delete(tag);
+    const plugin = sysPlugin();
+    if (plugin) Promise.resolve(plugin.cancelMessage({ tag })).catch(() => {});
+  }
+
+  /** 点系统通知落回会话：与点横幅走同一条跳转逻辑 */
+  function jumpTo(kind, accountId, contactId, rosterId, rosterType) {
+    if (kind === 'system') {
+      dismissFor(accountId, contactId);
+      if (window.SystemChatUI && typeof SystemChatUI.open === 'function') {
+        SystemChatUI.open();
+      } else if (window.RetroToast) {
+        RetroToast.warn('系统助手模块暂不可用');
+      }
+      return;
+    }
+    if (window.OnlineChatUI && typeof OnlineChatUI.openFromNotice === 'function') {
+      const contact = resolveContact(contactId);
+      OnlineChatUI.openFromNotice({
+        accountId,
+        contactId,
+        rosterId: trimStr(rosterId) || trimStr(contact && contact.rosterId),
+        rosterType: trimStr(rosterType) || trimStr(contact && contact.rosterType) || 'char'
+      });
+    } else if (window.RetroToast) {
+      RetroToast.warn('私聊会话模块暂不可用');
+    }
+  }
+
+  function sysHandleTap(tap) {
+    if (!tap || typeof tap !== 'object') return;
+    const kind = trimStr(tap.kind) || 'online';
+    const accountId = trimStr(tap.accountId) || 'persona';
+    const contactId = trimStr(tap.contactId) || (kind === 'system' ? 'system-chat:main' : '');
+    if (kind !== 'system' && !contactId) return;
+    sysCounts.delete(sysTag(accountId, contactId));
+    jumpTo(kind, accountId, contactId, tap.rosterId, tap.rosterType);
+  }
+
+  /** 接线：热启动走 noticeTap 事件；冷启动的那次点击被原生暂存，JS 就绪后取一次 */
+  function sysInit() {
+    const plugin = sysPlugin();
+    if (!plugin) return;
+    try {
+      if (typeof plugin.addListener === 'function') {
+        Promise.resolve(plugin.addListener('noticeTap', sysHandleTap)).catch(() => {});
+      }
+    } catch (_) {}
+    Promise.resolve(plugin.takePendingTap()).then((r) => {
+      if (r && r.tap) sysHandleTap(r.tap);
+    }).catch(() => {});
+  }
+  // 冷启动跳转要等存储与页面骨架就绪，否则联系人解析不到、会话页还没建
+  if (window.Boot && typeof Boot.onReady === 'function') {
+    Boot.onReady('core', sysInit);
+  } else if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', sysInit);
+  } else {
+    sysInit();
+  }
+
+  // 停在会话里切走、收到通知后没点通知而是从桌面图标回来：会话页本来就开着，
+  // 不会走 dismissFor，那条通知会一直挂着。回到前台时把「正在看的那个」清掉
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible' || !sysCounts.size) return;
+    try {
+      if (window.SystemChatUI && typeof SystemChatUI.isOpen === 'function' && SystemChatUI.isOpen()) {
+        sysCancel('persona', 'system-chat:main');
+      }
+      const ui = window.OnlineChatUI;
+      if (ui && typeof ui.isOpen === 'function' && ui.isOpen()
+        && typeof ui.getCurrentContactId === 'function') {
+        const cid = trimStr(ui.getCurrentContactId());
+        const acc = trimStr(ui.getCurrentAccountId && ui.getCurrentAccountId()) || 'persona';
+        if (cid) sysCancel(acc, cid);
+      }
+    } catch (_) {}
+  });
+
+  /** 设置页用：读写两颗开关；打开总闸时补一次通知权限申请（已授权则不弹） */
+  function getSysConfig() {
+    return { ...sysLoadCfg(), supported: !!sysPlugin() };
+  }
+  function setSysEnabled(on) {
+    sysLoadCfg().enabled = !!on;
+    sysSaveCfg();
+    const plugin = sysPlugin();
+    if (!plugin) return;
+    if (on) {
+      if (typeof plugin.requestNotificationPermission === 'function') {
+        Promise.resolve(plugin.requestNotificationPermission()).catch(() => {});
+      }
+    } else {
+      sysCounts.clear();
+      Promise.resolve(plugin.cancelAllMessages()).catch(() => {});
+    }
+  }
+  function setSysContent(on) {
+    sysLoadCfg().content = !!on;
+    sysSaveCfg();
   }
 
   /**
@@ -343,27 +567,8 @@ window.RetroflowOnlineNotice = (() => {
 
     function jump() {
       detach(entry, false);
-      if (kind === 'system') {
-        if (window.RetroflowOnlineNotice && typeof RetroflowOnlineNotice.dismissFor === 'function') {
-          RetroflowOnlineNotice.dismissFor(accountId, contactId);
-        }
-        if (window.SystemChatUI && typeof SystemChatUI.open === 'function') {
-          SystemChatUI.open();
-        } else if (window.RetroToast) {
-          RetroToast.warn('系统助手模块暂不可用');
-        }
-        return;
-      }
-      if (window.OnlineChatUI && typeof OnlineChatUI.openFromNotice === 'function') {
-        OnlineChatUI.openFromNotice({
-          accountId,
-          contactId,
-          rosterId: trimStr(contact && contact.rosterId),
-          rosterType: trimStr(contact && contact.rosterType) || 'char'
-        });
-      } else if (window.RetroToast) {
-        RetroToast.warn('私聊会话模块暂不可用');
-      }
+      jumpTo(kind, accountId, contactId,
+        trimStr(contact && contact.rosterId), trimStr(contact && contact.rosterType));
     }
 
     card.addEventListener('click', jump);
@@ -410,6 +615,8 @@ window.RetroflowOnlineNotice = (() => {
     const acc = trimStr(accountId) || 'persona';
     const cid = trimStr(contactId);
     if (!cid) return;
+    // 系统通知栏里指向这个会话的那条一并撤掉：人已经进来了
+    sysCancel(acc, cid);
     // 已在场的撤掉
     active.slice().forEach((entry) => {
       if (entry.contactId === cid && entry.accountId === acc) detach(entry, false);
@@ -433,6 +640,9 @@ window.RetroflowOnlineNotice = (() => {
     push,
     dismissFor,
     dismissAll,
-    isViewingSession
+    isViewingSession,
+    getSysConfig,
+    setSysEnabled,
+    setSysContent
   };
 })();

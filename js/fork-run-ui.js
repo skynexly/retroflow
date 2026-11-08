@@ -5815,8 +5815,8 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
             if (!window.Downloader || typeof Downloader.saveImage !== 'function') {
               throw new Error('下载模块尚未加载');
             }
-            await Downloader.saveImage(srcList[index].src, `副本影像-${pad(index + 1)}`, 'png');
-            toast('VISION // 已导出', '影像已保存', '文件已写入设备存储', 'success');
+            const saved = await Downloader.saveImage(srcList[index].src, `副本影像-${pad(index + 1)}`, 'png');
+            toast('VISION // 已导出', '影像已保存', (saved && saved.album) ? `已存入相册「${saved.album}」` : '文件已写入设备存储', 'success');
           } catch (_) {
             toast('VISION // 导出失败', '影像保存未完成', '可长按图片使用系统菜单保存', 'warning');
           }

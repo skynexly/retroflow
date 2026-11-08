@@ -3332,7 +3332,8 @@ const records = await OnlineChatStore.listMessages(session.accountId, session.co
 
       // 人已经不在这一页了（推理期间退出或切了别的会话）：
       // 消息只落库不上屏，靠顶部横幅告诉用户「这边回你了」。
-      if (!isViewing) notifyIncoming(session, savedList, last);
+      // 人还在这一页但 app 已切到后台：同样交给 notifyIncoming，由它改走系统通知
+      if (!isViewing || document.visibilityState === 'hidden') notifyIncoming(session, savedList, last);
 
       // 切换到其他会话后，回复仍只保存在原会话，不挂到当前页面。
       if (!isSessionCurrent(session)) return true;
@@ -4058,8 +4059,9 @@ if (sendBtn) {
       const viewing = chatPage && chatPage.classList.contains('active')
         && currentContactId === p.contactId && currentAccountId === p.accountId;
 
-      // 用户此刻不在这个会话（招呼场景下通常还留在通讯录页）：弹顶部横幅
-      if (!viewing) {
+      // 用户此刻不在这个会话（招呼场景下通常还留在通讯录页）：弹顶部横幅。
+      // 在这个会话里但 app 已切到后台：同样提醒，由 notifyIncoming 改走系统通知
+      if (!viewing || document.visibilityState === 'hidden') {
         notifyIncoming({ accountId: p.accountId, contactId: p.contactId }, saved, last);
       }
 

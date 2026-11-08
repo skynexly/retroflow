@@ -50,7 +50,7 @@
   // 60Hz 低频手机喇叭物理上出不来多少声，文件电平已足够安静，无需再乘系数
   const KA_VOLUME = 1.0;
   // 自证版本：真机状态行显示这个尾巴，一眼确认 SW 换班后跑的是不是新脚本
-  const KA_VERSION = 'v4';
+  const KA_VERSION = 'v5';
   // 被抢走焦点之后重播的最小间隔，防止 pause→play→pause 空转
   const KA_REPLAY_GAP = 2000;
 
@@ -84,6 +84,7 @@
   function kaSync() {
     kaAudioSync();
     kaWakeSync();
+    kaNativeSync();
     kaNote();
   }
 
@@ -287,6 +288,96 @@
     try { s.release(); } catch (_) {}
   }
 
+  // ===== 原生前台服务（仅装机版）=====
+  // 静音音轨只能防 WebView 降速；装机版真正掐断后台的是系统冻结缓存进程。
+  // 前台服务把进程优先级抬到前台级，系统不再冻结它。总闸仍是 cfg.on，
+  // 这里只照令启停，不另起开关。浏览器 / PWA 里没有这个插件，整段静默跳过。
+  // 旧壳（v6 及以前）热更到新 JS 时插件同样不存在，也走静默跳过，绝不报错。
+  let kaNative = { running: false, batteryExempt: false, notifications: false, known: false };
+  let kaNativeBusy = false;   // start/stop 在飞，别叠第二次
+  let kaNativeWant = null;    // 在飞期间最新的期望值，落地后补齐
+
+  function kaNativePlugin() {
+    if (!document.documentElement.classList.contains('is-native')) return null;
+    return (window.Capacitor && window.Capacitor.Plugins &&
+      window.Capacitor.Plugins.RetroflowKeepalive) || null;
+  }
+  function kaNativeAbsorb(s) {
+    if (!s || typeof s !== 'object') return;
+    kaNative = {
+      running: s.running === true,
+      batteryExempt: s.batteryExempt === true,
+      notifications: s.notifications === true,
+      known: true
+    };
+  }
+  function kaNativeSync() {
+    const plugin = kaNativePlugin();
+    if (!plugin) return;
+    const want = loadCfg().on;
+    if (kaNativeBusy) { kaNativeWant = want; return; }
+    // 已经是期望状态就只刷新一次状态（权限可能在系统设置里被改过）
+    if (kaNative.known && kaNative.running === want) {
+      kaNativeRefresh();
+      return;
+    }
+    kaNativeBusy = true;
+    const call = want ? plugin.start() : plugin.stop();
+    Promise.resolve(call).then((s) => {
+      kaNativeAbsorb(s);
+    }).catch(() => {
+      // 启动被拒（多半是 app 已在后台、Android 12+ 不许后台起前台服务）：
+      // 不动开关，下次回前台的 visibilitychange 会再试一次
+      kaNative.running = false;
+      kaNative.known = true;
+    }).then(() => {
+      kaNativeBusy = false;
+      kaNote();
+      // 在飞期间期望变了（快速开关），补一次
+      if (kaNativeWant !== null && kaNativeWant !== kaNative.running) {
+        kaNativeWant = null;
+        kaNativeSync();
+      } else {
+        kaNativeWant = null;
+      }
+    });
+  }
+  function kaNativeRefresh() {
+    const plugin = kaNativePlugin();
+    if (!plugin || typeof plugin.getStatus !== 'function') return;
+    Promise.resolve(plugin.getStatus()).then((s) => {
+      kaNativeAbsorb(s);
+      kaNote();
+    }).catch(() => {});
+  }
+
+  // 用户亲手打开开关时才走一遍授权：先通知权限，再电池优化。
+  // 开机恢复绝不弹窗——那时用户什么都没做，凭空弹系统对话框是骚扰。
+  // 两项都不是硬前提：拒了服务照跑，状态行会如实写出缺了什么
+  async function kaNativeGrant() {
+    const plugin = kaNativePlugin();
+    if (!plugin) return;
+    try {
+      if (typeof plugin.requestNotificationPermission === 'function') {
+        kaNativeAbsorb(await plugin.requestNotificationPermission());
+      }
+    } catch (_) {}
+    try {
+      if (!kaNative.batteryExempt && typeof plugin.requestIgnoreBatteryOptimizations === 'function') {
+        kaNativeAbsorb(await plugin.requestIgnoreBatteryOptimizations());
+        // 电池对话框是另起的系统界面，结果要等用户回到 app 才能读到：
+        // 回前台的 visibilitychange → kaSync → kaNativeRefresh 会补上
+      }
+    } catch (_) {}
+    kaNote();
+  }
+
+  /** 原生服务状态快照；非装机版 / 旧壳返回 null（设置页据此决定是否显示这一段） */
+  function kaNativeState() {
+    if (!kaNativePlugin()) return null;
+    return { ...kaNative };
+  }
+
   // ===== 设置页调的口子 =====
   // 每一项即时生效、即时落盘，所以保活设置卡没有「保存」按钮。
   // kaSetOn(true) 必须在用户点击的那一下里调：play() 只在用户激活的上下文里被放行，
@@ -295,6 +386,9 @@
     loadCfg().on = !!on;
     saveCfg();
     kaAudioSync();
+    kaNativeSync();
+    // 只在用户亲手打开时请求授权（关的时候没什么可要的）
+    if (on) kaNativeGrant();
   }
   function kaSetWake(on) {
     loadCfg().wake = !!on;
@@ -332,6 +426,9 @@
     // 这一次十有八九被拒（页面刚起来还没有用户操作），
     // 被拒后 kaAudioSync 自己会挂上手势闩，等用户随便点哪儿那一下
     if (cfg.on) kaAudioSync();
+    // 原生服务不受手势限制，开机时 app 在前台，可以直接起。
+    // cfg.on=false 时也跑一次：把上一次进程残留（START_STICKY 重建）的服务对齐到关
+    kaNativeSync();
   }
   if (window.Boot && typeof Boot.onReady === 'function') {
     Boot.onReady('core', kaBootRestore);
@@ -350,6 +447,7 @@
     getWakeState: kaWakeState,
     isWakeSupported: kaWakeSupported,
     getMediaState: kaMediaState,
+    getNativeState: kaNativeState,
     version: KA_VERSION,
     watchMusic: kaWatchMusic
   };

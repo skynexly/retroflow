@@ -64,6 +64,14 @@
     else if (wk === 'wait') parts.push('常亮已开启 · 当前未生效（切后台被系统收回或低电量被拒，回前台自动重申）');
     else if (wk === 'dead') parts.push('此浏览器不支持屏幕常亮');
     if (!parts.length) return '后台服务待机中';
+    // 原生前台服务（仅装机版；浏览器 / 旧壳 getNativeState 返回 null，整段不出现）。
+    // 服务在跑但没豁免电池优化时必须点明：否则用户会以为保活已经十足生效
+    const nv = typeof KA.getNativeState === 'function' ? KA.getNativeState() : null;
+    if (nv && nv.known && KA.getConfig().on) {
+      parts.push(nv.running ? '系统驻留服务运行中' : '系统驻留服务未运行（回到前台自动重试）');
+      if (!nv.batteryExempt) parts.push('建议允许忽略电池优化');
+      if (!nv.notifications) parts.push('通知未授权（驻留照常，通知栏不显示）');
+    }
     // 媒体身份证自证尾巴：排查「音轨运行中但系统不认账」的关键证据。
     // unsupported = 浏览器无 MediaSession API；idle = 身份证没挂上（play 未成功）；
     // mounted = 已挂（此时还没媒体卡就是响度/ROM 判定问题）。version 用于确认 SW 换班后跑的是新脚本
@@ -104,6 +112,56 @@
       skaWakeEl.disabled = !KA.isWakeSupported();
     }
     skaSyncNote();
+  }
+
+  // ===== 消息通知（仅装机版）=====
+  // 权威状态归 RetroflowOnlineNotice（retroflow_notice_v1），这里只做视图代理。
+  // 前缀 sno（settings-notice）
+  let snoModule = null;
+  let snoOnEl = null;      // 系统通知总闸
+  let snoContentEl = null; // 显示消息内容
+
+  function snoFill() {
+    const N = window.RetroflowOnlineNotice;
+    if (!snoModule || !N || typeof N.getSysConfig !== 'function') return;
+    const cfg = N.getSysConfig();
+    // 浏览器 / 旧壳没有原生插件：整个模块不出现，免得放两颗按了没用的开关
+    if (!document.documentElement.classList.contains('is-native') || !cfg.supported) {
+      snoModule.hidden = true;
+      return;
+    }
+    snoModule.hidden = false;
+    if (snoOnEl) snoOnEl.checked = cfg.enabled;
+    if (snoContentEl) {
+      snoContentEl.checked = cfg.content;
+      // 总闸关着时「显示内容」没意义，置灰但保留勾选态，重开总闸后原样生效
+      snoContentEl.disabled = !cfg.enabled;
+    }
+  }
+  function onSnoToggle() {
+    const N = window.RetroflowOnlineNotice;
+    if (!N || !snoOnEl) return;
+    N.setSysEnabled(snoOnEl.checked);
+    if (snoContentEl) snoContentEl.disabled = !snoOnEl.checked;
+    if (window.RetroToast) {
+      RetroToast.show({
+        tag: 'NOTICE // 消息通知',
+        message: snoOnEl.checked ? '系统通知已开启' : '系统通知已关闭',
+        type: 'info'
+      });
+    }
+  }
+  function onSnoContentToggle() {
+    const N = window.RetroflowOnlineNotice;
+    if (!N || !snoContentEl) return;
+    N.setSysContent(snoContentEl.checked);
+    if (window.RetroToast) {
+      RetroToast.show({
+        tag: 'NOTICE // 消息通知',
+        message: snoContentEl.checked ? '通知将显示消息内容' : '通知将只显示发信人',
+        type: 'info'
+      });
+    }
   }
 
   // 开关的 change 处理器直接调 KeepaliveCore.set*：
@@ -169,6 +227,13 @@
       bindHelpDrawer('terminalOrbHelpBtn', 'terminalOrbManualDrawer');
       bindHelpDrawer('terminalKeepaliveHelpBtn', 'terminalKeepaliveManualDrawer');
 
+      snoModule = document.getElementById('terminalNoticeModule');
+      snoOnEl = document.getElementById('terminalToggleNotice');
+      if (snoOnEl) snoOnEl.addEventListener('change', onSnoToggle);
+      snoContentEl = document.getElementById('terminalToggleNoticeContent');
+      if (snoContentEl) snoContentEl.addEventListener('change', onSnoContentToggle);
+      bindHelpDrawer('terminalNoticeHelpBtn', 'terminalNoticeManualDrawer');
+
       inited = true;
     }
     // 每次进页回填最新状态（开关可能从其他途径变过）
@@ -176,6 +241,7 @@
       orbToggleEl.checked = SystemChatOrb.isEnabled();
     }
     skaFill();
+    snoFill();
   }
 
   window.TerminalConfigUI = { init };

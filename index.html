@@ -3190,7 +3190,7 @@
                 <!-- 后台保活折叠说明抽屉（默认收起，点问号展开） -->
                 <div class="psych-radar-manual-drawer terminal-config-drawer" id="terminalKeepaliveManualDrawer" hidden>
                   <div class="terminal-config-hint" id="terminalKeepaliveHint">
-                    保活机制：循环播放静音音轨，维持页面后台活性。注意：网页/PWA 仍可能被系统冻结，长生成建议保持前台。驻留费电，按需开启。
+                    保活机制：循环播放静音音轨，维持页面后台活性；装机版另会启动系统驻留服务，通知栏常驻一条「后台驻留中」，切走或锁屏后终端继续运行。首次开启会请求通知权限与「忽略电池优化」。三星机型还需手动前往 设置 → 电池 → 后台使用限制，将溯流设为「永不休眠」。从最近任务划掉卡片会结束运行。驻留费电，按需开启。
                   </div>
                 </div>
                 <!-- 状态自证行：off/yield/run/wait 如实上报 -->
@@ -3201,7 +3201,58 @@
               </div>
             </div>
 
-            <!-- 模块 3：检查更新（UPDATE // 检查更新）
+            <!-- 模块 3：消息通知（NOTICE // 消息通知）
+                 仅装机版可见：<html> 带 is-native 类时才解除 hidden（与检查更新同口径）。
+                 权威状态归 RetroflowOnlineNotice 的 localStorage（retroflow_notice_v1），
+                 本页只做视图代理。灵动岛/刘海保护由 .settings-header 继承，此处不新增。 -->
+            <div class="theme-module" id="terminalNoticeModule" hidden>
+              <div class="module-label-row">
+                <span class="module-label-en">NOTICE</span>
+                <span class="module-label-slash">//</span>
+                <span class="module-label-zh">消息通知</span>
+              </div>
+              <div class="chat-bento-card terminal-config-card">
+                <!-- 系统通知总闸 -->
+                <div class="chat-bento-row">
+                  <div class="chat-bento-label">
+                    <span class="chat-bento-zh">系统通知</span>
+                    <span class="chat-bento-en">PUSH · 切到后台时由系统提醒新消息</span>
+                  </div>
+                  <div class="terminal-config-row-actions">
+                    <button type="button" class="psych-help-circle-btn" id="terminalNoticeHelpBtn" aria-label="查看消息通知说明" title="查看消息通知说明">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                        <path d="M12 17h.01"/>
+                      </svg>
+                    </button>
+                    <label class="chat-bento-switch">
+                      <input type="checkbox" id="terminalToggleNotice" checked>
+                      <span class="chat-switch-slider"></span>
+                    </label>
+                  </div>
+                </div>
+                <!-- 是否在通知里露出消息正文（关闭时名字与头像保留） -->
+                <div class="chat-bento-row">
+                  <div class="chat-bento-label">
+                    <span class="chat-bento-zh">显示消息内容</span>
+                    <span class="chat-bento-en">PREVIEW · 关闭后只显示发信人</span>
+                  </div>
+                  <label class="chat-bento-switch">
+                    <input type="checkbox" id="terminalToggleNoticeContent" checked>
+                    <span class="chat-switch-slider"></span>
+                  </label>
+                </div>
+                <!-- 消息通知折叠说明抽屉（默认收起，点问号展开） -->
+                <div class="psych-radar-manual-drawer terminal-config-drawer" id="terminalNoticeManualDrawer" hidden>
+                  <div class="terminal-config-hint">
+                    系统助手与私聊的新回复，在终端切到后台或锁屏时以系统通知提醒；终端在前台时仍是顶部横幅。同一会话只占一条通知，连发会合并计数，点击直达对应会话。关闭「显示消息内容」后，通知与锁屏只显示发信人，不显示正文。需配合后台保活，否则切走后回复可能来不及生成。
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 模块 4：检查更新（UPDATE // 检查更新）
                  仅装机版（原生壳）可见：<html> 带 is-native 类时才解除 hidden。
                  浏览器 / PWA 端更新走 Service Worker，显示本模块只会误导，故默认隐藏。
                  灵动岛/刘海保护由本页 .settings-header 的 safe-area padding 继承，此处不新增。 -->
@@ -11109,8 +11160,8 @@
   <script src="js/psych-archive-app.js?v=198"></script>
   <script src="js/app-version.js?v=1"></script>
   <script src="js/boot.js?v=187"></script>
-  <script src="js/keepalive-core.js?v=4"></script>
-  <script src="js/downloader.js?v=188"></script>
+  <script src="js/keepalive-core.js?v=5"></script>
+  <script src="js/downloader.js?v=189"></script>
   <script src="js/chat-shot.js?v=4"></script>
   <script src="js/ui-motion.js?v=186"></script>
   <script src="js/modal.js?v=293"></script>
@@ -11130,8 +11181,8 @@
   <script src="js/worldbook-mount-modal.js?v=6"></script>
   <script src="js/online-store.js?v=379"></script>
   <script src="js/online-ui.js?v=382"></script>
-  <script src="js/avatar-forge.js?v=189"></script>
-  <script src="js/gallery-app.js?v=312"></script>
+  <script src="js/avatar-forge.js?v=190"></script>
+  <script src="js/gallery-app.js?v=313"></script>
   <script src="js/profile.js?v=190"></script>
   <script src="js/clock.js?v=186"></script>
   <script src="js/apps.js?v=245"></script>
@@ -11146,7 +11197,7 @@
   <script src="js/manual-app.js?v=201"></script>
   <script src="js/api-call-log.js?v=1"></script>
   <script src="js/api-call-log-ui.js?v=2"></script>
-  <script src="js/terminal-config.js?v=6"></script>
+  <script src="js/terminal-config.js?v=8"></script>
   <script src="js/ota-updater.js?v=1"></script>
   <script src="js/ota-engine.js?v=1"></script>
   <script src="js/ota-ui.js?v=1"></script>
@@ -11167,7 +11218,7 @@
   <script src="js/fork-run-settings.js?v=19"></script>
   <script src="js/fork-run-api.js?v=23"></script>
   <script src="js/fork-run-context-inspector.js?v=5"></script>
-  <script src="js/fork-run-ui.js?v=192"></script>
+  <script src="js/fork-run-ui.js?v=193"></script>
   <script src="js/fork-editor-ui.js?v=84"></script>
   <script src="js/onboarding-ui.js?v=61"></script>
   <script src="js/talent-prompt.js?v=3"></script>
@@ -11178,13 +11229,13 @@
   <script src="js/context-budget.js?v=1"></script>
   <script src="js/chat-day-sep.js?v=2"></script>
   <script src="js/online-chat-store.js?v=416"></script>
-  <script src="js/online-chat-ui.js?v=447"></script>
-  <script src="js/online-notice.js?v=6"></script>
+  <script src="js/online-chat-ui.js?v=448"></script>
+  <script src="js/online-notice.js?v=7"></script>
   <script src="js/online-chat-settings.js?v=4"></script>
   <script src="js/system-chat-store.js?v=2"></script>
   <script src="js/assistant-chat-core.js?v=3"></script>
-<script src="js/system-chat-ui.js?v=365"></script>
-   <script src="js/fork-deck-asst.js?v=20"></script>
+<script src="js/system-chat-ui.js?v=367"></script>
+   <script src="js/fork-deck-asst.js?v=21"></script>
    <script src="js/fork-deck-camera.js?v=2"></script>
   <script src="js/system-chat-orb.js?v=25"></script>
   <script src="js/file-store-ui.js?v=303"></script>

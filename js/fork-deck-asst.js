@@ -1357,11 +1357,11 @@ window.ForkDeckAsst = (() => {
           const isNative = res.via === 'native';
           RetroToast.show({
             tag: 'IMAGE // 导出影像',
-            message: isShare ? '已唤起系统保存' : (isNative ? '影像已保存到设备存储' : '已触发下载'),
+            message: isShare ? '已唤起系统保存' : (isNative ? (res.album ? '影像已保存到相册' : '影像已保存到设备存储') : '已触发下载'),
             detail: isShare
               ? `${res.name}｜在面板里选择「保存到相册」或任意应用。`
               : (isNative
-                ? `${res.name}｜已写入「${res.dir || 'Download'}」目录，可在文件管理中查看。`
+                ? (res.album ? `${res.name}｜已存入相册「${res.album}」。` : `${res.name}｜已写入「${res.dir || 'Download'}」目录，可在文件管理中查看。`)
                 : `${res.name}｜若相册未出现可长按大图另存。`),
             type: 'success'
           });
