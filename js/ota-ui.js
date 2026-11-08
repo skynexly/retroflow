@@ -39,8 +39,6 @@
     els = {
       module: document.getElementById('otaUpdateModule'),
       versionText: document.getElementById('otaVersionText'),
-      hotChip: document.getElementById('otaHotChip'),
-      hotChipText: document.getElementById('otaHotChipText'),
       checkBtn: document.getElementById('otaCheckBtn'),
       checkLabel: document.getElementById('otaCheckLabel'),
       statusRow: document.getElementById('otaStatusRow'),
@@ -57,36 +55,18 @@
     return els.module;
   }
 
-  /** 当前版本行：读 RetroflowVersion（app-version.js 同步生成，同源可信赖） */
+  /**
+   * 当前版本行：读 RetroflowVersion（app-version.js 同步生成，同源可信赖）。
+   *
+   * 注意 app-version.js 本身就在热更包白名单里，所以这个值天然反映「当前真正生效的
+   * 那一层」：覆盖层生效时读到覆盖层那份，回滚到内置时读到 APK 内置那份。版本号自证，
+   * 无需再叠一个「热更」标记把同一个 build 号重复显示一遍（那会挤窄行宽、
+   * 让英文标签 CURRENT BUILD 被截断，还多一次异步原生调用）。
+   */
   function fillVersion() {
     if (!els.versionText) return;
     const v = window.RetroflowVersion;
     els.versionText.textContent = (v && v.label) ? v.label : 'v?.?.? (b?)';
-    fillHotChip();
-  }
-
-  /**
-   * 热更标记：当前跑的是覆盖层资源（而非 APK 内置）时显示，并标出覆盖层的 build。
-   *
-   * 为什么要单独标：RetroflowVersion 来自 app-version.js，它本身就是被覆盖层替换过的
-   * 那份文件，所以热更后显示的 build 已经是新的——但用户无从判断这个数字是「装进去的」
-   * 还是「拉下来的」。这个标记补上这层信息，也是排查热更是否真的生效的直接依据。
-   *
-   * 无覆盖层（纯内置）时保持 hidden，界面与热更前完全一致。
-   */
-  async function fillHotChip() {
-    if (!els.hotChip) return;
-    if (!window.RetroflowOTA || typeof RetroflowOTA.getAppliedVersion !== 'function') return;
-    try {
-      const applied = await RetroflowOTA.getAppliedVersion();
-      if (!applied || !applied.hotUpdated) return; // 纯内置，不显示
-      els.hotChip.hidden = false;
-      if (els.hotChipText && Number.isFinite(applied.build)) {
-        els.hotChipText.textContent = `热更 b${applied.build}`;
-      }
-    } catch (err) {
-      // 读不到就不显示，绝不让版本行因此空白或报错
-    }
   }
 
   /** 检查更新文字：检查中换文案并禁用（纯文字，无转圈图标） */

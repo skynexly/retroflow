@@ -40,10 +40,10 @@ module.exports = {
   version: '1.2.0',
 
   /** 资源构建号（缓存戳 / 热更基线），单调递增 */
-  build: 1283,
+  build: 1284,
 
   /** Android versionCode（原生壳版本），单调递增 */
-  versionCode: 5,
+  versionCode: 6,
 
   /** 签名证书主体信息，与 keystore 生成参数保持一致 */
   signing: {

@@ -150,6 +150,70 @@ const ThemeEngine = (() => {
       const meta = document.querySelector('meta[name="theme-color"]');
       if (meta) meta.setAttribute('content', hex);
     }
+
+    // 背景色同步到原生状态栏（装机版）：让时间电量那排与页面底色一致。
+    // 背景色是全站唯一会跨预设大幅明暗翻转的通道（米白 #EDEBDD 到纯黑 #000000），
+    // 所以图标深浅必须跟着算，写死会导致某类主题下时间电量看不见。
+    if (key === 'bg-color') {
+      syncStatusBar(hex);
+    }
+  }
+
+  /* ---------------- 原生状态栏跟随背景色 ---------------- */
+
+  /**
+   * 状态栏颜色是原生窗口属性，WebView 里的 CSS 变量管不到它，必须经
+   * @capacitor/status-bar 插件下发。仅装机版生效：浏览器 / PWA 那边
+   * 由 theme-color meta 承担同样职责，这里静默跳过。
+   *
+   * 插件的 style 语义是反直觉的，务必按这个对应关系理解：
+   *   'LIGHT' → setAppearanceLightStatusBars(true)  → 深色图标（配浅色背景）
+   *   'DARK'  → setAppearanceLightStatusBars(false) → 浅色图标（配深色背景）
+   * 即 style 描述的是「背景明暗」，不是图标颜色。
+   *
+   * 失败一律静默降级（旧壳无此插件 / 系统拒绝），绝不让配色流程因此中断。
+   */
+  let pendingStatusBarHex = null;
+  let statusBarHooked = false;
+
+  /** WCAG 相对亮度，0=纯黑 1=纯白 */
+  function relativeLuminance(rgb) {
+    const lin = (v) => {
+      const c = v / 255;
+      return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    };
+    return 0.2126 * lin(rgb.r) + 0.7152 * lin(rgb.g) + 0.0722 * lin(rgb.b);
+  }
+
+  function nativeStatusBar() {
+    return (window.Capacitor && window.Capacitor.Plugins &&
+      window.Capacitor.Plugins.StatusBar) || null;
+  }
+
+  async function pushStatusBar(hex) {
+    const sb = nativeStatusBar();
+    if (!sb) return;
+    const rgb = hexToRgb(hex);
+    if (!rgb) return;
+    try {
+      await sb.setBackgroundColor({ color: hex });
+      await sb.setStyle({ style: relativeLuminance(rgb) > 0.5 ? 'LIGHT' : 'DARK' });
+    } catch (err) {
+      // 静默降级
+    }
+  }
+
+  function syncStatusBar(hex) {
+    if (!hex || !document.documentElement.classList.contains('is-native')) return;
+    pendingStatusBarHex = hex;
+    // 首帧极早调用时 native bridge 可能尚未注入，挂一次就绪事件补推
+    if (!statusBarHooked) {
+      statusBarHooked = true;
+      window.addEventListener('capacitorBridgeReady', () => {
+        if (pendingStatusBarHex) pushStatusBar(pendingStatusBarHex);
+      }, { once: true });
+    }
+    pushStatusBar(hex);
   }
 
   function saveColors() {

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 状态栏首帧默认色：与 Web 默认主题的 bg-color（丝绒米白）一致。
+         刻意不用库默认的 colorPrimaryDark 名，避免与 Capacitor 内置值冲突/被覆盖。
+         运行期由 js/theme.js 经 @capacitor/status-bar 动态改为用户当前主题背景色；
+         这里只负责「JS 接管前」的首帧不闪蓝。 -->
+    <color name="rf_status_bar_default">#EDEBDD</color>
+</resources>

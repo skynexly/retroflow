@@ -13,10 +13,16 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <!-- 状态栏首帧：默认米白底 + 深色图标；运行期由 theme.js 动态接管 -->
+        <item name="android:statusBarColor">@color/rf_status_bar_default</item>
+        <item name="android:windowLightStatusBar">true</item>
     </style>
 
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
+        <!-- 启动主题同样压住状态栏默认蓝（SplashScreen 隐藏前 activity 用的就是它） -->
+        <item name="android:statusBarColor">@color/rf_status_bar_default</item>
+        <item name="android:windowLightStatusBar">true</item>
     </style>
 </resources>

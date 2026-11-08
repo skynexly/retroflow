@@ -21,7 +21,7 @@ import java.nio.charset.Charset;
  *                                缺失的（如常驻字体）自动回退到 APK 内置 assets/public。
  *   files/ota/staging/           下载与解压的暂存区，应用完成后清空。
  *   files/ota/current.bak/       切换瞬间的旧覆盖层备份，切换成功后立即删除。
- *   files/ota/meta.json          当前生效覆盖层的版本信息 {build, version, appliedAt}。
+ *   files/ota/meta.json          当前生效覆盖层的版本信息 {build, version, versionCode, appliedAt}。
  *   files/ota/pending-confirm.json  回滚守卫标记 {build, attempts}。
  *
  * 回滚守卫原理（防止拉到坏包后 app 打不开）：
@@ -30,6 +30,15 @@ import java.nio.charset.Charset;
  *   若新层正常，JS 会调 confirmBoot() 删除 pending；若新层是坏的（白屏 / JS 崩），
  *   confirmBoot 永不触发，用户下次启动时 onCreate 读到 attempts=1（≥1），判定为坏层，
  *   删除 current 回退到 APK 内置资源，app 恢复可用。
+ *
+ * 覆盖层过期守卫原理（防止升壳后旧覆盖层遮住新 APK）：
+ *   路由处理器是「覆盖层优先」的，而覆盖安装（pm install -r）不会清 app 内部文件，
+ *   于是装完新 APK 后旧覆盖层依然优先命中——新壳带来的 Web 改动看不到。
+ *   更糟的是 app-version.js 也在覆盖层里，客户端会自报旧 versionCode，
+ *   被新清单的 minBinary 判为 binary-too-old，从此永久拒绝更新（只能清数据解）。
+ *   对策：meta 记录应用该层时的 versionCode；启动时若真机 versionCode 更高，
+ *   说明 APK 内置资源已新于覆盖层，直接删掉整个覆盖层回落到内置。
+ *   必须早于回滚守卫，否则可能先放行一个注定要被丢弃的旧层。
  */
 final class OtaStore {
 
@@ -45,6 +54,21 @@ final class OtaStore {
     static File metaFile(Context c) { return new File(root(c), "meta.json"); }
 
     static void log(String m) { Log.i(TAG, m); }
+
+    /** 真机当前安装包的 versionCode。读不到时返回 0（宁可不动覆盖层，也不误删）。 */
+    @SuppressWarnings("deprecation")
+    static int installedVersionCode(Context c) {
+        try {
+            android.content.pm.PackageInfo pi =
+                c.getPackageManager().getPackageInfo(c.getPackageName(), 0);
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                return (int) pi.getLongVersionCode();
+            }
+            return pi.versionCode;
+        } catch (Exception e) {
+            return 0;
+        }
+    }
 
     static void deleteRecursively(File f) {
         if (f == null || !f.exists()) return;
@@ -112,6 +136,8 @@ final class OtaStore {
             JSONObject o = new JSONObject();
             o.put("build", build);
             o.put("version", version == null ? "" : version);
+            // 记下「应用这层时的壳版本」，供启动时的过期守卫比对
+            o.put("versionCode", installedVersionCode(c));
             o.put("appliedAt", System.currentTimeMillis());
             writeJson(metaFile(c), o);
         } catch (Exception ignored) {}
@@ -135,6 +161,41 @@ final class OtaStore {
             //noinspection ResultOfMethodCallIgnored
             p.delete();
             log("覆盖层启动已确认，回滚守卫解除");
+        }
+    }
+
+    /**
+     * 启动时的覆盖层过期守卫。必须在 rollbackIfUnconfirmed 之前调用（见类注释）。
+     *
+     * 真机 versionCode 高于覆盖层记录的 versionCode ⇒ APK 内置资源已经比覆盖层新，
+     * 覆盖层只会把新壳的改动遮住，且会让客户端自报旧 versionCode 被 minBinary 拒更新。
+     * 直接删掉整个 ota 目录，回落到 APK 内置资源。
+     *
+     * 旧覆盖层的 meta 里没有 versionCode 字段（optInt 取 0），会被判为过期——
+     * 这是期望行为：那些层确实是在更旧的壳上应用的。
+     */
+    static void discardStaleOverlay(Context c) {
+        File cur = current(c);
+        if (!cur.isDirectory()) return; // 无覆盖层，正常启动
+        JSONObject meta = readMeta(c);
+        int overlayCode = (meta == null) ? 0 : meta.optInt("versionCode", 0);
+        int installed = installedVersionCode(c);
+        if (installed > overlayCode) {
+            log("覆盖层已过期（层 versionCode=" + overlayCode + " < 装机 versionCode=" + installed
+                + "），删除覆盖层回落到 APK 内置资源");
+            deleteRecursively(cur);
+            File bak = new File(root(c), "current.bak");
+            deleteRecursively(bak);
+            File p = pendingFile(c);
+            if (p.isFile()) {
+                //noinspection ResultOfMethodCallIgnored
+                p.delete();
+            }
+            File m = metaFile(c);
+            if (m.isFile()) {
+                //noinspection ResultOfMethodCallIgnored
+                m.delete();
+            }
         }
     }
 
