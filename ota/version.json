@@ -32,19 +32,17 @@
   "channel": "stable",
   "latest": {
     "version": "1.2.0",
-    "build": 1284,
-    "minBinary": 6,
-    "releasedAt": "2026-11-08T07:15:31Z",
+    "build": 1287,
+    "minBinary": 7,
+    "releasedAt": "2026-11-08T15:03:48Z",
     "notes": [
-      "状态栏颜色跟随主题背景色，图标深浅自动切换",
-      "移除重复的热更标记",
-      "升级安装包后自动丢弃旧热更资源"
+      "后台保活前台服务（specialUse 常驻，含电池优化豁免）；系统助手与私聊消息通知（可开关、可隐藏正文、按会话合并计数、头像、点击直达会话）；系统返回手势接管（逐级退回，主桌面双击退到后台不销毁页面）；保存图片直存系统相册「溯流计划」；通知设置模块新增于终端配置"
     ],
     "packages": {
       "full": {
-        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1284/retroflow-ota-full-b1284.zip",
-        "sha256": "f1c80c46a33587e6b3dc826d0404b531c5e0b4d2b9853636e2bd26b553dac9e3",
-        "size": 1828885
+        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1287/retroflow-ota-full-b1287.zip",
+        "sha256": "2be182d593b2ce07baee2b2dae767e281f764baae9c76b752fea462034fe0124",
+        "size": 1835595
       },
       "patch": {
         "sinceBuild": 0,
@@ -54,5 +52,5 @@
       }
     }
   },
-  "_status": "已发布 build 1284（全量包，字体常驻不打包）。patch 差分留待后续。"
+  "_status": "已发布 build 1287（全量包，字体常驻不打包）。patch 差分留待后续。"
 }
