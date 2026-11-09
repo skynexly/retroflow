@@ -32,17 +32,21 @@
   "channel": "stable",
   "latest": {
     "version": "1.2.0",
-    "build": 1287,
+    "build": 1289,
     "minBinary": 7,
-    "releasedAt": "2026-11-08T15:03:48Z",
+    "releasedAt": "2026-11-09T08:15:34Z",
     "notes": [
-      "后台保活前台服务（specialUse 常驻，含电池优化豁免）；系统助手与私聊消息通知（可开关、可隐藏正文、按会话合并计数、头像、点击直达会话）；系统返回手势接管（逐级退回，主桌面双击退到后台不销毁页面）；保存图片直存系统相册「溯流计划」；通知设置模块新增于终端配置"
+      "数据归档改为副本卡片墙，点进副本查看记忆",
+      "修复助手思考内容在回复结束后消失",
+      "修复有序列表编号全变成 1",
+      "反引号内的标签不再被当作思考或折叠块",
+      "修复悬浮球误弹调用日志和当前状态"
     ],
     "packages": {
       "full": {
-        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1287/retroflow-ota-full-b1287.zip",
-        "sha256": "2be182d593b2ce07baee2b2dae767e281f764baae9c76b752fea462034fe0124",
-        "size": 1835595
+        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1289/retroflow-ota-full-b1289.zip",
+        "sha256": "f30ebc54afe0503fa0d85d65e444b82764bafbf6add540bbe357072e7617a5d7",
+        "size": 1837589
       },
       "patch": {
         "sinceBuild": 0,
@@ -52,5 +56,5 @@
       }
     }
   },
-  "_status": "已发布 build 1287（全量包，字体常驻不打包）。patch 差分留待后续。"
+  "_status": "已发布 build 1289（全量包，字体常驻不打包）。patch 差分留待后续。"
 }
