@@ -3650,6 +3650,11 @@ ${parts.join('\n\n———\n\n')}`;
       ? SystemChatSettings.getSettings()
       : { streaming: true };
     let reply = '';
+    // 原生思维链单独累积，收尾时与正文合成：与首发回复同一口径，重写后思考仍可展开回看
+    let reasoning = '';
+    const compose = (window.AssistantChatCore && typeof AssistantChatCore.composeWithThinking === 'function')
+      ? AssistantChatCore.composeWithThinking
+      : (t, b) => (String(t || '').trim() ? `<think>${String(t).trim()}</think>\n${String(b || '')}` : String(b || ''));
     activeAbortController = new AbortController();
     const signal = activeAbortController.signal;
     if (jumpBottomBtn) jumpBottomBtn.classList.add('is-inferring');
@@ -3659,16 +3664,21 @@ ${parts.join('\n\n———\n\n')}`;
     try {
       if (settings.streaming && typeof RetroflowAPI.streamChat === 'function') {
         await RetroflowAPI.streamChat(config, fitted.messages, (delta, meta) => {
-          if (!meta || !meta.reasoning) {
-            reply += delta || '';
-            if (typeof onChunk === 'function') onChunk(reply);
-          }
+          if (meta && meta.reasoning) reasoning += delta || '';
+          else reply += delta || '';
+          if (typeof onChunk === 'function') onChunk(compose(reasoning, reply));
         }, { signal, logTag: '系统助手' });
       } else {
         const result = await RetroflowAPI.chat(config, fitted.messages, { signal, logTag: '系统助手' });
         reply = result && result.content ? result.content : '';
+        reasoning = String((result && result.reasoning) || '');
       }
-      return String(stripEchoedTimePrefix(reply) || '').trim();
+      // 兜底：思考模型把全部正文塞进 reasoning、正文为空时，思考就是正文
+      if (!reply.trim() && reasoning.trim()) {
+        reply = reasoning;
+        reasoning = '';
+      }
+      return String(stripEchoedTimePrefix(compose(reasoning, reply)) || '').trim();
     } finally {
       activeAbortController = null;
       if (jumpBottomBtn) jumpBottomBtn.classList.remove('is-inferring');

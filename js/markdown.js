@@ -255,10 +255,18 @@
     // 先剥掉 HTML 注释 <!-- ... -->：这是「给 AI 看的暗号 / 指令」约定，
     // 玩家侧不应显形（如角色卡指令、副本导演提示）。在 think/details 预处理之前
     // 执行，确保注释里若含 <think> 等字符也随注释整段一并移除。
-    const stripped = rawText.replace(/<!--[\s\S]*?-->/g, '');
+    // 保护反引号：注释和预处理都不能穿透行内代码或代码块围栏。
+    const codeGuards = [];
+    const guard = (m) => { const i = codeGuards.length; codeGuards.push(m); return `\x1Acg${i}\x1A`; };
+    let guarded = rawText
+      .replace(/```[\s\S]*?```/g, guard)
+      .replace(/`[^`]+`/g, guard);
+    guarded = guarded.replace(/<!--[\s\S]*?-->/g, '');
 
-    const preprocessed = preprocessThinkingAndDetails(stripped);
-    const lines = preprocessed.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+    const preprocessed = preprocessThinkingAndDetails(guarded);
+    // 还原被保护的代码片段
+    const restored = preprocessed.replace(/\x1Acg(\d+)\x1A/g, (_, i) => codeGuards[Number(i)] || '');
+    const lines = restored.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
     const out = [];
 
     let inCodeBlock = false;
@@ -377,8 +385,8 @@
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
 
-      // 1. 代码块围栏判断 ```
-      const codeFenceMatch = line.match(/^```(\w+)?\s*$/);
+      // 1. 代码块围栏判断 ```（支持缩进和带符号的语言名如 c++、c#）
+      const codeFenceMatch = line.match(/^\s*```(\S*)\s*$/);
       if (codeFenceMatch) {
         flushBlockquote();
         flushList();
@@ -453,9 +461,9 @@
       // 6. 列表项判断
       // 无序列表: - item 或 * item
       // 任务列表: - [ ] item 或 - [x] item
-      const taskListMatch = line.match(/^[\*\-]\s+\[([ xX])\]\s+(.*)$/);
-      const ulMatch = line.match(/^[\*\-]\s+(.*)$/);
-      const olMatch = line.match(/^(\d+)\.\s+(.*)$/);
+      const taskListMatch = line.match(/^\s{0,3}[\*\-]\s+\[([ xX])\]\s+(.*)$/);
+      const ulMatch = line.match(/^\s{0,3}[\*\-]\s+(.*)$/);
+      const olMatch = line.match(/^\s{0,3}(\d+)[.)]\s+(.*)$/);
 
       if (taskListMatch) {
         flushTable();
@@ -495,11 +503,34 @@
           flushList();
           inList = true;
           listType = 'ol';
-          out.push(`<ol class="chat-md-list chat-md-ol">`);
+          const startNum = Number(olMatch[1]);
+          out.push(`<ol class="chat-md-list chat-md-ol"${startNum !== 1 ? ` start="${startNum}"` : ''}>`);
         }
         const itemText = parseInline(olMatch[2]);
         out.push(`<li class="chat-md-li">${itemText}</li>`);
         continue;
+      }
+
+      // 列表续行：缩进 2+ 空格的非列表行并入上一个 li（避免断列表）
+      if (inList && /^\s{2,}/.test(line) && line.trim()) {
+        const lastIdx = out.length - 1;
+        if (lastIdx >= 0 && out[lastIdx].endsWith('</li>')) {
+          out[lastIdx] = out[lastIdx].slice(0, -5) + '<br>' + parseInline(line.trim()) + '</li>';
+          continue;
+        }
+      }
+
+      // 列表后空行：向后探一步，如果后面还是同类列表项就不断开（loose list）
+      if (inList && !line.trim()) {
+        let probe = i + 1;
+        while (probe < lines.length && !lines[probe].trim()) probe += 1;
+        if (probe < lines.length) {
+          const nextUl = /^\s{0,3}[\*\-]\s+/.test(lines[probe]);
+          const nextOl = /^\s{0,3}\d+[.)]\s+/.test(lines[probe]);
+          if ((listType === 'ul' && nextUl) || (listType === 'ol' && nextOl)) {
+            continue; // 吞掉空行，列表继续
+          }
+        }
       }
 
       // 非列表行，闭合已有列表与表格
@@ -655,8 +686,9 @@
     text = text.replace(/\|\s*[-:]+[-| :]*\|/g, '');
     text = text.replace(/\|/g, ' ');
 
-    // 10. 去除常见 HTML 标签
-    text = text.replace(/<[^>]+>/g, '');
+    // 10. 去除常见 HTML 标签（白名单）：只认真实标签名，
+    //     <皱眉>、<你的 API Key>、<placeholder> 这类正文尖括号原样保留
+    text = text.replace(/<\/?(?:a|b|i|u|s|em|strong|del|code|pre|br|hr|p|div|span|ul|ol|li|h[1-6]|blockquote|table|thead|tbody|tr|th|td|img|sup|sub|small|mark|font|center)\b[^>]*>/gi, '');
 
     // 11. 整理空行与空白
     text = text.replace(/[ \t]+/g, ' ');

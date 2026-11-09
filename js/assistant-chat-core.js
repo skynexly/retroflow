@@ -116,19 +116,19 @@ window.AssistantChatCore = (() => {
       return false;
     }
 
-    const lines = rawText.split('\n');
-    let cut = 0;
-
-    // 开头可能先有一整个 <think> 块，需跳过它再判断正文首行
-    if (/^\s*<think>/i.test(rawText)) {
-      let probe = 0;
-      let closed = false;
-      while (probe < lines.length) {
-        if (/<\/think>/i.test(lines[probe])) { closed = true; probe += 1; break; }
-        probe += 1;
-      }
-      if (closed) cut = probe;
+    // 开头的思维链块必须原样保留：它是折叠面板与编辑回看的数据来源。
+    // 旧实现把「跳过 think」当成了裁剪起点，没有任何时间行可裁时也会把 think 一并切掉，
+    // 表现为流式时思考可见、落库后整段消失。现在只用它定位，最后原样拼回。
+    let prefix = '';
+    let body = rawText;
+    const thinkMatch = body.match(/^\s*<(think|thinking)\b[^>]*>[\s\S]*?<\/\1\s*>\s*/i);
+    if (thinkMatch) {
+      prefix = thinkMatch[0];
+      body = body.slice(thinkMatch[0].length);
     }
+
+    const lines = body.split('\n');
+    let cut = 0;
 
     while (cut < lines.length) {
       const line = lines[cut];
@@ -145,7 +145,10 @@ window.AssistantChatCore = (() => {
     }
 
     if (cut <= 0) return rawText;
-    return lines.slice(cut).join('\n').replace(/^\n+/, '');
+    const stripped = lines.slice(cut).join('\n').replace(/^\n+/, '');
+    // 整条回复只有时间标注时保留原文：宁可露出来，也不把气泡清空
+    if (!stripped.trim()) return rawText;
+    return prefix + stripped;
   }
 
   /**
