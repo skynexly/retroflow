@@ -32,21 +32,17 @@
   "channel": "stable",
   "latest": {
     "version": "1.2.0",
-    "build": 1289,
+    "build": 1290,
     "minBinary": 7,
-    "releasedAt": "2026-11-09T08:15:34Z",
+    "releasedAt": "2026-11-09T08:55:37Z",
     "notes": [
-      "数据归档改为副本卡片墙，点进副本查看记忆",
-      "修复助手思考内容在回复结束后消失",
-      "修复有序列表编号全变成 1",
-      "反引号内的标签不再被当作思考或折叠块",
-      "修复悬浮球误弹调用日志和当前状态"
+      "修复 OTA 发现新版本状态图标畸变"
     ],
     "packages": {
       "full": {
-        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1289/retroflow-ota-full-b1289.zip",
-        "sha256": "f30ebc54afe0503fa0d85d65e444b82764bafbf6add540bbe357072e7617a5d7",
-        "size": 1837589
+        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1290/retroflow-ota-full-b1290.zip",
+        "sha256": "394d693c59d04126bc773576c498e31e21bdc8f655172ba4d00a80a6f11b7d6e",
+        "size": 1837686
       },
       "patch": {
         "sinceBuild": 0,
@@ -56,5 +52,5 @@
       }
     }
   },
-  "_status": "已发布 build 1289（全量包，字体常驻不打包）。patch 差分留待后续。"
+  "_status": "已发布 build 1290（全量包，字体常驻不打包）。patch 差分留待后续。"
 }
