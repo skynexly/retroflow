@@ -76,17 +76,21 @@ const AssistantMemoryExtractor = (() => {
     return ia < ib ? -1 : (ia > ib ? 1 : 0);
   }
 
-  /** 助手原文去掉思维链与动作标记，只留执行员看得到的话 */
+  /** 助手原文去掉思维链与动作标记，只留执行员看得到的话。只删除标记，不解析，不弹提示 */
   function visibleAssistantText(raw) {
     let s = String(raw || '');
-    const core = typeof window !== 'undefined' ? window.AssistantChatCore : null;
+    const win = typeof window !== 'undefined' ? window : {};
+    const core = win.AssistantChatCore;
     if (core && typeof core.stripThinkingFromContext === 'function') {
       s = core.stripThinkingFromContext(s);
     } else {
       s = s.replace(/<think(?:ing)?\b[^>]*>[\s\S]*?<\/think(?:ing)?\s*>/gi, '');
     }
-    if (core && typeof core.extractAssistantActions === 'function') {
-      s = core.extractAssistantActions(s).visibleText;
+    // 不能用 AssistantChatCore.extractAssistantActions：它会解析 JSON，
+    // 遇到历史记录里写坏的动作标记就弹「助手动作指令格式不合法」。
+    const md = win.RetroflowMarkdown;
+    if (md && typeof md.stripActionMarkers === 'function') {
+      s = md.stripActionMarkers(s);
     } else {
       s = s.replace(/<RETROFLOW_ACTION>[\s\S]*?<\/RETROFLOW_ACTION>/gi, '').replace(/<RETROFLOW_ACTION>[\s\S]*$/i, '');
     }

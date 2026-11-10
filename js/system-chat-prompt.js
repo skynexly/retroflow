@@ -488,9 +488,11 @@ ${identityNote}`;
    *                          不传时关键词条目不会命中，常驻条目仍照常注入。
    * @param {Object} [sceneCtx] 副本场景上下文 { fork, envoyCtx, missionCtx, runId }。
    *                          非空时切「副本场景模式」：精简世界观 + 副本通信场景 + 副本信息头。
+   * @param {Object} [options]
+   * @param {string} [options.memoryStable] 助手记忆的常驻段（AssistantMemoryRecall.prepare 的 stable）
    * @returns {string}
    */
-  function buildSystemPrompt(history, sceneCtx) {
+  function buildSystemPrompt(history, sceneCtx, options) {
     const inFork = !!(sceneCtx && sceneCtx.fork);
     // 内置工具关闭时，文件区读取权限段不拼入提示词（运行期也不会响应其标记）
     const filePermission = isBuiltinToolsEnabled() ? FILE_TOOL_PERMISSION : '';
@@ -530,6 +532,11 @@ ${identityNote}`;
     const credentials = buildOnlineCredentialsBlock();
     if (credentials) sections.push(credentials);
 
+    // 助手记忆：总说明、永久与常驻记忆（AssistantMemoryRecall 产出的 stable 段）。
+    // 只在记忆库变化时才变，放系统提示词不破坏前缀缓存；本轮命中的记忆走深度注入。
+    const memoryBlock = options && typeof options.memoryStable === 'string' ? options.memoryStable.trim() : '';
+    if (memoryBlock) sections.push(memoryBlock);
+
     // 世界书注入：全局分类无条件生效，助手分类只在系统助手对话生效。
     // 顶部段置于所有协议之前作为最高统领法则，底部段追加至末尾。
     const engine = (window.WorldBookEngine && typeof WorldBookEngine.buildInjection === 'function')
@@ -553,14 +560,18 @@ ${identityNote}`;
    * 由 system-chat-ui 在裁剪完成后调 WorldBookEngine.applyDepthInjection。
    * @param {Array} [history] 对话消息数组，用于关键词判定
    * @param {Object} [sceneCtx] 副本场景上下文；非空时追加副本贴脸场景说明（A 段，depth:1）
+   * @param {Object} [options]
+   * @param {string} [options.memoryDynamic] 本轮命中与随机补位的助手记忆（depth:1）
    * @returns {Array} depthItems
    */
-  function buildDepthInjection(history, sceneCtx) {
+  function buildDepthInjection(history, sceneCtx, options) {
     const items = [];
     if (window.WorldBookEngine && typeof WorldBookEngine.buildInjection === 'function') {
       const wb = WorldBookEngine.buildInjection(history, 'assistant');
       if (Array.isArray(wb.depthItems)) items.push(...wb.depthItems);
     }
+    const memoryDynamic = options && typeof options.memoryDynamic === 'string' ? options.memoryDynamic.trim() : '';
+    if (memoryDynamic) items.push({ depth: 1, role: 'system', content: memoryDynamic });
     // 副本场景：追加贴脸场景说明（depth:1，紧贴生成点，不被 10 轮原文冲散）
     if (sceneCtx && sceneCtx.fork) {
       items.push({ depth: 1, role: 'system', content: replaceVars(FORK_SCENE_DEPTH_TEMPLATE) });

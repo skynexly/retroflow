@@ -8,7 +8,7 @@
  *   3. skipWaiting 同步调用，不等 addAll 完成，新 SW 立即接管；
  *   4. 只有 resp.ok 才写入缓存，避免把 404 / 5xx 固化下来。
  */
-const CACHE_NAME = 'retroflow-shell-v1294';
+const CACHE_NAME = 'retroflow-shell-v1295';
 const SHELL_ASSETS = [
   './',
   './index.html',
@@ -97,6 +97,7 @@ const SHELL_ASSETS = [
   './js/chat-history-search-ui.js',
   './js/assistant-memory-prompt.js',
   './js/assistant-memory-extractor.js',
+  './js/assistant-memory-recall.js',
   './js/system-chat-settings.js',
   './js/pwa.js',
   './manifest.webmanifest',

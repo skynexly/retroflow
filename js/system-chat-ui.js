@@ -3543,7 +3543,7 @@ ${parts.join('\n\n———\n\n')}`;
    * System Prompt 与最后一条助手消息之后的用户消息、系统事件属于强制保留区；
    * 其余历史从最新向最旧装入预算，避免旧消息挤掉待推演草稿。
    */
-  function fitMessagesToContext(config, systemPrompt, history) {
+  function fitMessagesToContext(config, systemPrompt, history, extras) {
     const configuredContext = parseInt(config && config.context, 10);
     const contextLimit = Number.isFinite(configuredContext) && configuredContext >= 1000
       ? configuredContext
@@ -3569,6 +3569,9 @@ ${parts.join('\n\n———\n\n')}`;
       : null;
     let used = estimateMessageTokens(systemMessage);
     if (timeBaselineMessage) used += estimateMessageTokens(timeBaselineMessage);
+    // 本轮命中的助手记忆稍后深度注入，先从预算里扣掉，避免装满历史后再超出
+    const memoryDynamic = extras && typeof extras.memoryDynamic === 'string' ? extras.memoryDynamic.trim() : '';
+    if (memoryDynamic) used += estimateMessageTokens({ content: memoryDynamic });
 
     // 连发的待推演用户消息始终保留，即使配置容量过小也不静默删掉用户输入。
     pending.forEach(message => { used += estimateMessageTokens(message); });
@@ -3586,7 +3589,7 @@ ${parts.join('\n\n———\n\n')}`;
     let finalMessages = [systemMessage, ...(timeBaselineMessage ? [timeBaselineMessage] : []), ...keptOlder, ...pending];
     const depthSceneCtx = getForkSceneCtx();
     const depthItems = (window.SystemChatPrompt && typeof SystemChatPrompt.buildDepthInjection === 'function')
-      ? SystemChatPrompt.buildDepthInjection(history, depthSceneCtx)
+      ? SystemChatPrompt.buildDepthInjection(history, depthSceneCtx, { memoryDynamic })
       : [];
     if (depthItems.length && window.WorldBookEngine && typeof WorldBookEngine.applyDepthInjection === 'function') {
       finalMessages = WorldBookEngine.applyDepthInjection(finalMessages, depthItems);
@@ -3637,6 +3640,25 @@ ${parts.join('\n\n———\n\n')}`;
     };
   }
 
+  /**
+   * 助手页专用的上下文装配：带上助手记忆。
+   * 记忆的常驻段进系统提示词，本轮命中段深度注入到最新消息之前。
+   * 记忆读取失败时 prepare 返回空段，照常回复。DECK 助手舱本期不接记忆，仍直接调 fitMessagesToContext。
+   */
+  async function fitWithAssistantMemory(config, history) {
+    let memory = { stable: '', dynamic: '' };
+    if (window.AssistantMemoryRecall && typeof AssistantMemoryRecall.prepare === 'function') {
+      try {
+        memory = await AssistantMemoryRecall.prepare(history);
+      } catch (err) {
+        console.warn('[System Chat] 助手记忆召回失败，本轮不注入记忆：', err);
+      }
+    }
+    const sceneCtx = getForkSceneCtx();
+    const systemPrompt = SystemChatPrompt.buildSystemPrompt(history, sceneCtx, { memoryStable: memory.stable || '' });
+    return fitMessagesToContext(config, systemPrompt, history, { memoryDynamic: memory.dynamic || '' });
+  }
+
   async function generateReplacementReply(history, onChunk) {
     if (!window.SystemChatPrompt || !window.RetroflowAPI) {
       throw new Error('系统助手 API 模块尚未加载');
@@ -3645,7 +3667,7 @@ ${parts.join('\n\n———\n\n')}`;
     if (!config || !config.baseUrl || !config.modelId) {
       throw new Error('尚未配置系统助手模型，或主模型配置不完整');
     }
-    const fitted = fitMessagesToContext(config, SystemChatPrompt.buildSystemPrompt(history, getForkSceneCtx()), history);
+    const fitted = await fitWithAssistantMemory(config, history);
     const settings = window.SystemChatSettings && typeof SystemChatSettings.getSettings === 'function'
       ? SystemChatSettings.getSettings()
       : { streaming: true };
@@ -3777,7 +3799,9 @@ ${parts.join('\n\n———\n\n')}`;
       throw new Error('尚未配置系统助手模型，或主模型配置不完整');
     }
 
-    const fitted = fitMessagesToContext(config, SystemChatPrompt.buildSystemPrompt(history, getForkSceneCtx()), history);
+    const fitted = overrides
+      ? fitMessagesToContext(config, SystemChatPrompt.buildSystemPrompt(history, getForkSceneCtx()), history)
+      : await fitWithAssistantMemory(config, history);
     const messages = fitted.messages;
     if (fitted.meta.trimmedCount > 0) {
       console.info(`[System Chat] 上下文容量 ${fitted.meta.contextLimit} tokens，已裁剪 ${fitted.meta.trimmedCount} 条旧消息`);
