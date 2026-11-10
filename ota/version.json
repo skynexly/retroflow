@@ -32,17 +32,20 @@
   "channel": "stable",
   "latest": {
     "version": "1.2.0",
-    "build": 1290,
+    "build": 1294,
     "minBinary": 7,
-    "releasedAt": "2026-11-09T08:55:37Z",
+    "releasedAt": "2026-11-10T12:52:07Z",
     "notes": [
-      "修复 OTA 发现新版本状态图标畸变"
+      "助手记忆接入自动提取：按设置的 token 数从最早的聊天开始提取，每个对话窗口各自记录进度",
+      "对话设置新增手动提取和未提取统计",
+      "记忆库新增助手记忆页面，支持分组、搜索、编辑和删除",
+      "修复诊断页打开数据库报错"
     ],
     "packages": {
       "full": {
-        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1290/retroflow-ota-full-b1290.zip",
-        "sha256": "394d693c59d04126bc773576c498e31e21bdc8f655172ba4d00a80a6f11b7d6e",
-        "size": 1837686
+        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1294/retroflow-ota-full-b1294.zip",
+        "sha256": "d66f9d98375a4ee2a8e6dc84c8669367bf281dbc9a9a8735a4711a7b243c958c",
+        "size": 1893388
       },
       "patch": {
         "sinceBuild": 0,
@@ -52,5 +55,5 @@
       }
     }
   },
-  "_status": "已发布 build 1290（全量包，字体常驻不打包）。patch 差分留待后续。"
+  "_status": "已发布 build 1294（全量包，字体常驻不打包）。patch 差分留待后续。"
 }
