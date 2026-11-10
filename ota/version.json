@@ -32,20 +32,19 @@
   "channel": "stable",
   "latest": {
     "version": "1.2.0",
-    "build": 1294,
+    "build": 1295,
     "minBinary": 7,
-    "releasedAt": "2026-11-10T12:52:07Z",
+    "releasedAt": "2026-11-10T14:21:06Z",
     "notes": [
-      "助手记忆接入自动提取：按设置的 token 数从最早的聊天开始提取，每个对话窗口各自记录进度",
-      "对话设置新增手动提取和未提取统计",
-      "记忆库新增助手记忆页面，支持分组、搜索、编辑和删除",
-      "修复诊断页打开数据库报错"
+      "助手回复时按最近两轮聊天的关键词调取相关记忆，没有命中的分类随机补位",
+      "永久记忆、近期状况和未完事项常驻在助手的上下文里",
+      "修复进入对话设置时弹出“助手动作指令格式不合法”"
     ],
     "packages": {
       "full": {
-        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1294/retroflow-ota-full-b1294.zip",
-        "sha256": "d66f9d98375a4ee2a8e6dc84c8669367bf281dbc9a9a8735a4711a7b243c958c",
-        "size": 1893388
+        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1295/retroflow-ota-full-b1295.zip",
+        "sha256": "c04f79a2f91daa5f1e3fb99e5baf983e449c1dd941ec5a9f195e24fc07faaa95",
+        "size": 1900721
       },
       "patch": {
         "sinceBuild": 0,
@@ -55,5 +54,5 @@
       }
     }
   },
-  "_status": "已发布 build 1294（全量包，字体常驻不打包）。patch 差分留待后续。"
+  "_status": "已发布 build 1295（全量包，字体常驻不打包）。patch 差分留待后续。"
 }
