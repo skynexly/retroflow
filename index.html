@@ -19,7 +19,7 @@
 
   <!-- 样式资产（带构建版本戳穿透 HTTP 磁盘缓存） -->
   <link rel="stylesheet" href="css/variables.css?v=190">
-  <link rel="stylesheet" href="css/style.css?v=899">
+  <link rel="stylesheet" href="css/style.css?v=901">
   <link rel="stylesheet" href="css/fork-deck-camera.css?v=3">
   <link rel="stylesheet" href="css/api-call-log.css?v=4">
 
@@ -1855,6 +1855,22 @@
                       <div class="api-slot-binding">
                         <span class="api-binding-label">当前指派:</span>
                         <span class="api-binding-val">继承主模型 (MAIN)</span>
+                      </div>
+                    </div>
+
+                    <!-- 插槽 5：向量模型（不继承主模型，未设置时记忆召回只用关键词） -->
+                    <div class="api-slot-card" data-slot="embedding">
+                      <div class="api-slot-head">
+                        <div class="api-slot-title-row">
+                          <span class="api-slot-tag">VECTOR</span>
+                          <span class="api-slot-title">向量模型</span>
+                        </div>
+                        <span class="api-slot-fallback-badge">不继承主模型</span>
+                      </div>
+                      <span class="api-slot-desc">记忆向量化与按语义召回，未设置时只按关键词召回</span>
+                      <div class="api-slot-binding">
+                        <span class="api-binding-label">当前指派:</span>
+                        <span class="api-binding-val">未设置</span>
                       </div>
                     </div>
                   </div>
@@ -11144,7 +11160,7 @@
       </div>
     </div>
   </div>
-  <script src="js/storage.js?v=272"></script>
+  <script src="js/storage.js?v=273"></script>
   <script src="js/data-registry.js?v=403"></script>
   <script src="js/preset-assistants.js?v=3"></script>
   <script src="js/store.js?v=258"></script>
@@ -11165,7 +11181,7 @@
   <script src="js/form-editor-modal.js?v=186"></script>
   <script src="js/gallery-store.js?v=304"></script>
   <script src="js/file-store.js?v=301"></script>
-  <script src="js/data-vault.js?v=11"></script>
+  <script src="js/data-vault.js?v=12"></script>
   <script src="js/data-vault-ui.js?v=3"></script>
   <script src="js/keymatch.js?v=1"></script>
   <script src="js/worldbook-engine.js?v=5"></script>
@@ -11181,13 +11197,13 @@
   <script src="js/dock.js?v=187"></script>
   <script src="js/theme.js?v=210"></script>
    <script src="js/theme-ui.js?v=225"></script>
-  <script src="js/api-core.js?v=190"></script>
+  <script src="js/api-core.js?v=191"></script>
   <script src="js/tts-cache.js?v=186"></script>
-  <script src="js/api-ui.js?v=207"></script>
+  <script src="js/api-ui.js?v=208"></script>
   <script src="js/system-protocols.js?v=214"></script>
   <script src="js/manual-rag.js?v=1"></script>
   <script src="js/manual-app.js?v=201"></script>
-  <script src="js/api-call-log.js?v=1"></script>
+  <script src="js/api-call-log.js?v=2"></script>
   <script src="js/api-call-log-ui.js?v=2"></script>
   <script src="js/terminal-config.js?v=8"></script>
   <script src="js/ota-updater.js?v=1"></script>
@@ -11205,9 +11221,10 @@
   <script src="js/fork-doc-ui.js?v=16"></script>
   <script src="js/fork-run-store.js?v=25"></script>
   <script src="js/memory-store.js?v=1"></script>
-  <script src="js/assistant-memory-store.js?v=2"></script>
+  <script src="js/assistant-memory-store.js?v=3"></script>
+  <script src="js/memory-vectors.js?v=1"></script>
   <script src="js/assistant-memory-parser.js?v=1"></script>
-  <script src="js/memory-bank-app.js?v=4"></script>
+  <script src="js/memory-bank-app.js?v=6"></script>
   <script src="js/fork-run-wallpaper.js?v=1"></script>
   <script src="js/fork-run-settings.js?v=19"></script>
   <script src="js/fork-run-api.js?v=23"></script>
@@ -11236,7 +11253,7 @@
   <script src="js/chat-history-search-ui.js?v=4"></script>
   <script src="js/assistant-memory-prompt.js?v=1"></script>
   <script src="js/assistant-memory-extractor.js?v=2"></script>
-  <script src="js/assistant-memory-recall.js?v=1"></script>
+  <script src="js/assistant-memory-recall.js?v=2"></script>
   <script src="js/system-chat-settings.js?v=318"></script>
   <script src="js/pwa.js?v=188"></script>
 

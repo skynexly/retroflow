@@ -140,6 +140,7 @@ window.ApiCallLog = (() => {
     image: '文生图',
     edits: '图生图',
     tts: '语音合成',
+    embed: '向量生成',
     models: '模型列表'
   };
 

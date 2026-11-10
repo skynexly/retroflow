@@ -8,18 +8,26 @@
  *   memories 记忆库专属流水（事件记忆/角色记忆同库不同型），带关键词与在场角色反查索引
  *   assistantMemories 助手记忆（对你的记忆、自我认知等六类），所有助手共用一份，
  *            与副本记忆分库，规范见 design/助手记忆提取规范.md
+ *   memoryVectors 全部记忆种类共用的向量表（v5）。主键 key = `${source}:${id}`，
+ *            source 区分记忆种类（本期只有 assistant）。向量与记忆本体分表，
+ *            记忆库页面读取记忆时不会把大量浮点数组一并读进内存。
  *
  * records 本轮只建 schema 不写业务逻辑，等副本功能落地时再接。
  * 一次性把版本号推到位，避免以后再升 schema。
  */
 const Storage = (() => {
   const DB_NAME = 'retroflow';
-  const DB_VERSION = 4;
+  const DB_VERSION = 5;
   const STORE_ASSETS = 'assets';
   const STORE_DOCS = 'docs';
   const STORE_RECORDS = 'records';
   const STORE_MEMORIES = 'memories';
   const STORE_ASSISTANT_MEMORIES = 'assistantMemories';
+  const STORE_MEMORY_VECTORS = 'memoryVectors';
+  /** 助手记忆在向量表里的 source 名，与 memory-vectors.js 的登记名一致 */
+  const ASSISTANT_VECTOR_SOURCE = 'assistant';
+  /** 允许数据管理整表导入导出的记忆表（向量表不导出，导入后重新生成） */
+  const BACKUP_STORES = Object.freeze([STORE_MEMORIES, STORE_ASSISTANT_MEMORIES]);
 
   let dbPromise = null;
 
@@ -77,6 +85,15 @@ const Storage = (() => {
           const asstMem = db.createObjectStore(STORE_ASSISTANT_MEMORIES, { keyPath: 'id' });
           asstMem.createIndex('by_category', 'category');
           asstMem.createIndex('by_keywords', 'keywords', { multiEntry: true });
+        }
+
+        // v5 统一向量表：全部记忆种类共用，主键 key = `${source}:${id}`
+        if (!db.objectStoreNames.contains(STORE_MEMORY_VECTORS)) {
+          const vectors = db.createObjectStore(STORE_MEMORY_VECTORS, { keyPath: 'key' });
+          // source 索引：按记忆种类扫描全部向量（如删除/补算某种记忆的向量）
+          vectors.createIndex('by_source', 'source');
+          // 复合索引：按 (source, modelName) 筛选待更新的失效向量（换模型后）
+          vectors.createIndex('by_source_model', ['source', 'modelName']);
         }
       };
 
@@ -619,7 +636,11 @@ const Storage = (() => {
     const docs = (Array.isArray(docPuts) ? docPuts : []).filter((d) => d && typeof d.key === 'string' && d.key);
     if (!puts.length && !dels.length && !docs.length) return { put: 0, removed: 0, docs: 0 };
     const db = await openDB();
-    const storeNames = docs.length ? [STORE_ASSISTANT_MEMORIES, STORE_DOCS] : STORE_ASSISTANT_MEMORIES;
+    const storeNames = [STORE_ASSISTANT_MEMORIES];
+    if (docs.length) storeNames.push(STORE_DOCS);
+    // 删除记忆时同事务删掉对应向量，不留残留
+    const withVectors = dels.length > 0 && db.objectStoreNames.contains(STORE_MEMORY_VECTORS);
+    if (withVectors) storeNames.push(STORE_MEMORY_VECTORS);
     await new Promise((resolve, reject) => {
       const tx = db.transaction(storeNames, 'readwrite');
       const store = tx.objectStore(STORE_ASSISTANT_MEMORIES);
@@ -633,12 +654,155 @@ const Storage = (() => {
           const docStore = tx.objectStore(STORE_DOCS);
           docs.forEach((d) => docStore.put(d.value, d.key));
         }
+        if (withVectors) {
+          const vecStore = tx.objectStore(STORE_MEMORY_VECTORS);
+          dels.forEach((id) => vecStore.delete(`${ASSISTANT_VECTOR_SOURCE}:${id}`));
+        }
       } catch (err) {
         try { tx.abort(); } catch (_) { /* ignore */ }
         reject(err);
       }
     });
     return { put: puts.length, removed: dels.length, docs: docs.length };
+  }
+
+  /* ---------------- 向量表（IndexedDB memoryVectors） ----------------
+     统一向量存储，全部记忆种类共用。主键 key = `${source}:${id}`。
+     记录结构：{ key, source, recordId, modelName, dim, textHash, vector, createdAt }
+     业务读写统一走 MemoryVectors 模块。 */
+
+  /** 写入或更新一条向量记录 */
+  async function putVector(record) {
+    if (!record || !record.key) throw new Error('向量记录缺少 key');
+    await withAnyStore(STORE_MEMORY_VECTORS, 'readwrite', (store) => store.put(record));
+    return record;
+  }
+
+  /** 批量写入向量：同一事务，全部成功才提交 */
+  async function putVectors(records) {
+    const list = (Array.isArray(records) ? records : []).filter((r) => r && r.key);
+    if (!list.length) return 0;
+    const db = await openDB();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_MEMORY_VECTORS, 'readwrite');
+      const store = tx.objectStore(STORE_MEMORY_VECTORS);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error('IndexedDB 向量批量写入已中止'));
+      try {
+        list.forEach((r) => store.put(r));
+      } catch (err) {
+        try { tx.abort(); } catch (_) { /* ignore */ }
+        reject(err);
+      }
+    });
+    return list.length;
+  }
+
+  /** 读取单条向量 */
+  async function getVector(key) {
+    return await withAnyStore(STORE_MEMORY_VECTORS, 'readonly', (store) => store.get(key));
+  }
+
+  /** 按 source 读取全部向量（供查漏补缺和删除通知使用） */
+  async function getVectorsBySource(source) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_MEMORY_VECTORS, 'readonly');
+      const store = tx.objectStore(STORE_MEMORY_VECTORS);
+      const index = store.index('by_source');
+      const req = index.getAll(source);
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  /** 删除单条向量 */
+  async function removeVector(key) {
+    await withAnyStore(STORE_MEMORY_VECTORS, 'readwrite', (store) => store.delete(key));
+    return true;
+  }
+
+  /** 批量删除向量：同一事务 */
+  async function removeVectors(keys) {
+    const list = (Array.isArray(keys) ? keys : []).filter(Boolean);
+    if (!list.length) return 0;
+    const db = await openDB();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_MEMORY_VECTORS, 'readwrite');
+      const store = tx.objectStore(STORE_MEMORY_VECTORS);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error('IndexedDB 向量批量删除已中止'));
+      try {
+        list.forEach((k) => store.delete(k));
+      } catch (err) {
+        try { tx.abort(); } catch (_) { /* ignore */ }
+        reject(err);
+      }
+    });
+    return list.length;
+  }
+
+  /** 清空某个 source 的全部向量 */
+  async function clearVectorsBySource(source) {
+    const vectors = await getVectorsBySource(source);
+    if (!vectors.length) return 0;
+    const keys = vectors.map((v) => v.key);
+    await removeVectors(keys);
+    return vectors.length;
+  }
+
+  /** 清空全部向量（导入或清理记忆后调用，之后由总按钮重新生成） */
+  async function clearAllVectors() {
+    const db = await openDB();
+    if (!db.objectStoreNames.contains(STORE_MEMORY_VECTORS)) return 0;
+    const count = await withAnyStore(STORE_MEMORY_VECTORS, 'readonly', (store) => store.count()) || 0;
+    if (count) await withAnyStore(STORE_MEMORY_VECTORS, 'readwrite', (store) => store.clear());
+    return count;
+  }
+
+  /* ---------------- 记忆表整表备份（数据管理「记忆」块使用） ---------------- */
+
+  function assertBackupStore(name) {
+    if (BACKUP_STORES.indexOf(name) === -1) throw new Error(`不允许整表备份的表：${name}`);
+  }
+
+  /** 读取整张记忆表；读取失败会抛错，导出时不能把失败当成空表 */
+  async function getAllFromBackupStore(name) {
+    assertBackupStore(name);
+    return await withAnyStore(name, 'readonly', (store) => store.getAll()) || [];
+  }
+
+  /** 统计整张记忆表条数 */
+  async function countBackupStore(name) {
+    assertBackupStore(name);
+    return await withAnyStore(name, 'readonly', (store) => store.count()) || 0;
+  }
+
+  /**
+   * 覆盖式写入一张记忆表：同一事务内先清空再写入，要么全部成功，要么保持原样。
+   * records 为空数组时等于清空该表。
+   */
+  async function replaceBackupStore(name, records) {
+    assertBackupStore(name);
+    const list = (Array.isArray(records) ? records : []).filter((r) => r && r.id);
+    const db = await openDB();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(name, 'readwrite');
+      const store = tx.objectStore(name);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error(`IndexedDB ${name} 覆盖写入已中止`));
+      try {
+        store.clear();
+        list.forEach((r) => store.put(r));
+      } catch (err) {
+        try { tx.abort(); } catch (_) { /* ignore */ }
+        reject(err);
+      }
+    });
+    return list.length;
   }
 
   return {
@@ -674,6 +838,18 @@ const Storage = (() => {
     removeAssistantMemory,
     removeAssistantMemories,
     commitAssistantMemories,
+    putVector,
+    putVectors,
+    getVector,
+    getVectorsBySource,
+    removeVector,
+    removeVectors,
+    clearVectorsBySource,
+    clearAllVectors,
+    BACKUP_STORES,
+    getAllFromBackupStore,
+    countBackupStore,
+    replaceBackupStore,
     compressImage
   };
 })();

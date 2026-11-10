@@ -15,6 +15,8 @@
     online: { title: '线上联络模型', fallback: true, protocol: 'openai' },
     assistant: { title: '辅助推理模型', fallback: true, protocol: 'openai' },
     vision: { title: '视觉识别模型', fallback: true, protocol: 'openai' },
+    // 向量模型不继承主模型：聊天模型一般不能生成向量，未设置时记忆召回只用关键词
+    embedding: { title: '向量模型', fallback: false, protocol: 'embedding', emptyLabel: '未设置' },
     imageGen: { title: '图像生成', fallback: false, protocol: 'openai', emptyLabel: '未设置' },
     tts: { title: 'TTS 语音合成', fallback: false, protocol: 'minimax', emptyLabel: '未设置' }
   };
@@ -155,6 +157,11 @@
   // MiniMax 现行端点与型号：旧域名 api.minimaxi.chat 已废弃，speech-01-turbo 为老型号
   const TTS_DEFAULT_URL = 'https://api.minimaxi.com/v1';
   const TTS_DEFAULT_MODEL = 'speech-2.8-hd';
+
+  // 向量模型：只作占位提示，不预填。填了端点但模型留空时，保存按 bge-m3 处理
+  const EMBED_DEFAULT_MODEL = 'BAAI/bge-m3';
+  const EMBED_URL_HINT = 'https://api.siliconflow.cn/v1';
+  const EMBED_TEST_TEXT = '溯流计划 · 向量链路测试';
 
   /* ================= 工具 ================= */
   function escapeHtml(str) {
@@ -442,6 +449,41 @@
       }
     } finally {
       setTestBtnBusy(slotTestBtn, false, '测试中', '测试生图');
+    }
+  }
+
+  /* ================= 真实链路：测试向量 ================= */
+
+  // 真实请求一次 /embeddings，显示维度与耗时
+  async function runEmbedTest() {
+    const url = slotBaseUrl ? slotBaseUrl.value.trim() : '';
+    const key = slotKeyInput ? slotKeyInput.value.trim() : '';
+    const model = (slotModelId ? slotModelId.value.trim() : '') || EMBED_DEFAULT_MODEL;
+    const show = (cls, text) => {
+      if (slotTestResult && slotTestResultText) {
+        slotTestResult.className = 'api-test-result' + (cls ? ' ' + cls : '');
+        slotTestResultText.textContent = text;
+      }
+    };
+    if (!url) {
+      show('error', 'ERR · 请填写 BASE URL');
+      return;
+    }
+    setTestBtnBusy(slotTestBtn, true, '测试中', '测试向量');
+    show('testing', 'EMBEDDING // 正在请求向量接口...');
+    const started = Date.now();
+    try {
+      const res = await RetroflowAPI.embed(
+        { baseUrl: url, apiKey: key, modelId: model },
+        [EMBED_TEST_TEXT],
+        { timeout: 20000, logTag: 'API 设置 · 向量测试' }
+      );
+      const secs = ((Date.now() - started) / 1000).toFixed(1);
+      show('success', `${secs}s · 连接成功 · ${res.model || model} · 维度 ${res.dim}`);
+    } catch (err) {
+      show('error', 'ERR · ' + ((err && err.message) || '向量请求失败'));
+    } finally {
+      setTestBtnBusy(slotTestBtn, false, '测试中', '测试向量');
     }
   }
 
@@ -908,11 +950,18 @@
   function collectSlotForm() {
     const isImage = editingSlot === 'imageGen';
     const isTts = editingSlot === 'tts';
+    const isEmbed = editingSlot === 'embedding';
     const base = {
       baseUrl: slotBaseUrl ? slotBaseUrl.value.trim() : '',
       apiKey: slotKeyInput ? slotKeyInput.value.trim() : '',
       modelId: slotModelId ? slotModelId.value.trim() : ''
     };
+
+    // 向量插槽只需端点、Key、模型；填了端点但模型留空时按默认 bge-m3
+    if (isEmbed) {
+      if (base.baseUrl && !base.modelId) base.modelId = EMBED_DEFAULT_MODEL;
+      return base;
+    }
 
     if (isTts) {
       return Object.assign(base, {
@@ -976,23 +1025,28 @@
 
     if (slotEditTitle) slotEditTitle.textContent = meta.title;
     if (slotEditSubLabel) {
-      slotEditSubLabel.textContent = meta.fallback
-        ? '留空则自动退回主模型'
-        : (meta.protocol === 'minimax' ? 'MiniMax 语音合成端点' : 'OpenAI 兼容生图端点');
+      let sub = '留空则自动退回主模型';
+      if (!meta.fallback) {
+        if (meta.protocol === 'minimax') sub = 'MiniMax 语音合成端点';
+        else if (meta.protocol === 'embedding') sub = 'OpenAI 兼容向量端点 · 不继承主模型';
+        else sub = 'OpenAI 兼容生图端点';
+      }
+      slotEditSubLabel.textContent = sub;
     }
 
     const isImage = key === 'imageGen';
     const isTts = key === 'tts';
+    const isEmbed = key === 'embedding';
 
     // 00 卡片：TTS 属于独立 MiniMax 语音协议，隐藏主模型载入
     if (slotImportCard) slotImportCard.hidden = isTts;
 
     // 01 卡片 placeholder
     if (slotBaseUrl) {
-      slotBaseUrl.placeholder = isTts ? TTS_DEFAULT_URL : '留空则继承主模型';
+      slotBaseUrl.placeholder = isTts ? TTS_DEFAULT_URL : (isEmbed ? EMBED_URL_HINT : '留空则继承主模型');
     }
     if (slotKeyInput) {
-      slotKeyInput.placeholder = isTts ? '填入 MiniMax API Key' : '留空则继承主模型';
+      slotKeyInput.placeholder = isTts ? '填入 MiniMax API Key' : (isEmbed ? '填入向量服务的 API Key' : '留空则继承主模型');
     }
     // GROUP ID 仅 TTS 需要（老版 key 必填）
     if (slotGroupIdGroup) slotGroupIdGroup.hidden = !isTts;
@@ -1002,10 +1056,12 @@
       slotModelCardTitle.textContent = isTts ? '模型与音色指派' : '模型指派';
     }
     if (slotModelHint) {
-      slotModelHint.textContent = isTts ? 'MiniMax 语音合成模型' : '支持手动输入或从服务端获取';
+      slotModelHint.textContent = isTts
+        ? 'MiniMax 语音合成模型'
+        : (isEmbed ? `留空按 ${EMBED_DEFAULT_MODEL}，也可从服务端获取` : '支持手动输入或从服务端获取');
     }
     if (slotModelId) {
-      slotModelId.placeholder = isTts ? TTS_DEFAULT_MODEL : '留空则继承主模型';
+      slotModelId.placeholder = isTts ? TTS_DEFAULT_MODEL : (isEmbed ? EMBED_DEFAULT_MODEL : '留空则继承主模型');
     }
     if (slotFetchModelsBtn) {
       // TTS 走独立协议，隐藏 OpenAI 式的模型拉取
@@ -1013,8 +1069,8 @@
     }
     if (slotVoiceGroup) slotVoiceGroup.hidden = !isTts;
 
-    // 03 卡片：3 向互斥分流（对话显示 3A，生图显示 3B，TTS 显示 3C）
-    if (slotParamCardInference) slotParamCardInference.hidden = isImage || isTts;
+    // 03 卡片：对话显示 3A，生图显示 3B，TTS 显示 3C，向量不需要参数卡
+    if (slotParamCardInference) slotParamCardInference.hidden = isImage || isTts || isEmbed;
     if (slotParamCardImageGen) slotParamCardImageGen.hidden = !isImage;
     if (slotParamCardTts) slotParamCardTts.hidden = !isTts;
     if (slotImageStage) slotImageStage.hidden = !isImage;
@@ -1031,6 +1087,9 @@
     } else if (isTts) {
       btnText = '测试语音';
       statusText = 'STANDBY // 点击按钮发送请求测试语音合成';
+    } else if (isEmbed) {
+      btnText = '测试向量';
+      statusText = 'STANDBY // 点击按钮请求一次向量接口，显示向量维度';
     }
 
     setTestBtnBusy(slotTestBtn, false, '测试中', btnText);
@@ -1157,11 +1216,13 @@
   }
   if (slotTestBtn) {
     slotTestBtn.addEventListener('click', () => {
-      // 生图走真实生图，TTS 走真实语音合成，其余走链路探测
+      // 生图走真实生图，TTS 走真实语音合成，向量走真实 /embeddings，其余走链路探测
       if (editingSlot === 'imageGen') {
         runImageTest();
       } else if (editingSlot === 'tts') {
         runTtsTest();
+      } else if (editingSlot === 'embedding') {
+        runEmbedTest();
       } else {
         runTest(slotTestBtn, slotTestResult, slotTestResultText, slotBaseUrl, slotKeyInput, slotModelId, slotPoolCtx);
       }

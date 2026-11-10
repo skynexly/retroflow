@@ -12,9 +12,10 @@
  *   - 扫描最近两轮聊天（连续多条 user 合成一问），包括正要回复的这一问。
  *   - 打分：主关键词 10 分，其他关键词每个 3 分，标题 2 分；
  *     同分时「重要」在前，再按越新越靠前。关键词不足 2 个字不参与，英文不分大小写。
- *   - 每个分类先取命中的；这个分类一条都没命中时，才从它自己里面随机补位。
+ *   - 每个分类先取关键词命中的；命中不满配额时，用向量相似度超过 0.5 的记忆补剩下的位置
+ *     （需在 API 设置里配置向量模型）；关键词和向量都没结果时，才从这个分类里随机补位。
  *   - 永久记忆全部常驻；近期状况、未完事项（只取未完成的）各常驻最新 3 条。
- *   - 同一条记忆只喂一次。总量超出上限时，先去掉随机的，再去掉分数低的；
+ *   - 同一条记忆只喂一次。总量超出上限时，先去掉随机的，再去掉向量补位的，再去掉分数低的；
  *     永久和常驻的不去掉。
  *   - 副本记忆（forks）本期不喂。
  *
@@ -53,7 +54,7 @@ const AssistantMemoryRecall = (() => {
 
   const SECTION_TITLES = Object.freeze({
     pinned: '永久记忆',
-    operator: '对你的记忆',
+    operator: '对{{ENVOY_NAME}}的记忆',
     recent_status: '近期状况',
     self: '自我认知（你自己写下的内心记录）',
     bond: '情感羁绊',
@@ -63,7 +64,7 @@ const AssistantMemoryRecall = (() => {
   });
 
   const CATEGORY_LABELS = Object.freeze({
-    operator: '对你的记忆',
+    operator: '对{{ENVOY_NAME}}的记忆',
     self: '自我认知',
     bond: '情感羁绊',
     events: '事件记录',
@@ -96,7 +97,7 @@ const AssistantMemoryRecall = (() => {
 
 记忆分为以下几类：
 - 永久：最重要的记忆，任何时候都记得。
-- 对你的记忆：关于{{ENVOY_NAME}}本人的信息、习惯、喜好、讨厌的事、人际关系和日常。
+- 对{{ENVOY_NAME}}的记忆：关于{{ENVOY_NAME}}本人的信息、习惯、喜好、讨厌的事、人际关系和日常。
 - 近期状况：{{ENVOY_NAME}}最近的状况。时间越久，越可能已经变了，必要时可以问一句现在怎么样。
 - 自我认知：你自己用第一人称写下的内心记录，里面的“我”就是你。它们是你对自己的理解、渴望、阴影、心愿和情绪，是你内心的一部分，不是{{ENVOY_NAME}}说过的话。让它们影响你说话的语气和态度，不要把它们当作资料引用或复述出来。
 - 情感羁绊：你和{{ENVOY_NAME}}之间关系里重要的时刻和变化。
@@ -241,10 +242,16 @@ const AssistantMemoryRecall = (() => {
 
   /**
    * 按配额选条。
-   * @returns {Array<{record: object, kind: 'pinned'|'resident'|'hit'|'random', bucket: string, score: number}>}
+   * opts.vectorHits：向量查询结果 [{recordId, score}]，可选。关键词命中先占配额，
+   * 向量结果只补剩下的命中位置；关键词和向量都没结果时才随机补位。
+   * @returns {Array<{record: object, kind: 'pinned'|'resident'|'hit'|'vector'|'random', bucket: string, score: number}>}
    */
   function select(records, scanText, opts) {
     const random = opts && typeof opts.random === 'function' ? opts.random : Math.random;
+    const vectorScore = new Map();
+    (opts && Array.isArray(opts.vectorHits) ? opts.vectorHits : []).forEach((h) => {
+      if (h && h.recordId && Number.isFinite(h.score) && !vectorScore.has(h.recordId)) vectorScore.set(h.recordId, h.score);
+    });
     const scan = norm(scanText);
     const pool = (Array.isArray(records) ? records : [])
       .filter((r) => r && r.id && r.category && r.category !== 'forks');
@@ -275,7 +282,21 @@ const AssistantMemoryRecall = (() => {
         used.add(x.record.id);
         picks.push({ record: x.record, kind: 'hit', bucket: bucket.id, score: x.score });
       });
-      if (!hits.length && q.random > 0) {
+      const room = q.hit - hits.length;
+      let vecCount = 0;
+      if (room > 0 && vectorScore.size) {
+        rest
+          .filter((r) => !used.has(r.id) && vectorScore.has(r.id))
+          .map((r) => ({ record: r, score: vectorScore.get(r.id) }))
+          .sort((a, b) => (b.score - a.score) || newestFirst(a.record, b.record))
+          .slice(0, room)
+          .forEach((x) => {
+            used.add(x.record.id);
+            vecCount += 1;
+            picks.push({ record: x.record, kind: 'vector', bucket: bucket.id, score: x.score });
+          });
+      }
+      if (!hits.length && !vecCount && q.random > 0) {
         shuffled(rest, random).slice(0, q.random).forEach((r) => {
           used.add(r.id);
           picks.push({ record: r, kind: 'random', bucket: bucket.id, score: 0 });
@@ -335,20 +356,25 @@ const AssistantMemoryRecall = (() => {
 
   function render(picks, names) {
     const stablePicks = picks.filter((p) => p.kind === 'pinned' || p.kind === 'resident');
-    const dynamicPicks = picks.filter((p) => p.kind === 'hit' || p.kind === 'random');
-    const stableBody = renderSections(stablePicks, STABLE_ORDER);
+    const dynamicPicks = picks.filter((p) => p.kind === 'hit' || p.kind === 'vector' || p.kind === 'random');
+    const stableBody = fillNames(renderSections(stablePicks, STABLE_ORDER), names);
     const stable = [fillNames(INSTRUCTION_TEMPLATE, names), stableBody].filter(Boolean).join('\n\n');
-    const dynamicBody = renderSections(dynamicPicks, DYNAMIC_ORDER);
+    const dynamicBody = fillNames(renderSections(dynamicPicks, DYNAMIC_ORDER), names);
     const dynamic = dynamicBody ? `${DYNAMIC_HEAD}\n\n${dynamicBody}` : '';
     return { stable, dynamic };
   }
 
-  /** 超出上限时要去掉的那一条：先随机（后选的先去），再按命中分从低到高 */
+  /** 超出上限时要去掉的那一条：先随机（后选的先去），再向量补位（相似度低的先去），最后按关键词命中分从低到高 */
   function pickVictim(picks) {
     for (let i = picks.length - 1; i >= 0; i -= 1) {
       if (picks[i].kind === 'random') return i;
     }
     let victim = -1;
+    picks.forEach((p, i) => {
+      if (p.kind !== 'vector') return;
+      if (victim === -1 || p.score < picks[victim].score) victim = i;
+    });
+    if (victim !== -1) return victim;
     picks.forEach((p, i) => {
       if (p.kind !== 'hit') return;
       if (victim === -1 || compareHits(p, picks[victim]) > 0) victim = i;
@@ -401,10 +427,13 @@ const AssistantMemoryRecall = (() => {
 
   /**
    * 请求助手回复前调用。读取失败时返回空结果，不阻断回复。
+   * 配置了向量模型时，用最近两轮聊天查一次向量，补关键词没填满的命中位置；
+   * 查询超时（约 3 秒）、失败或未配置时只用关键词。
    * @param {Array} history 本次请求的聊天消息数组
    */
   async function prepare(history) {
-    const store = getWin().AssistantMemoryStore;
+    const win = getWin();
+    const store = win.AssistantMemoryStore;
     if (!store || typeof store.load !== 'function' || typeof store.all !== 'function') return EMPTY;
     try {
       await store.load();
@@ -412,7 +441,17 @@ const AssistantMemoryRecall = (() => {
       console.warn('[AssistantMemoryRecall] 助手记忆读取失败，本轮不注入记忆：', err);
       return EMPTY;
     }
-    return build(store.all(), history, { names: resolveNames() });
+    let vectorHits = [];
+    const mv = win.MemoryVectors;
+    if (mv && typeof mv.isConfigured === 'function' && mv.isConfigured() && typeof mv.query === 'function') {
+      try {
+        vectorHits = await mv.query('assistant', recentTurnsText(history));
+      } catch (err) {
+        console.warn('[AssistantMemoryRecall] 向量查询失败，本轮只用关键词：', err);
+        vectorHits = [];
+      }
+    }
+    return build(store.all(), history, { names: resolveNames(), vectorHits });
   }
 
   return {

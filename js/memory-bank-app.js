@@ -62,6 +62,8 @@ const MemoryBankApp = (() => {
     rankPinned: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14l-1.5-6.5a5 5 0 0 0-3.2-3.6L14 4.5V2H10v2.5l-.3 2.4a5 5 0 0 0-3.2 3.6Z"/></svg>`,
     searchLine: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>`,
     plus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>`,
+    /* 向量化：三个节点互连，线宽与搜索、新增图标一致 */
+    vectorize: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="6" r="2.2"/><circle cx="19" cy="6" r="2.2"/><circle cx="12" cy="18" r="2.2"/><path d="M7.2 6h9.6M6.1 7.9l4.8 8.2M17.9 7.9l-4.8 8.2"/></svg>`,
     check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 7"/></svg>`,
     /* Lucide list-checks (ISC)，线宽与搜索、新增保持一致。 */
     listChecks: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 5h8"/><path d="M13 12h8"/><path d="M13 19h8"/><path d="m3 5 2 2 4-4"/><path d="m3 12 2 2 4-4"/><path d="m3 19 2 2 4-4"/></svg>`,
@@ -2166,6 +2168,75 @@ const MemoryBankApp = (() => {
     return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
   }
 
+  /* ---------------- 记忆向量化总按钮 ---------------- */
+
+  function vectorToast(opts) {
+    if (!window.RetroToast || typeof window.RetroToast.show !== 'function') return;
+    try { window.RetroToast.show(Object.assign({ tag: 'MEMORY // 向量化' }, opts)); } catch (_) {}
+  }
+
+  /** 只更新按钮状态，不重绘顶栏（用户可能已经切走）；进度在 toast 中展示 */
+  function syncVectorizeBtn(busy) {
+    const btn = headerEl && headerEl.querySelector('#memVectorizeBtn');
+    if (!btn) return;
+    btn.classList.toggle('is-busy', busy);
+    if (busy) btn.setAttribute('aria-busy', 'true');
+    else btn.removeAttribute('aria-busy');
+  }
+
+  async function runVectorizeAll() {
+    const mv = window.MemoryVectors;
+    if (!mv || typeof mv.fillAll !== 'function') {
+      vectorToast({ type: 'danger', message: '向量模块未加载', detail: '请刷新页面后再试。' });
+      return;
+    }
+    if (mv.isFilling()) {
+      vectorToast({ type: 'info', message: '正在向量化', detail: '请等这一轮完成。' });
+      return;
+    }
+    if (!mv.isConfigured()) {
+      vectorToast({
+        type: 'warn',
+        message: '还没有设置向量模型',
+        detail: '请到「设置 · API 设置 · 功能模型配置 · 向量模型」里设置。没有设置时，记忆只按关键词召回。',
+        duration: 5000
+      });
+      return;
+    }
+
+    syncVectorizeBtn(true);
+    vectorToast({ type: 'info', message: '正在检查记忆的向量', detail: '只补没有向量、换了模型或改过内容的记录。', duration: 60000 });
+    const res = await mv.fillAll({
+      onProgress: (done, total) => {
+        if (!total) return;
+        syncVectorizeBtn(true);
+        vectorToast({ type: 'info', message: `正在向量化 ${done} / ${total}`, detail: '可以离开记忆库，完成后会提示。', duration: 60000 });
+      }
+    });
+    syncVectorizeBtn(false);
+
+    if (res.ok) {
+      const cleaned = res.removed ? `，清理了 ${res.removed} 条失效向量` : '';
+      if (!res.pending) {
+        vectorToast({ type: 'success', message: '所有记忆都已向量化', detail: `共 ${res.total} 条，无需补算${cleaned}。` });
+      } else {
+        vectorToast({ type: 'success', message: `已向量化 ${res.generated} 条记忆`, detail: `共 ${res.total} 条${cleaned}。` });
+      }
+      return;
+    }
+    if (res.reason === 'busy') {
+      vectorToast({ type: 'info', message: '正在向量化', detail: '请等这一轮完成。' });
+      return;
+    }
+    const progress = res.pending ? `已完成 ${res.generated} / ${res.pending} 条。` : '';
+    vectorToast({
+      type: 'danger',
+      message: res.reason === 'api' ? '向量接口请求失败，已停止' : '读取记忆失败，已停止',
+      detail: `${progress}${res.error || ''} 已生成的向量会保留，再点一次会从未完成的记录继续。`,
+      duration: 6000
+    });
+  }
+
   function renderHeader(mode, fork) {
     if (!headerEl) return;
     headerEl.className = 'settings-header mem-header';
@@ -2201,6 +2272,8 @@ const MemoryBankApp = (() => {
         </div>
       `;
     } else {
+      // 最外层（日常 / 副本 / 角色共用）：右侧放记忆向量化总按钮，进入下一层后不显示
+      const busy = Boolean(window.MemoryVectors && window.MemoryVectors.isFilling && window.MemoryVectors.isFilling());
       headerEl.innerHTML = `
         <button class="settings-back-btn" id="memBackBtn" type="button" aria-label="返回桌面">${ICONS.back}</button>
         <div class="settings-header-title">
@@ -2208,7 +2281,13 @@ const MemoryBankApp = (() => {
           <span class="settings-title-slash">//</span>
           <span class="settings-title-zh">数据归档</span>
         </div>
+        <button class="mem-vectorize-btn${busy ? ' is-busy' : ''}" id="memVectorizeBtn" type="button"
+          aria-label="向量化全部记忆，只补缺少或过期的向量" title="向量化全部记忆"${busy ? ' aria-busy="true"' : ''}>
+          ${ICONS.vectorize}
+        </button>
       `;
+      const vecBtn = headerEl.querySelector('#memVectorizeBtn');
+      if (vecBtn) vecBtn.addEventListener('click', runVectorizeAll);
     }
     const btn = headerEl.querySelector('#memBackBtn');
     if (btn) {

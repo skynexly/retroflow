@@ -362,6 +362,95 @@ window.RetroflowAPI = (() => {
     };
   }
 
+  /* ================= 向量（embeddings） ================= */
+
+  /**
+   * OpenAI 兼容 /embeddings 接口，一次可传多条文本。
+   * 成功时日志只存摘要（条数、维度、用量），不存整段浮点数组，避免撑大调用日志。
+   * @param {{baseUrl:string, apiKey?:string, modelId:string}} config
+   * @param {string[]} texts
+   * @param {{timeout?:number, logTag?:string, signal?:AbortSignal}} [options]
+   * @returns {Promise<{vectors: Float32Array[], dim: number, model: string, usage: object|null}>}
+   */
+  async function embed(config, texts, options) {
+    const url = buildApiUrl(config && config.baseUrl, '/embeddings');
+    if (!url) throw new Error('BASE URL 为空');
+    if (!config.modelId) throw new Error('MODEL ID 为空');
+    const input = (Array.isArray(texts) ? texts : [texts]).map((t) => String(t == null ? '' : t));
+    if (!input.length) return { vectors: [], dim: 0, model: config.modelId, usage: null };
+
+    const timeout = (options && typeof options.timeout === 'number') ? options.timeout : DEFAULT_TIMEOUT;
+    const bodyStr = JSON.stringify({ model: config.modelId, input, encoding_format: 'float' });
+    const started = Date.now();
+    const logBase = {
+      caller: (options && options.logTag) || '未标注调用',
+      kind: 'embed',
+      url,
+      model: config.modelId,
+      reqSummary: reqSummary(bodyStr)
+    };
+    let resp;
+    try {
+      resp = await request(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + (config.apiKey || '')
+        },
+        body: bodyStr
+      }, timeout, options && options.signal);
+    } catch (err) {
+      if (!(err && err.name === 'AbortError' && !err.isTimeout)) {
+        logCall(Object.assign({}, logBase, { ok: false, status: 0, errorMessage: describeCaughtError(err), latency: Date.now() - started }));
+      }
+      if (err && (err.isTimeout || err.name === 'AbortError')) throw err;
+      throw wrapNetworkError(err);
+    }
+
+    if (!resp.ok) {
+      const body = await resp.text().catch(() => '');
+      const message = describeHttpError(resp.status, body);
+      logCall(Object.assign({}, logBase, { ok: false, status: resp.status, respBody: body, errorMessage: message, latency: Date.now() - started }));
+      const err = new Error(message);
+      err.status = resp.status;
+      throw err;
+    }
+
+    const respText = await resp.text().catch(() => '');
+    const fail = (message) => {
+      logCall(Object.assign({}, logBase, { ok: false, status: resp.status, respBody: respText, errorMessage: message, latency: Date.now() - started }));
+      return new Error(message);
+    };
+    let json;
+    try {
+      json = JSON.parse(respText);
+    } catch (_) {
+      throw fail('返回体不是合法 JSON');
+    }
+    const data = Array.isArray(json && json.data) ? json.data.slice() : null;
+    if (!data || data.length !== input.length) throw fail(`返回 ${data ? data.length : 0} 条向量，请求了 ${input.length} 条`);
+    // 按 index 排回请求顺序；没有 index 时保持原顺序
+    if (data.every((d) => d && Number.isFinite(d.index))) data.sort((a, b) => a.index - b.index);
+    const vectors = [];
+    for (const d of data) {
+      const emb = d && d.embedding;
+      if (!Array.isArray(emb) || !emb.length || emb.some((x) => typeof x !== 'number' || !Number.isFinite(x))) {
+        throw fail('返回的向量格式不对（需要浮点数组）');
+      }
+      vectors.push(Float32Array.from(emb));
+    }
+    const dim = vectors[0].length;
+    if (vectors.some((v) => v.length !== dim)) throw fail('同一批向量的维度不一致');
+
+    logCall(Object.assign({}, logBase, {
+      ok: true,
+      status: resp.status,
+      respBody: JSON.stringify({ model: json.model || config.modelId, count: vectors.length, dim, usage: json.usage || null }),
+      latency: Date.now() - started
+    }));
+    return { vectors, dim, model: json.model || config.modelId, usage: json.usage || null };
+  }
+
   /**
    * 流式对话（SSE）。onChunk(delta, meta) 逐段回调，返回完整文本。
    * 思考模型的 reasoning_content 单独走 meta.reasoning，不混进正文。
@@ -1130,6 +1219,7 @@ window.RetroflowAPI = (() => {
     testConnection,
     chat,
     streamChat,
+    embed,
     generateImage,
     generateImageEdit,
     synthesizeSpeech,

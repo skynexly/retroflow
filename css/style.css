@@ -41813,6 +41813,45 @@ button.fork-run-mission-action-card:active,
   display: inline-block;
   vertical-align: baseline;
 }
+/* 最外层顶栏右侧：纯线框的记忆向量化总按钮，不抢标题的视觉重心 */
+.mem-vectorize-btn {
+  flex-shrink: 0;
+  margin-left: auto;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--secondary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+}
+.mem-vectorize-btn svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+.mem-vectorize-btn:active {
+  transform: scale(0.92);
+}
+.mem-vectorize-btn.is-busy {
+  opacity: 0.72;
+  cursor: progress;
+}
+.mem-vectorize-btn.is-busy svg {
+  animation: memVectorPulse 1.2s ease-in-out infinite;
+}
+@keyframes memVectorPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mem-vectorize-btn.is-busy svg { animation: none; }
+}
 
 /* 3. 固定副本搜索栏（随顶栏避让灵动岛安全区） */
 .mem-search {

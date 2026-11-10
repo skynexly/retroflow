@@ -23,7 +23,8 @@
  *       docs:   { <docKey>: <value> },
  *       assets: { <assetKey>: { type:'blob'|'url', mime, base64 | data } },
  *       records: [ <record>, ... ],
- *       local:  { <localStorageKey>: <string> }
+ *       local:  { <localStorageKey>: <string> },
+ *       stores: { <storeName>: [ <row>, ... ] }   // 「记忆」块的整表数据，旧包没有此字段
  *     }
  *   }
  * 图片 Blob 以 base64 内嵌，单文件无依赖，方便未来分片上云。
@@ -88,6 +89,9 @@ const DataVault = (() => {
       // 流水本体在 records 的 system-chat:<convId> 分区，必须与元信息同进同出：
       // 只导流水不导索引，导入后窗口列表里只剩主对话，其余窗口的消息无处挂载。
       docPrefixes: ['sysChat/'],
+      // 记忆提取进度点 sysChat/memcursor.* 归「记忆」块：与记忆同进同出，
+      // 只导记忆或只导聊天都不会出现重复提取或「已提取但记忆为空」。
+      docExcludes: ['sysChat/memcursor.'],
       assetPrefixes: [],
       // 助手页与私聊页各存一份对话设置：
       // 私聊那份是按联系人隔离的表（工具开关、循环上限、结果保留轮数）。
@@ -184,6 +188,21 @@ const DataVault = (() => {
         'retroflow_fork_run_settings_v1',
         'retroflow_fork_run_wallpaper_cfg_v1'
       ]
+    },
+    memory: {
+      zh: '记忆',
+      en: 'MEMORY // ARCHIVE',
+      desc: '副本记忆、助手记忆与记忆提取进度。向量不备份，导入后在记忆库点「向量化」重新生成',
+      docKeys: [],
+      // 记忆提取进度点：与记忆同进同出（聊天记录块已排除）
+      docPrefixes: ['sysChat/memcursor.'],
+      assetPrefixes: [],
+      localKeys: [],
+      records: false,
+      // 整表备份的记忆表。以后新增记忆种类，把表名加进 Storage.BACKUP_STORES 和这里即可
+      stores: ['memories', 'assistantMemories'],
+      // 导入或清理本块后清空向量表：旧向量对应的记忆已被替换
+      clearsVectors: true
     },
     misc: {
       zh: '终端应用',
@@ -292,24 +311,33 @@ const DataVault = (() => {
   }
 
   /**
-   * 列出某块拥有的全部 docs 键：固定 docKeys 加上 docPrefixes 扫出的动态键。
+   * 列出某块拥有的全部 docs 键：固定 docKeys 加上 docPrefixes 扫出的动态键，
+   * 再去掉 docExcludes 声明的更长前缀（划给别的块的键）。
    * 动态键用于条数随业务增长的场景（如一副本一条卷宗）。
    */
   async function collectDocKeys(block) {
     const out = [];
     const seen = new Set();
+    const excludes = block.docExcludes || [];
+    const excluded = (k) => excludes.some((p) => String(k).startsWith(p));
     for (const dk of (block.docKeys || [])) {
-      if (dk && !seen.has(dk)) { seen.add(dk); out.push(dk); }
+      if (dk && !seen.has(dk) && !excluded(dk)) { seen.add(dk); out.push(dk); }
     }
     for (const prefix of (block.docPrefixes || [])) {
       try {
         const keys = await Storage.listDocKeys(prefix);
         (keys || []).forEach((k) => {
-          if (k && !seen.has(k)) { seen.add(k); out.push(k); }
+          if (k && !seen.has(k) && !excluded(k)) { seen.add(k); out.push(k); }
         });
       } catch (_) { /* ignore */ }
     }
     return out;
+  }
+
+  /** 块声明的、Storage 允许整表备份的记忆表 */
+  function blockStores(block) {
+    const allowed = (window.Storage && Array.isArray(Storage.BACKUP_STORES)) ? Storage.BACKUP_STORES : [];
+    return (block && Array.isArray(block.stores) ? block.stores : []).filter((s) => allowed.indexOf(s) !== -1);
   }
 
   /* ---------------- 体积统计 ---------------- */
@@ -406,6 +434,15 @@ const DataVault = (() => {
       } catch (_) { /* ignore */ }
     }
 
+    // 整表备份的记忆表：条数与序列化体积
+    for (const storeName of blockStores(block)) {
+      try {
+        const rows = await Storage.getAllFromBackupStore(storeName);
+        count += rows.length;
+        for (const r of rows) bytes += JSON.stringify(r).length * 2;
+      } catch (_) { /* ignore */ }
+    }
+
     const size = formatSize(bytes);
     return {
       id: blockId,
@@ -498,6 +535,15 @@ const DataVault = (() => {
           }
         }
       } catch (_) { /* ignore */ }
+    }
+
+    // 整表备份的记忆表：读取失败直接抛错，不能导出一个缺了记忆的包当成功
+    const stores = blockStores(block);
+    if (stores.length) {
+      if (!acc.stores) acc.stores = {};
+      for (const storeName of stores) {
+        acc.stores[storeName] = await Storage.getAllFromBackupStore(storeName);
+      }
     }
   }
 
@@ -718,18 +764,27 @@ const DataVault = (() => {
     // 待导入的键集合，用来判断哪些数据属于本次目标块，避免误写其他块。
     const docKeySet = new Set();
     const docPrefixList = [];
+    const docExcludeList = [];
     const assetPrefixList = [];
     const assetExcludeList = [];
     const localKeySet = new Set();
     let includeRecords = false;
     const recordPrefixList = [];
     let recordsFullClear = false;
+    const storeNames = [];
+    let clearVectors = false;
+    // 旧备份没有「记忆」块，进度点还在聊天记录里：这时聊天块照旧认领进度点，
+    // 保持聊天流水与进度点一起替换，不会出现「换了聊天、进度点还是旧的」
+    const legacyChatCursors = !pkgBlocks.includes('memory');
 
     for (const id of targetBlocks) {
       const block = BLOCKS[id];
       if (!block) continue;
       block.docKeys.forEach((k) => { if (k) docKeySet.add(k); });
       (block.docPrefixes || []).forEach((p) => docPrefixList.push(p));
+      if (!(id === 'chat' && legacyChatCursors)) {
+        (block.docExcludes || []).forEach((p) => docExcludeList.push(p));
+      }
       (block.assetPrefixes || []).forEach((p) => assetPrefixList.push(p));
       (block.assetExcludes || []).forEach((p) => assetExcludeList.push(p));
       (block.localKeys || []).forEach((k) => localKeySet.add(k));
@@ -740,12 +795,26 @@ const DataVault = (() => {
         recordsFullClear = true;
         includeRecords = true;
       }
+      blockStores(block).forEach((s) => { if (storeNames.indexOf(s) === -1) storeNames.push(s); });
+      if (block.clearsVectors) clearVectors = true;
     }
 
-    /** 动态键（如 fork/dossier.<id>）按前缀归属，固定键按集合归属 */
+    /**
+     * 动态键（如 fork/dossier.<id>）按前缀归属，固定键按集合归属。
+     * 排除项只挡住更粗的前缀：聊天块的 'sysChat/' 不认领进度点，
+     * 但「记忆」块直接声明了 'sysChat/memcursor.'，进度点归它。
+     */
     const docBelongs = (key) => {
-      if (docKeySet.has(key)) return true;
-      return docPrefixList.some((p) => String(key).startsWith(p));
+      const k = String(key);
+      if (docKeySet.has(k)) return true;
+      for (const p of docPrefixList) {
+        if (!k.startsWith(p)) continue;
+        const excludedHere = docExcludeList.some(
+          (ex) => ex.length > p.length && ex.startsWith(p) && k.startsWith(ex)
+        );
+        if (!excludedHere) return true;
+      }
+      return false;
     };
 
     // 归属判定：命中任一 assetPrefix 即归属本次导入，但要处理跨块认领。
@@ -765,12 +834,14 @@ const DataVault = (() => {
       return false;
     };
 
-    // 1. docs：动态键前缀先做覆盖式清理，再写入包里的
+    // 1. docs：动态键前缀先做覆盖式清理，再写入包里的。
+    // 清理范围与归属判定一致，不误删被别的块认领的键（如聊天块不动记忆提取进度点）。
     if (docPrefixList.length) {
       for (const prefix of docPrefixList) {
         try {
           const existing = await Storage.listDocKeys(prefix);
           for (const k of (existing || [])) {
+            if (!docBelongs(k)) continue;
             await Storage.removeDoc(k);
           }
         } catch (_) { /* ignore */ }
@@ -838,6 +909,18 @@ const DataVault = (() => {
       } catch (_) { /* ignore */ }
     }
 
+    // 5. 记忆表：整表覆盖。包里没有某张表时不动它（来自更旧或更新版本的包）
+    const pkgStores = payload.stores && typeof payload.stores === 'object' ? payload.stores : {};
+    for (const storeName of storeNames) {
+      if (!Array.isArray(pkgStores[storeName])) continue;
+      await Storage.replaceBackupStore(storeName, pkgStores[storeName]);
+    }
+
+    // 6. 向量：记忆被替换后旧向量全部作废，之后在记忆库点「向量化」重新生成
+    if (clearVectors && typeof Storage.clearAllVectors === 'function') {
+      try { await Storage.clearAllVectors(); } catch (_) { /* ignore */ }
+    }
+
     return { ok: true, blocks: targetBlocks };
   }
 
@@ -900,6 +983,20 @@ const DataVault = (() => {
       try {
         removed += await Storage.clearAllRecords();
       } catch (_) { /* ignore */ }
+    }
+
+    // 记忆表整表清空；进度点已随 docs 一起清理，之后会从最早的聊天重新提取
+    for (const storeName of blockStores(block)) {
+      try {
+        const n = await Storage.countBackupStore(storeName);
+        if (n) {
+          await Storage.replaceBackupStore(storeName, []);
+          removed += n;
+        }
+      } catch (_) { /* ignore */ }
+    }
+    if (block.clearsVectors && typeof Storage.clearAllVectors === 'function') {
+      try { await Storage.clearAllVectors(); } catch (_) { /* ignore */ }
     }
 
     return removed;

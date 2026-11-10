@@ -37,10 +37,9 @@
 
 module.exports = {
   /** 功能版本（展示用） */
-  version: '1.2.0',
-
+  version: '1.3.0',
   /** 资源构建号（缓存戳 / 热更基线），单调递增 */
-  build: 1295,
+  build: 1296,
 
   /** Android versionCode（原生壳版本），单调递增 */
   versionCode: 7,

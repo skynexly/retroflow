@@ -304,6 +304,15 @@ const AssistantMemoryStore = (() => {
       if (idx !== -1) items[idx] = r;
       else items.unshift(r);
     });
+    // 配置了向量模型时，后台给新写入或改过的记录生成向量；失败不影响本次写入。
+    // 删除的记录，其向量已在 Storage.commitAssistantMemories 的同一事务里删掉。
+    const vectors = window.MemoryVectors;
+    if (vectors && typeof vectors.scheduleUpsert === 'function') {
+      const fresh = puts.filter((r) => !removeSet.has(r.id));
+      if (fresh.length) {
+        try { vectors.scheduleUpsert('assistant', fresh); } catch (_) { /* ignore */ }
+      }
+    }
     return { put: puts.length, removed: removeIds.length };
   }
 
