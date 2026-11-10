@@ -31,20 +31,23 @@
   "schemaVersion": 1,
   "channel": "stable",
   "latest": {
-    "version": "1.2.0",
-    "build": 1295,
+    "version": "1.3.0",
+    "build": 1296,
     "minBinary": 7,
-    "releasedAt": "2026-11-10T14:21:06Z",
+    "releasedAt": "2026-11-10T16:17:12Z",
     "notes": [
-      "助手回复时按最近两轮聊天的关键词调取相关记忆，没有命中的分类随机补位",
-      "永久记忆、近期状况和未完事项常驻在助手的上下文里",
-      "修复进入对话设置时弹出“助手动作指令格式不合法”"
+      "助手记忆向量化（关键词 + 向量混合召回，支持 OpenAI 兼容 embeddings 接口）",
+      "新增功能模型配置的独立向量模型插槽，默认 bge-m3",
+      "记忆库新增向量化按钮，查漏补缺（换模型、改内容、删记忆后自动失效旧向量）",
+      "数据管理新增统一\"记忆\"备份块（副本记忆、助手记忆、提取进度），向量不备份",
+      "记忆注入提示词改为\"对{{ENVOY_NAME}}的记忆\"，按执行员名字动态显示",
+      "记忆库向量化按钮改为纯 SVG 图标，去掉重点色底"
     ],
     "packages": {
       "full": {
-        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1295/retroflow-ota-full-b1295.zip",
-        "sha256": "c04f79a2f91daa5f1e3fb99e5baf983e449c1dd941ec5a9f195e24fc07faaa95",
-        "size": 1900721
+        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1296/retroflow-ota-full-b1296.zip",
+        "sha256": "3465a116ed674d2674d4fce18b23d2018efd117ab994915ae97d2954d2d8d01b",
+        "size": 1911991
       },
       "patch": {
         "sinceBuild": 0,
@@ -54,5 +57,5 @@
       }
     }
   },
-  "_status": "已发布 build 1295（全量包，字体常驻不打包）。patch 差分留待后续。"
+  "_status": "已发布 build 1296（全量包，字体常驻不打包）。patch 差分留待后续。"
 }
