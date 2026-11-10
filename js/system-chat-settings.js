@@ -50,6 +50,7 @@
   let currentModelStatusEl = null;
   let jumpApiSettingsBtn = null;
   let extractMemoryNowBtn = null;
+  let memoryStatsEl = null;
   let wallpaperUploadBtn = null;
   let wallpaperClearBtn = null;
   let wallpaperPreviewText = null;
@@ -194,21 +195,6 @@
     }
     return { name: '未配置算力节点', type: 'MODEL // UNSET' };
   }
-
-  // 获取世界书启用状态
-  function resolveWorldbookStatus() {
-    try {
-      const wbRaw = localStorage.getItem('retroflow_worldbook_active_v1');
-      if (wbRaw) {
-        const list = JSON.parse(wbRaw);
-        if (Array.isArray(list) && list.length > 0) {
-          return `已挂载 ${list.length} 本世界书 (${list.slice(0, 2).join(', ')}${list.length > 2 ? '...' : ''})`;
-        }
-      }
-    } catch (e) {}
-    return '已挂载 1 本全局系统世界书 (溯流因果律总则)';
-  }
-
   function initDOM() {
     settingsPage = document.getElementById('systemChatSettingsPage');
     if (!settingsPage) return;
@@ -223,6 +209,7 @@
     currentModelStatusEl = document.getElementById('systemChatCurrentModelStatus');
     jumpApiSettingsBtn = document.getElementById('systemChatJumpApiSettingsBtn');
     extractMemoryNowBtn = document.getElementById('systemChatExtractMemoryNowBtn');
+    memoryStatsEl = document.getElementById('systemChatMemoryStats');
     wallpaperUploadBtn = document.getElementById('systemChatWallpaperUploadBtn');
     wallpaperClearBtn = document.getElementById('systemChatWallpaperClearBtn');
     wallpaperPreviewText = document.getElementById('systemChatWallpaperPreviewText');
@@ -340,6 +327,7 @@
         if (!isNaN(val) && val >= 1000) {
           currentSettings.memoryTokenInterval = val;
           saveSettings();
+          refreshMemoryStats();
         }
       });
     }
@@ -377,15 +365,44 @@
       });
     }
 
-    // 立即提取记忆按键
+    // 手动提取：只提取最旧的一段（提取频率 N tk，不足就到最新）
     if (extractMemoryNowBtn) {
-      extractMemoryNowBtn.addEventListener('click', () => {
-        if (window.RetroToast) {
-          RetroToast.show({
-            tag: 'MEMORY // 手动提取',
-            message: '已触发因果记忆即时提取推演',
-            type: 'success'
-          });
+      extractMemoryNowBtn.addEventListener('click', async () => {
+        const extractor = window.AssistantMemoryExtractor;
+        if (!extractor || typeof extractor.extractOnce !== 'function') {
+          toast({ tag: 'MEMORY // 不可用', message: '记忆提取模块未就绪', type: 'warn' });
+          return;
+        }
+        if (extractor.isRunning()) {
+          toast({ tag: 'MEMORY // 手动提取', message: '正在提取记忆，请稍后', type: 'info' });
+          return;
+        }
+        setExtractButtonBusy(true);
+        try {
+          const res = await extractor.extractOnce();
+          if (res && res.ok) {
+            toast({
+              tag: 'MEMORY // 手动提取',
+              message: res.added
+                ? `已整理 ${res.messages} 条消息，新增 ${res.added} 条记忆`
+                : `已整理 ${res.messages} 条消息，没有需要记住的内容`,
+              type: 'success'
+            });
+          } else {
+            const quiet = res && (res.reason === 'empty' || res.reason === 'waiting' || res.reason === 'locked' || res.reason === 'replying');
+            toast({
+              tag: quiet ? 'MEMORY // 手动提取' : 'MEMORY // 提取失败',
+              message: (res && res.message) || '提取失败',
+              type: quiet ? 'info' : 'warn',
+              duration: quiet ? 2800 : 4200
+            });
+          }
+        } catch (err) {
+          console.warn('[SystemChatSettings] 手动提取异常', err);
+          toast({ tag: 'MEMORY // 提取失败', message: '提取过程出错，请稍后重试', type: 'warn' });
+        } finally {
+          setExtractButtonBusy(false);
+          refreshMemoryStats();
         }
       });
     }
@@ -535,6 +552,50 @@
     } catch (_) { /* 读不到就保持原值 */ }
   }
 
+  function toast(opts) {
+    if (window.RetroToast && typeof RetroToast.show === 'function') RetroToast.show(opts);
+  }
+
+  function setExtractButtonBusy(busy) {
+    if (!extractMemoryNowBtn) return;
+    extractMemoryNowBtn.disabled = Boolean(busy);
+    extractMemoryNowBtn.setAttribute('aria-busy', busy ? 'true' : 'false');
+    const label = extractMemoryNowBtn.querySelector('span');
+    if (label) label.textContent = busy ? '正在提取' : '进行一次记忆提取';
+  }
+
+  /** 刷新手动提取下方的统计：当前窗口的总消息数、未提取条数与 token 数 */
+  let memoryStatsSeq = 0;
+  async function refreshMemoryStats() {
+    if (!memoryStatsEl) return;
+    const extractor = window.AssistantMemoryExtractor;
+    if (!extractor || typeof extractor.getStats !== 'function') {
+      memoryStatsEl.textContent = '记忆提取模块未就绪';
+      return;
+    }
+    const seq = ++memoryStatsSeq;
+    try {
+      const s = await extractor.getStats();
+      if (seq !== memoryStatsSeq) return;
+      const fmt = (n) => Number(n || 0).toLocaleString('en-US');
+      memoryStatsEl.textContent = `总消息 ${fmt(s.total)} 条，${fmt(s.pending)} 条未提取（约 ${fmt(s.pendingTokens)} tk）`;
+    } catch (err) {
+      if (seq !== memoryStatsSeq) return;
+      console.warn('[SystemChatSettings] 读取记忆统计失败', err);
+      memoryStatsEl.textContent = '统计读取失败';
+    }
+  }
+
+  // 提取完成（手动或自动）后，设置页开着就刷新统计
+  window.addEventListener('retroflow:assistant-memory-extracted', () => {
+    if (settingsPage && settingsPage.classList.contains('active')) refreshMemoryStats();
+  });
+  // 自动提取进行中时，按钮显示忙碌态
+  window.addEventListener('retroflow:assistant-memory-extract-state', (e) => {
+    const running = Boolean(e && e.detail && e.detail.running);
+    setExtractButtonBusy(running);
+  });
+
   function syncUIFromSettings() {
     if (!settingsPage) return;
 
@@ -550,6 +611,10 @@
       remarkInput.value = SystemChatUI.getCurrentConvTitle() || '';
     }
     refreshConvCount();
+    refreshMemoryStats();
+    if (window.AssistantMemoryExtractor && typeof AssistantMemoryExtractor.isRunning === 'function') {
+      setExtractButtonBusy(AssistantMemoryExtractor.isRunning());
+    }
 
     // 悬浮球开关已迁往「设置 › 08 终端配置」，本页不再回填
     if (memoryIntervalInput) memoryIntervalInput.value = currentSettings.memoryTokenInterval || 60000;
@@ -565,15 +630,10 @@
     if (customCssOpponentTextarea) customCssOpponentTextarea.value = currentSettings.customCssOpponent || '';
     if (customCssSelfTextarea) customCssSelfTextarea.value = currentSettings.customCssSelf || '';
 
-    // 同步模型与世界书信息
+    // 同步模型信息
     const modelInfo = resolveCurrentModel();
     if (currentModelNameEl) currentModelNameEl.textContent = modelInfo.name;
     if (currentModelStatusEl) currentModelStatusEl.textContent = modelInfo.type;
-
-    const wbEl = document.getElementById('systemChatWorldbookStatusText');
-    if (wbEl) {
-      wbEl.textContent = resolveWorldbookStatus();
-    }
 
     updateWallpaperStatus();
   }

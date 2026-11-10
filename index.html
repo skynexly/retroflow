@@ -19,7 +19,7 @@
 
   <!-- 样式资产（带构建版本戳穿透 HTTP 磁盘缓存） -->
   <link rel="stylesheet" href="css/variables.css?v=190">
-  <link rel="stylesheet" href="css/style.css?v=897">
+  <link rel="stylesheet" href="css/style.css?v=899">
   <link rel="stylesheet" href="css/fork-deck-camera.css?v=3">
   <link rel="stylesheet" href="css/api-call-log.css?v=4">
 
@@ -1348,18 +1348,8 @@
           </div>
         </div>
 
-        <!-- 卡片 5: 世界书与记忆 (挂载状态 / 自动提取 / 提取设置 / 记忆工具 / 立即提取) -->
+        <!-- 卡片 5: 记忆 (自动提取 / 提取设置 / 记忆工具 / 立即提取) -->
         <div class="chat-bento-card">
-          <div class="chat-bento-stacked-block">
-            <div class="chat-bento-label">
-              <span class="chat-bento-zh">世界书挂载</span>
-              <span class="chat-bento-en">WORLDBOOK STATUS</span>
-            </div>
-            <div class="chat-bento-status-box is-full-width">
-              <span class="chat-bento-status-text" id="systemChatWorldbookStatusText">已挂载 1 本全局系统世界书 (溯流因果律总则)</span>
-            </div>
-          </div>
-
           <div class="chat-bento-row">
             <div class="chat-bento-label">
               <span class="chat-bento-zh">自动提取记忆</span>
@@ -1406,6 +1396,8 @@
               </button>
             </div>
           </div>
+
+          <p class="chat-bento-memory-meta" id="systemChatMemoryStats" aria-live="polite">正在统计消息</p>
         </div>
 
         <!-- 卡片 6: 显示与定制 (Markdown / 隐藏思维链 / 对话壁纸 / 自定义气泡 CSS) -->
@@ -11152,8 +11144,8 @@
       </div>
     </div>
   </div>
-  <script src="js/storage.js?v=270"></script>
-  <script src="js/data-registry.js?v=402"></script>
+  <script src="js/storage.js?v=272"></script>
+  <script src="js/data-registry.js?v=403"></script>
   <script src="js/preset-assistants.js?v=3"></script>
   <script src="js/store.js?v=258"></script>
   <script src="js/psych-store.js?v=191"></script>
@@ -11213,7 +11205,9 @@
   <script src="js/fork-doc-ui.js?v=16"></script>
   <script src="js/fork-run-store.js?v=25"></script>
   <script src="js/memory-store.js?v=1"></script>
-  <script src="js/memory-bank-app.js?v=3"></script>
+  <script src="js/assistant-memory-store.js?v=2"></script>
+  <script src="js/assistant-memory-parser.js?v=1"></script>
+  <script src="js/memory-bank-app.js?v=4"></script>
   <script src="js/fork-run-wallpaper.js?v=1"></script>
   <script src="js/fork-run-settings.js?v=19"></script>
   <script src="js/fork-run-api.js?v=23"></script>
@@ -11224,7 +11218,7 @@
   <script src="js/talent-prompt.js?v=3"></script>
   <script src="js/markdown.js?v=303"></script>
   <script src="js/env-awareness.js?v=1"></script>
-  <script src="js/system-chat-prompt.js?v=311"></script>
+  <script src="js/system-chat-prompt.js?v=312"></script>
   <script src="js/online-chat-prompt.js?v=380"></script>
   <script src="js/context-budget.js?v=1"></script>
   <script src="js/chat-day-sep.js?v=2"></script>
@@ -11232,15 +11226,17 @@
   <script src="js/online-chat-ui.js?v=448"></script>
   <script src="js/online-notice.js?v=7"></script>
   <script src="js/online-chat-settings.js?v=4"></script>
-  <script src="js/system-chat-store.js?v=2"></script>
-  <script src="js/assistant-chat-core.js?v=4"></script>
-<script src="js/system-chat-ui.js?v=368"></script>
+  <script src="js/system-chat-store.js?v=3"></script>
+  <script src="js/assistant-chat-core.js?v=5"></script>
+<script src="js/system-chat-ui.js?v=369"></script>
    <script src="js/fork-deck-asst.js?v=21"></script>
    <script src="js/fork-deck-camera.js?v=2"></script>
   <script src="js/system-chat-orb.js?v=26"></script>
   <script src="js/file-store-ui.js?v=303"></script>
   <script src="js/chat-history-search-ui.js?v=4"></script>
-  <script src="js/system-chat-settings.js?v=316"></script>
+  <script src="js/assistant-memory-prompt.js?v=1"></script>
+  <script src="js/assistant-memory-extractor.js?v=1"></script>
+  <script src="js/system-chat-settings.js?v=318"></script>
   <script src="js/pwa.js?v=188"></script>
 
   <!-- 全部模块注册完 Boot.onReady 之后，才装载配置数据并触发数据填充 -->

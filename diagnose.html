@@ -161,14 +161,29 @@
     'use strict';
 
     const DB_NAME = 'retroflow';
-    const DB_VERSION = 2;
     const STORE = 'records';
 
+    // 只读诊断：不指定版本，按库当前版本打开，避免旧版本号触发 VersionError。
+    // 库不存在时会触发 onupgradeneeded，此时中止升级，不创建空库，以免干扰主程序建表。
     function openDB() {
       return new Promise((resolve, reject) => {
-        const req = indexedDB.open(DB_NAME, DB_VERSION);
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
+        let aborted = false;
+        const req = indexedDB.open(DB_NAME);
+        req.onupgradeneeded = () => {
+          aborted = true;
+          try { req.transaction.abort(); } catch (_) {}
+        };
+        req.onsuccess = () => {
+          const db = req.result;
+          db.onversionchange = () => db.close();
+          if (!db.objectStoreNames.contains(STORE)) {
+            db.close();
+            reject(new Error('数据库中没有 ' + STORE + ' 表，请先正常打开一次应用'));
+            return;
+          }
+          resolve(db);
+        };
+        req.onerror = () => reject(aborted ? new Error('数据库尚未创建，请先正常打开一次应用') : req.error);
         req.onblocked = () => reject(new Error('数据库被其他标签页占用，请关闭其他标签后重试'));
       });
     }

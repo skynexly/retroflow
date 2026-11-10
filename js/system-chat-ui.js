@@ -5137,6 +5137,8 @@ ${parts.join('\n\n———\n\n')}`;
     locateRecord,
     // 最近一次真实发出的上下文快照，供上下文查看器读取（只读，可能为 null）
     getLastContextSnapshot: () => lastContextSnapshot,
+    // 是否正在生成或重写回复；记忆提取据此避开未写完的消息
+    isInferring: () => Boolean(activeAbortController),
     // —— 多对话 ——
     openConvPage,
     getCurrentForkId,

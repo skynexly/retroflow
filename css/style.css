@@ -18780,12 +18780,6 @@ button.api-node-badge:active {
   letter-spacing: 0.3px;
   opacity: 1;
 }
-
-.chat-bento-status-box.is-full-width {
-  width: 100%;
-  box-sizing: border-box;
-}
-
 .chat-bento-label {
   display: flex;
   flex-direction: column;
@@ -18912,6 +18906,17 @@ button.api-node-badge:active {
 
 .chat-bento-action-btn.primary span {
   color: var(--primary-color);
+}
+
+.chat-bento-memory-meta {
+  margin: -6px 0 0;
+  font-family: var(--mono-font);
+  font-size: 10.5px;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  opacity: 0.8;
 }
 
 .chat-bento-btn-group {
@@ -40972,9 +40977,6 @@ button.fork-run-mission-action-card:active,
   color: var(--decor-color);
   line-height: 1;
 }
-  color: rgba(var(--bg-color-rgb), 0.55);
-  line-height: 1;
-}
 
 .orb-agent-warn {
   display: flex;
@@ -41801,61 +41803,104 @@ button.fork-run-mission-action-card:active,
 }
 
 /* 2. 顶栏（灵动岛安全区） */
-.mem-header {
+.mem-header.settings-header {
+  padding: calc(env(safe-area-inset-top, 0px) + 16px) 20px 14px;
+}
+.mem-header-level-tag {
+  font-size: 14px;
+  color: var(--secondary-color);
+  margin-left: 8px;
+  display: inline-block;
+  vertical-align: baseline;
+}
+
+/* 3. 固定副本搜索栏（随顶栏避让灵动岛安全区） */
+.mem-search {
   flex: none;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: calc(env(safe-area-inset-top, 0px) + 14px) 16px 12px;
-  background-color: var(--bg-color);
+  gap: 8px;
+  box-sizing: border-box;
+  height: 40px;
+  margin: 0 12px 12px;
+  padding: 0 8px 0 12px;
+  border-radius: 4px;
+  background-color: rgba(var(--secondary-color-rgb), 0.055);
+  color: rgba(var(--secondary-color-rgb), 0.62);
+  transition: background-color 0.16s ease;
 }
-.mem-icon-btn {
+.mem-search[hidden] {
+  display: none;
+}
+.mem-search:focus-within {
+  background-color: rgba(var(--secondary-color-rgb), 0.085);
+}
+.mem-search-icon {
   flex: none;
-  width: 34px;
-  height: 34px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  pointer-events: none;
+}
+.mem-search-icon svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+.mem-search-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
   border: none;
-  border-radius: 8px;
-  background-color: var(--card-bg-color);
-  color: var(--secondary-color);
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  color: var(--text-color);
+  font-family: var(--mono-font, monospace);
+  font-size: 13px;
+  line-height: 40px;
+}
+.mem-search-input::placeholder {
+  color: rgba(var(--secondary-color-rgb), 0.48);
+  opacity: 1;
+}
+.mem-search-input::-webkit-search-cancel-button,
+.mem-search-input::-webkit-search-decoration {
+  display: none;
+  -webkit-appearance: none;
+}
+.mem-search-clear {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(var(--secondary-color-rgb), 0.62);
   cursor: pointer;
-  transition: transform 0.12s ease, background-color 0.16s ease;
   -webkit-tap-highlight-color: transparent;
 }
-.mem-icon-btn:active {
-  transform: scale(0.92);
-  background-color: rgba(var(--secondary-color-rgb), 0.14);
+.mem-search-clear[hidden] {
+  display: none;
 }
-.mem-title-block {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.mem-search-clear:active {
+  background-color: rgba(var(--secondary-color-rgb), 0.1);
 }
-.mem-code-tag {
-  font-family: var(--mono-font, monospace);
-  font-size: 9.5px;
-  letter-spacing: 1.4px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.mem-title-text {
-  margin: 0;
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: 0.4px;
-  color: var(--secondary-color);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.mem-search-clear svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
 }
 
-/* 3. 滚动视口（底部安全区） */
+/* 4. 滚动视口（底部安全区） */
 .mem-viewport {
   flex: 1;
   min-height: 0;
@@ -41864,45 +41909,82 @@ button.fork-run-mission-action-card:active,
   -webkit-overflow-scrolling: touch;
 }
 
-/* 4. 外层 · 卷宗格墙 */
+/* 5. 外层 · 卷宗格墙 */
 .mem-wall {
-  padding: 6px 16px calc(env(safe-area-inset-bottom, 0px) + 28px);
+  padding: 8px 0 calc(env(safe-area-inset-bottom, 0px) + 90px);
 }
 .mem-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-
-/* 档案卡：竖构图，上证据照下铭牌 */
-.mem-card {
+  position: relative;
   display: flex;
   flex-direction: column;
-  padding: 0;
+  gap: 16px;
+  width: 100%;
+}
+.mem-card {
+  align-self: flex-start;
+  width: 80%;
+  margin-left: 12px;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
   border: none;
-  border-radius: 10px;
-  overflow: hidden;
+  border-radius: 4px;
   background-color: var(--card-bg-color);
   color: var(--secondary-color);
   text-align: left;
   cursor: pointer;
-  box-shadow: 0 2px 10px rgba(var(--secondary-color-rgb), 0.10);
-  transition: transform 0.14s ease, box-shadow 0.14s ease;
+  box-shadow: 0 3px 9px rgba(var(--secondary-color-rgb), 0.16);
+  transition: scale 0.14s ease;
   -webkit-tap-highlight-color: transparent;
+  animation: mem-card-enter 0.18s ease-out both;
 }
 .mem-card:active {
-  transform: scale(0.975);
-  box-shadow: 0 1px 4px rgba(var(--secondary-color-rgb), 0.14);
+  scale: 0.98;
 }
-
-/* 4a. 证据照区（无封面时以卡底色 + 图腾占位） */
+.mem-margin-note {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 134px);
+  right: 16px;
+  width: 30px;
+  height: 620px;
+  /* 顶栏与搜索栏下留 12px，底部为悬浮 Tab 预留 90px（均另加设备安全区）。 */
+  max-height: calc(100% - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 224px);
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+.mem-margin-note[hidden] {
+  display: none;
+}
+.mem-margin-note text {
+  fill: rgba(var(--secondary-color-rgb), 0.16);
+  font-family: var(--mono-font, monospace);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 1.4px;
+}
+@keyframes mem-card-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (max-width: 340px) {
+  .mem-margin-note {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mem-card {
+    animation: none;
+  }
+}
 .mem-card-photo {
   position: relative;
   display: block;
   width: 100%;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 2.39 / 1;
   background-color: rgba(var(--secondary-color-rgb), 0.07);
   overflow: hidden;
+  border-radius: 1px;
 }
 .mem-card-img {
   position: absolute;
@@ -41910,15 +41992,6 @@ button.fork-run-mission-action-card:active,
   width: 100%;
   height: 100%;
   object-fit: cover;
-  display: block;
-}
-/* 压暗，保证角标可读 */
-.mem-card-photo.has-cover::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(var(--secondary-color-rgb), 0.42) 0%, rgba(var(--secondary-color-rgb), 0.05) 46%);
-  pointer-events: none;
 }
 .mem-card-totem {
   position: absolute;
@@ -41928,115 +42001,77 @@ button.fork-run-mission-action-card:active,
   justify-content: center;
   color: rgba(var(--secondary-color-rgb), 0.22);
 }
-.mem-card-totem svg {
-  width: 46px;
-  height: 46px;
-}
-.mem-card-photo.has-cover .mem-card-totem {
-  display: none;
-}
+.mem-card-totem svg { width: 40px; height: 40px; }
 
-/* 4b. 等级角标（照片左上） */
+/* 4b. 微型反色等级签（右上） */
 .mem-card-level {
   position: absolute;
-  top: 8px;
-  left: 8px;
+  top: 6px;
+  right: 6px;
   z-index: 2;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 7px;
+  gap: 3px;
+  padding: 2px 5px;
   border-radius: 999px;
-  background-color: rgba(var(--bg-color-rgb), 0.82);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  color: var(--primary-color);
-}
-.mem-card-photo:not(.has-cover) .mem-card-level {
-  background-color: rgba(var(--card-bg-color-rgb), 0.9);
+  background-color: var(--text-color);
+  color: var(--bg-color);
+  line-height: 1;
 }
 .mem-card-level-icon {
   display: inline-flex;
-  width: 11px;
-  height: 11px;
-}
-.mem-card-level-icon svg { width: 100%; height: 100%; }
-.mem-card-level-letter {
-  font-family: var(--mono-font, monospace);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-}
-.mem-card-level-sep {
-  font-size: 9px;
-  opacity: 0.45;
-}
-.mem-card-level-name {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 1px;
-}
-
-/* 4c. 记忆条数角标（照片右上） */
-.mem-card-pip {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 2;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
-  display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
-  background-color: var(--primary-color);
-  color: var(--bg-color);
-  font-family: var(--mono-font, monospace);
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
 }
-
-/* 4d. 铭牌区 */
-.mem-card-body {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  padding: 10px 11px 12px;
+.mem-card-level-icon svg {
+  width: 9px;
+  height: 9px;
 }
-.mem-card-code {
+.mem-card-level-letter {
   font-family: var(--mono-font, monospace);
   font-size: 9px;
-  letter-spacing: 1.3px;
-  color: var(--text-muted);
-  text-transform: uppercase;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* 4c. 图片内铭牌（编号与名称同排居中） */
+.mem-card-body {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 20px 10px 6px;
+  background: linear-gradient(
+    to bottom,
+    rgba(var(--bg-color-rgb), 0),
+    rgba(var(--bg-color-rgb), 0.82)
+  );
+  color: var(--text-color);
   white-space: nowrap;
+}
+.mem-card-code,
+.mem-card-title {
+  font-family: var(--mono-font, monospace);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--text-color);
+}
+.mem-card-code {
+  flex: none;
+  text-transform: uppercase;
+}
+.mem-card-title {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.mem-card-title {
-  font-size: 13.5px;
-  font-weight: 700;
-  line-height: 1.35;
-  letter-spacing: 0.3px;
-  color: var(--secondary-color);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.mem-card-count {
-  font-family: var(--mono-font, monospace);
-  font-size: 9.5px;
-  letter-spacing: 0.6px;
-  color: var(--primary-color);
-}
-.mem-card-count.is-empty {
-  color: var(--text-muted);
-  opacity: 0.75;
-}
-
 /* 5. 空态 */
 .mem-empty {
   padding: 72px 24px;
@@ -42203,6 +42238,1590 @@ button.fork-run-mission-action-card:active,
   margin-top: 14px;
 }
 
+/* 7. 日常 · 静态入口（沿用顶栏灵动岛安全区，底部避让悬浮 Tab） */
+.mem-daily {
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 8px 16px calc(env(safe-area-inset-bottom, 0px) + 100px);
+  box-sizing: border-box;
+}
+.mem-daily-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.mem-daily-entry {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  overflow: hidden;
+  color: var(--secondary-color);
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+              background-color 0.18s ease;
+}
+.mem-daily-entry:active {
+  transform: scale(0.985);
+}
+.mem-daily-entry-copy {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  pointer-events: none;
+}
+.mem-daily-entry-code {
+  max-width: 100%;
+  margin-bottom: 9px;
+  font-family: var(--mono-font, monospace);
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 1.1px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.mem-daily-entry-title {
+  color: var(--text-color);
+  font-size: 21px;
+  font-weight: 650;
+  line-height: 1.3;
+  letter-spacing: 1px;
+}
+.mem-daily-entry-caption {
+  margin-top: 8px;
+  font-size: 10.5px;
+  line-height: 1.6;
+  letter-spacing: 0.4px;
+  color: var(--text-muted);
+}
+/* 助手记忆 · 三层折射棱镜 */
+.mem-daily-entry.is-prism {
+  min-height: 150px;
+  background: radial-gradient(circle at 18% 50%,
+    rgba(var(--primary-color-rgb), 0.09) 0%,
+    rgba(var(--primary-color-rgb), 0.025) 38%,
+    rgba(var(--primary-color-rgb), 0) 72%),
+    rgba(var(--secondary-color-rgb), 0.045);
+}
+.mem-daily-prism-window {
+  position: relative;
+  align-self: stretch;
+  flex: none;
+  width: 34%;
+  min-width: 104px;
+  max-width: 142px;
+  overflow: hidden;
+  background: transparent;
+  color: var(--primary-color);
+}
+.mem-daily-prism-frame {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 78px;
+  height: 78px;
+  margin: -39px 0 0 -39px;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.mem-daily-prism-frame svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.mem-daily-prism-frame.is-back {
+  opacity: 0.2;
+  transform: translate(-7px, 5px) rotate(-13deg);
+}
+.mem-daily-prism-frame.is-middle {
+  opacity: 0.4;
+  transform: translate(6px, -3px) rotate(8deg);
+}
+.mem-daily-prism-frame.is-front {
+  opacity: 0.72;
+  transform: rotate(-1deg);
+}
+.mem-daily-prism-frame.is-middle svg {
+  fill: rgba(var(--primary-color-rgb), 0.075);
+}
+.mem-daily-prism-core {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  color: var(--primary-color);
+  transform: translate(-50%, -50%);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.mem-daily-prism-core svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.mem-daily-entry.is-prism:active .mem-daily-prism-frame.is-back,
+.mem-daily-entry.is-prism:active .mem-daily-prism-frame.is-middle,
+.mem-daily-entry.is-prism:active .mem-daily-prism-frame.is-front {
+  transform: translate(0, 0) rotate(0deg);
+}
+.mem-daily-entry.is-prism:active .mem-daily-prism-core {
+  transform: translate(-50%, -50%) scale(0.9);
+}
+.mem-daily-entry.is-prism .mem-daily-entry-copy {
+  padding: 22px 36px 22px 18px;
+}
+
+/* 溯流空间 · 私属门扉 */
+.mem-daily-entry.is-space {
+  min-height: 206px;
+  background: linear-gradient(118deg,
+    rgba(var(--primary-color-rgb), 0.15),
+    rgba(var(--primary-color-rgb), 0.055) 58%,
+    rgba(var(--secondary-color-rgb), 0.035));
+}
+.mem-daily-entry.is-space .mem-daily-entry-copy {
+  align-self: flex-end;
+  max-width: 68%;
+  padding: 28px 20px 28px 24px;
+}
+.mem-daily-entry.is-space .mem-daily-entry-title {
+  font-size: 25px;
+}
+.mem-daily-space-word {
+  position: absolute;
+  top: 26px;
+  left: 24px;
+  font-family: var(--mono-font, monospace);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.65;
+  letter-spacing: 2px;
+  color: rgba(var(--primary-color-rgb), 0.58);
+}
+.mem-daily-door {
+  position: absolute;
+  top: -5px;
+  right: -8px;
+  width: 168px;
+  height: 206px;
+  color: rgba(var(--primary-color-rgb), 0.46);
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.mem-daily-door-plane {
+  fill: rgba(var(--primary-color-rgb), 0.09);
+  stroke: none;
+}
+.mem-daily-entry.is-space:active .mem-daily-door {
+  transform: translateX(3px);
+}
+
+/* 其他事件 · 留白中的事件坐标 */
+.mem-daily-entry.is-event {
+  min-height: 126px;
+  background-color: rgba(var(--secondary-color-rgb), 0.028);
+}
+.mem-daily-entry.is-event .mem-daily-entry-copy {
+  padding: 22px 138px 22px 24px;
+}
+.mem-daily-coordinates {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  width: 116px;
+  height: 98px;
+  color: var(--secondary-color);
+  transform: translateY(-50%);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.mem-daily-entry.is-event:active .mem-daily-coordinates {
+  transform: translateY(-50%) scale(0.94);
+}
+@media (max-width: 359px) {
+  .mem-daily {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+  .mem-daily-entry.is-prism .mem-daily-entry-copy {
+    padding-left: 14px;
+  }
+  .mem-daily-prism-window {
+    min-width: 96px;
+  }
+  .mem-daily-entry-code {
+    font-size: 7.5px;
+    letter-spacing: 0.7px;
+  }
+  .mem-daily-entry.is-space .mem-daily-entry-copy {
+    max-width: 72%;
+    padding-left: 20px;
+  }
+  .mem-daily-door {
+    right: -30px;
+    opacity: 0.76;
+  }
+  .mem-daily-entry.is-event .mem-daily-entry-copy {
+    padding-left: 20px;
+    padding-right: 112px;
+  }
+  .mem-daily-coordinates {
+    right: 2px;
+    width: 104px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mem-daily.mem-view-in,
+  .mem-daily-entry,
+  .mem-daily-prism-frame,
+  .mem-daily-prism-core,
+  .mem-daily-door,
+  .mem-daily-coordinates {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* 8. 日常 / 助手记忆 · 七类静态索引
+   一张全宽主卡领起信息层级，其余六类收束为两列三行。
+   沿用顶栏灵动岛保护；底部留白覆盖悬浮 Tab 与 Home Indicator。 */
+.mem-memory-index {
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 8px 16px calc(env(safe-area-inset-bottom, 0px) + 104px);
+  box-sizing: border-box;
+}
+.mem-memory-intro {
+  padding: 4px 4px 22px;
+}
+.mem-memory-intro-code {
+  display: block;
+  font-family: var(--mono-font, monospace);
+  font-size: 8px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 1.35px;
+  color: var(--primary-color);
+  opacity: 0.76;
+}
+.mem-memory-intro p {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.7;
+  letter-spacing: 0.35px;
+  color: var(--text-muted);
+}
+.mem-memory-collection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mem-memory-lead {
+  position: relative;
+  min-height: 168px;
+  padding: 24px 22px 22px;
+  overflow: hidden;
+  border-radius: 4px;
+  box-sizing: border-box;
+  background: radial-gradient(circle at 91% 9%,
+    rgba(var(--primary-color-rgb), 0.12) 0%,
+    rgba(var(--primary-color-rgb), 0.035) 42%,
+    rgba(var(--primary-color-rgb), 0) 70%),
+    rgba(var(--secondary-color-rgb), 0.052);
+}
+.mem-memory-lead-icon {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  display: block;
+  width: 88px;
+  height: 88px;
+  color: var(--primary-color);
+  opacity: 0.52;
+  pointer-events: none;
+}
+.mem-memory-lead-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.mem-memory-lead-head {
+  position: relative;
+  z-index: 1;
+  padding-right: 64px;
+}
+.mem-memory-card-code {
+  display: block;
+  min-width: 0;
+  font-family: var(--mono-font, monospace);
+  font-size: 8px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0.8px;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+.mem-memory-lead h2 {
+  margin: 16px 0 0;
+  font-size: 23px;
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: 0.8px;
+  color: var(--text-color);
+}
+.mem-memory-lead-head p {
+  margin: 11px 0 0;
+  font-size: 11px;
+  line-height: 1.75;
+  letter-spacing: 0.25px;
+  color: var(--text-muted);
+}
+.mem-memory-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.mem-memory-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 174px;
+  padding: 17px 16px 18px;
+  border-radius: 4px;
+  box-sizing: border-box;
+  background-color: rgba(var(--secondary-color-rgb), 0.038);
+}
+.mem-memory-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+.mem-memory-card-top .mem-memory-card-code {
+  padding-top: 2px;
+  font-size: 7.5px;
+  letter-spacing: 0.45px;
+  opacity: 0.84;
+}
+.mem-memory-card-icon {
+  flex: none;
+  display: block;
+  width: 32px;
+  height: 32px;
+  margin: -4px -3px 0 0;
+  color: var(--primary-color);
+  opacity: 0.58;
+  pointer-events: none;
+}
+.mem-memory-card-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.mem-memory-card-title {
+  margin: 22px 0 0;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.45;
+  letter-spacing: 0.4px;
+  overflow-wrap: anywhere;
+  color: var(--text-color);
+}
+.mem-memory-card-caption {
+  margin: auto 0 0;
+  padding-top: 13px;
+  font-size: 10px;
+  line-height: 1.75;
+  letter-spacing: 0.15px;
+  color: var(--text-muted);
+}
+@media (max-width: 359px) {
+  .mem-memory-index {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+  .mem-memory-intro {
+    padding-right: 3px;
+    padding-left: 3px;
+  }
+  .mem-memory-intro-code {
+    font-size: 7.5px;
+    letter-spacing: 1px;
+  }
+  .mem-memory-lead {
+    padding: 21px 18px 19px;
+  }
+  .mem-memory-lead-icon {
+    top: 16px;
+    right: 13px;
+    width: 78px;
+    height: 78px;
+  }
+  .mem-memory-lead-head {
+    padding-right: 50px;
+  }
+  .mem-memory-lead h2 {
+    font-size: 21px;
+  }
+  .mem-memory-grid {
+    gap: 9px;
+  }
+  .mem-memory-card {
+    min-height: 170px;
+    padding: 15px 12px 16px;
+  }
+  .mem-memory-card-top {
+    gap: 3px;
+  }
+  .mem-memory-card-top .mem-memory-card-code {
+    font-size: 7px;
+    letter-spacing: 0.15px;
+  }
+  .mem-memory-card-icon {
+    width: 29px;
+    height: 29px;
+    margin-right: -2px;
+  }
+  .mem-memory-card-title {
+    margin-top: 20px;
+    font-size: 14px;
+    letter-spacing: 0.15px;
+  }
+  .mem-memory-card-caption {
+    font-size: 9.5px;
+    letter-spacing: 0;
+  }
+}
+.mem-memory-lead-btn,
+.mem-memory-card-btn {
+  border: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.16s ease, background-color 0.16s ease, opacity 0.16s ease;
+}
+.mem-memory-lead-btn:active,
+.mem-memory-card-btn:active {
+  transform: scale(0.985);
+  opacity: 0.88;
+}
+.mem-memory-lead-btn:focus-visible,
+.mem-memory-card-btn:focus-visible {
+  outline: 1px solid rgba(var(--primary-color-rgb), 0.55);
+  outline-offset: 2px;
+}
+.mem-memory-lead-title {
+  display: block;
+  margin: 16px 0 0;
+  font-size: 23px;
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: 0.8px;
+  color: var(--text-color);
+}
+.mem-memory-lead-caption {
+  display: block;
+  margin: 11px 0 0;
+  font-size: 11px;
+  line-height: 1.75;
+  letter-spacing: 0.25px;
+  color: var(--text-muted);
+}
+
+/* 9. 助手记忆 · 七分类共用详情页（A 方案：档案条目）
+   单列、自然高度；零物理分割线；短文直接展示，长文原地展开。 */
+.mem-detail-page {
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 8px 16px calc(env(safe-area-inset-bottom, 0px) + 104px);
+  box-sizing: border-box;
+}
+.mem-detail-hero {
+  padding: 10px 4px 18px;
+}
+.mem-detail-code {
+  display: block;
+  font-family: var(--mono-font, monospace);
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  color: var(--primary-color);
+  opacity: 0.85;
+}
+.mem-detail-title {
+  margin: 8px 0 0;
+  font-size: 24px;
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: 0.6px;
+  color: var(--text-color);
+}
+.mem-detail-desc {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  line-height: 1.75;
+  letter-spacing: 0.25px;
+  color: var(--text-muted);
+}
+.mem-detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.mem-record-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 18px 18px 20px;
+  border-radius: 4px;
+  box-sizing: border-box;
+  background-color: rgba(var(--secondary-color-rgb), 0.04);
+  transition: background-color 0.16s ease;
+}
+.mem-record-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+.mem-record-seq {
+  font-family: var(--mono-font, monospace);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.9px;
+  color: var(--primary-color);
+  opacity: 0.82;
+}
+.mem-record-time {
+  font-family: var(--mono-font, monospace);
+  font-size: 9px;
+  letter-spacing: 0.3px;
+  color: var(--text-muted);
+  opacity: 0.85;
+  white-space: nowrap;
+}
+.mem-record-title {
+  margin: 12px 0 0;
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.4;
+  letter-spacing: 0.35px;
+  color: var(--text-color);
+  overflow-wrap: anywhere;
+}
+.mem-record-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin-top: 10px;
+}
+.mem-record-tag {
+  font-size: 10.5px;
+  line-height: 1.5;
+  letter-spacing: 0.3px;
+  color: var(--secondary-color);
+  opacity: 0.86;
+  white-space: nowrap;
+}
+.mem-record-tag.is-primary {
+  color: var(--primary-color);
+  font-weight: 650;
+  opacity: 1;
+}
+.mem-record-body {
+  position: relative;
+  margin-top: 13px;
+}
+.mem-record-body.is-clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.mem-record-body.is-expanded {
+  display: block;
+}
+.mem-record-text {
+  font-size: 13px;
+  line-height: 1.85;
+  letter-spacing: 0.25px;
+  color: var(--secondary-color);
+  overflow-wrap: anywhere;
+}
+/* 未完事项：原目标保持原样，完成记录以独立的浅色内容块呈现。 */
+.mem-record-completion {
+  margin-top: 15px;
+  padding: 12px 13px 13px;
+  border-radius: 4px;
+  background-color: rgba(var(--primary-color-rgb), 0.055);
+}
+.mem-record-completion-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+.mem-record-completion-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.5;
+  letter-spacing: 0.45px;
+  color: var(--primary-color);
+}
+.mem-record-completion-status svg {
+  display: block;
+  flex: none;
+  width: 13px;
+  height: 13px;
+}
+.mem-record-completion-date {
+  font-family: var(--mono-font, monospace);
+  font-size: 9px;
+  line-height: 1.5;
+  letter-spacing: 0.4px;
+  color: var(--text-muted);
+}
+.mem-record-completion-note {
+  margin: 7px 0 0;
+  font-size: 12.5px;
+  line-height: 1.8;
+  letter-spacing: 0.2px;
+  color: var(--secondary-color);
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+.mem-record-complete-btn {
+  color: var(--primary-color);
+  opacity: 0.62;
+}
+.mem-record-complete-btn.is-completed {
+  background-color: transparent;
+  color: var(--primary-color);
+  opacity: 1;
+}
+.mem-record-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+}
+.mem-record-toggle {
+  padding: 4px 0;
+  border: none;
+  background: transparent;
+  color: var(--primary-color);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  opacity: 0.88;
+}
+.mem-record-toggle:active {
+  opacity: 0.65;
+}
+.mem-record-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: -4px -7px -4px auto;
+}
+.mem-record-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-color);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  opacity: 0.45;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+.mem-record-action-btn svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+.mem-record-action-btn:active {
+  opacity: 0.85;
+  transform: scale(0.9);
+}
+.mem-record-action-btn:focus-visible {
+  opacity: 0.85;
+  outline: 1px solid rgba(var(--primary-color-rgb), 0.55);
+  outline-offset: 1px;
+}
+/* 记忆权重标记：纯展示小图标，排在编辑/删除左侧，靠颜色区分重要与永久 */
+.mem-record-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-right: 2px;
+}
+.mem-record-rank svg {
+  display: block;
+  width: 13px;
+  height: 13px;
+}
+.mem-record-rank.is-important {
+  color: var(--secondary-color);
+  opacity: 0.75;
+}
+.mem-record-rank.is-pinned {
+  color: var(--primary-color);
+}
+@media (max-width: 359px) {
+  .mem-detail-page {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+  .mem-detail-title {
+    font-size: 21px;
+  }
+  .mem-record-card {
+    padding: 15px 14px 17px;
+  }
+  .mem-record-title {
+    font-size: 16.5px;
+  }
+  .mem-record-text {
+    font-size: 12.5px;
+    line-height: 1.8;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mem-detail-page.mem-view-in {
+    animation: none;
+  }
+}
+
+/* 10. 分类详情 · 列表工具（搜索 / 新增 / 多选）
+   只操作内存预览；零分割线、细线 SVG，状态靠底色区分。 */
+.mem-tab-bar[hidden],
+.mem-list-manage-bar[hidden],
+.mem-entry-editor[hidden] {
+  display: none !important;
+}
+.mem-detail-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 36px;
+  margin: 0 0 10px;
+  padding: 0 0 0 4px;
+}
+.mem-detail-count {
+  font-family: var(--mono-font, monospace);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.mem-detail-tool-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: -6px;
+  min-width: 0;
+}
+.mem-detail-tool-btn,
+.mem-detail-tool-text {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-color);
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.16s ease, background-color 0.16s ease;
+}
+.mem-detail-tool-btn {
+  width: 36px;
+  padding: 0;
+  opacity: 0.6;
+}
+.mem-detail-tool-btn svg {
+  display: block;
+  width: 17px;
+  height: 17px;
+}
+.mem-detail-tool-text {
+  gap: 5px;
+  padding: 0 8px 0 6px;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  color: var(--primary-color);
+}
+.mem-detail-tool-text svg {
+  display: block;
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+  opacity: 0.72;
+}
+.mem-detail-tool-btn:active,
+.mem-detail-tool-text:active {
+  background-color: rgba(var(--secondary-color-rgb), 0.06);
+}
+.mem-detail-tool-btn:disabled,
+.mem-detail-tool-text:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.mem-detail-tool-btn:focus-visible,
+.mem-detail-tool-text:focus-visible {
+  opacity: 1;
+  outline: 1px solid rgba(var(--primary-color-rgb), 0.55);
+  outline-offset: -2px;
+}
+.mem-detail-select-hint {
+  font-size: 11px;
+  letter-spacing: 0.3px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 原地搜索框：与卷宗墙搜索栏同一套底色与高度 */
+.mem-detail-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  margin: 0 0 14px;
+  padding: 0 4px 0 12px;
+  border-radius: 4px;
+  box-sizing: border-box;
+  background-color: rgba(var(--secondary-color-rgb), 0.055);
+  color: rgba(var(--secondary-color-rgb), 0.62);
+  transition: background-color 0.16s ease;
+}
+.mem-detail-search:focus-within {
+  background-color: rgba(var(--secondary-color-rgb), 0.085);
+}
+.mem-detail-search-icon {
+  flex: none;
+  display: inline-flex;
+  pointer-events: none;
+}
+.mem-detail-search-icon svg {
+  display: block;
+  width: 15px;
+  height: 15px;
+}
+.mem-detail-search-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: none;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  color: var(--text-color);
+  font: inherit;
+  /* 16px 以下 iOS 聚焦时会自动放大页面 */
+  font-size: 16px;
+}
+.mem-detail-search-input::placeholder {
+  font-size: 13px;
+  color: rgba(var(--secondary-color-rgb), 0.48);
+  opacity: 1;
+}
+.mem-detail-search-input::-webkit-search-cancel-button,
+.mem-detail-search-input::-webkit-search-decoration {
+  -webkit-appearance: none;
+  display: none;
+}
+.mem-detail-search-clear,
+.mem-detail-search-cancel {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.mem-detail-search-clear {
+  width: 32px;
+  padding: 0;
+  color: var(--text-color);
+  opacity: 0.5;
+}
+.mem-detail-search-clear[hidden] {
+  display: none;
+}
+.mem-detail-search-clear svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+.mem-detail-search-cancel {
+  padding: 0 8px;
+  font-size: 12px;
+  letter-spacing: 0.4px;
+  color: var(--primary-color);
+}
+.mem-detail-search-clear:focus-visible,
+.mem-detail-search-cancel:focus-visible {
+  opacity: 1;
+  outline: 1px solid rgba(var(--primary-color-rgb), 0.55);
+  outline-offset: -2px;
+}
+/* 空列表 / 无搜索结果 */
+.mem-detail-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 40px 12px;
+  text-align: center;
+}
+.mem-detail-empty[hidden] {
+  display: none;
+}
+.mem-detail-empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 4px;
+  color: var(--secondary-color);
+  opacity: 0.45;
+}
+.mem-detail-empty-icon svg {
+  width: 32px;
+  height: 32px;
+  display: block;
+}
+.mem-detail-empty-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--secondary-color);
+}
+.mem-detail-empty-text {
+  max-width: 280px;
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+/* ---------------- 对你的记忆 · 右侧实体书签导轨（复刻使用手册） ----------------
+   轨道绝对定位在详情页右缘、随内容滚动；收起按钮与分类标题同行，
+   书签列顶端对齐工具行，滚动后书签列吸附在视口顶部。对齐数值由 JS 写入。 */
+.mem-detail-page.mem-detail-with-rail {
+  position: relative;
+  max-width: 580px;
+  padding-right: 64px;
+  transition: padding-right 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.mem-detail-page.mem-detail-with-rail.rail-collapsed {
+  padding-right: 16px;
+}
+/* 收起后标题行仍要给按钮让位 */
+.mem-detail-page.mem-detail-with-rail .mem-detail-hero {
+  padding-right: 44px;
+}
+.mem-operator-rail {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 54px;
+  padding-top: var(--rail-toggle-top, 40px);
+  box-sizing: border-box;
+  z-index: 3;
+  pointer-events: none;
+  user-select: none;
+}
+.mem-operator-rail-stack {
+  position: sticky;
+  top: var(--rail-sticky-top, -60px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+.mem-operator-rail .mem-operator-rail-toggle {
+  position: relative;
+  top: auto;
+  right: auto;
+  width: 36px;
+  height: 36px;
+  margin-right: 7px;
+  flex-shrink: 0;
+  pointer-events: auto;
+}
+.mem-operator-rail-tabs {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  margin-top: var(--rail-tabs-gap, 40px);
+}
+.mem-operator-rail .mem-operator-bookmark {
+  width: 48px;
+  height: 58px;
+  flex-shrink: 0;
+  gap: 3px;
+  pointer-events: auto;
+  box-shadow: -2px 3px 8px rgba(var(--secondary-color-rgb), 0.08);
+  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
+              opacity 0.2s ease,
+              background-color 0.18s ease,
+              color 0.18s ease;
+}
+.mem-operator-bookmark svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  display: block;
+}
+.mem-operator-bookmark .bookmark-text {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+.mem-operator-bookmark-badge {
+  font-family: var(--mono-font, monospace);
+  font-size: 7.5px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  line-height: 1;
+  color: var(--primary-color);
+  opacity: 0.88;
+}
+.mem-operator-bookmark.active .mem-operator-bookmark-badge {
+  color: var(--bg-color);
+  opacity: 0.95;
+}
+/* 折叠：书签向右滑出，只留收起按钮 */
+.mem-operator-rail.is-collapsed .mem-operator-rail-toggle {
+  opacity: 0.9;
+  color: var(--primary-color);
+  background-color: rgba(var(--card-bg-color-rgb), 0.92);
+  box-shadow: -2px 2px 8px rgba(0, 0, 0, 0.08);
+}
+.mem-operator-rail.is-collapsed .rail-notch-arrow-icon {
+  transform: rotate(180deg);
+}
+.mem-operator-rail.is-collapsed .mem-operator-bookmark {
+  transform: translateX(60px);
+  opacity: 0;
+  pointer-events: none;
+}
+@media (max-width: 359px) {
+  .mem-detail-page.mem-detail-with-rail {
+    padding-right: 56px;
+  }
+  .mem-detail-page.mem-detail-with-rail.rail-collapsed {
+    padding-right: 12px;
+  }
+  .mem-operator-rail {
+    width: 48px;
+  }
+  .mem-operator-rail .mem-operator-bookmark {
+    width: 44px;
+    height: 58px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mem-detail-page.mem-detail-with-rail,
+  .mem-operator-rail .mem-operator-bookmark {
+    transition: none;
+  }
+}
+
+/* 多选：整卡可点，选中靠底色与实心圆环 */
+.mem-record-card.is-selectable {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.mem-record-card.is-selectable:active {
+  background-color: rgba(var(--secondary-color-rgb), 0.07);
+}
+.mem-record-card.is-selected {
+  background-color: rgba(var(--primary-color-rgb), 0.085);
+}
+.mem-record-card.is-selectable:focus-visible {
+  outline: 1px solid rgba(var(--primary-color-rgb), 0.55);
+  outline-offset: 2px;
+}
+.mem-record-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin: 3px 0;
+  border-radius: 50%;
+  box-sizing: border-box;
+  box-shadow: inset 0 0 0 1.2px rgba(var(--secondary-color-rgb), 0.38);
+  color: var(--bg-color);
+  transition: background-color 0.16s ease, box-shadow 0.16s ease;
+}
+.mem-record-check svg {
+  display: block;
+  width: 13px;
+  height: 13px;
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+.mem-record-card.is-selected .mem-record-check {
+  background-color: var(--primary-color);
+  box-shadow: none;
+}
+.mem-record-card.is-selected .mem-record-check svg {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* 多选操作条：占用底部 Tab 的位置与反色语汇 */
+.mem-list-manage-bar {
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: min(calc(100% - 32px), 488px);
+  padding: 4px 4px 4px 16px;
+  box-sizing: border-box;
+  border-radius: 6px;
+  background: var(--text-color);
+  color: var(--bg-color);
+  z-index: 2000;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+.mem-manage-count {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mem-manage-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--bg-color);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+.mem-manage-btn svg {
+  display: block;
+  width: 15px;
+  height: 15px;
+}
+.mem-manage-btn.is-done {
+  background: var(--bg-color);
+  color: var(--text-color);
+}
+.mem-manage-btn:active {
+  transform: scale(0.96);
+}
+.mem-manage-btn:disabled {
+  opacity: 0.38;
+  cursor: default;
+  transform: none;
+}
+.mem-manage-btn:focus-visible {
+  outline: 1px solid var(--bg-color);
+  outline-offset: -3px;
+}
+
+/* 新增 / 编辑底部面板：避让键盘、灵动岛与 Home Indicator */
+.mem-entry-editor {
+  position: fixed;
+  inset: 0;
+  z-index: 2100;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 24px);
+  padding-bottom: var(--mem-kb-inset, 0px);
+  box-sizing: border-box;
+}
+.mem-editor-backdrop {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+.mem-editor-sheet {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 520px;
+  max-height: 100%;
+  margin: 0;
+  border-radius: 10px 10px 0 0;
+  background-color: var(--card-bg-color);
+  color: var(--secondary-color);
+  box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.28);
+  transform: translateY(100%);
+  transition: transform 0.26s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.mem-entry-editor.is-open .mem-editor-backdrop {
+  opacity: 1;
+}
+.mem-entry-editor.is-open .mem-editor-sheet {
+  transform: translateY(0);
+}
+.mem-editor-head {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 12px 6px 20px;
+}
+.mem-editor-heading {
+  min-width: 0;
+}
+.mem-editor-code {
+  display: block;
+  font-family: var(--mono-font, monospace);
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 1.1px;
+  color: var(--primary-color);
+  opacity: 0.85;
+}
+.mem-editor-title {
+  margin: 6px 0 0;
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.4;
+  color: var(--text-color);
+  overflow-wrap: anywhere;
+}
+.mem-editor-title:focus {
+  outline: none;
+}
+.mem-completion-target {
+  margin: 9px 0 0;
+  max-width: 100%;
+  font-size: 12px;
+  line-height: 1.7;
+  letter-spacing: 0.25px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.mem-editor-close {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-top: -6px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-color);
+  opacity: 0.55;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.mem-editor-close svg {
+  display: block;
+  width: 17px;
+  height: 17px;
+}
+.mem-editor-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 10px 20px 6px;
+}
+.mem-editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.mem-editor-label {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: var(--secondary-color);
+}
+.mem-editor-hint {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.mem-editor-input,
+.mem-editor-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 12px;
+  border: none;
+  border-radius: 4px;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: rgba(var(--secondary-color-rgb), 0.055);
+  color: var(--text-color);
+  font: inherit;
+  font-size: 14px;
+  transition: background-color 0.16s ease, box-shadow 0.16s ease;
+}
+.mem-editor-input {
+  height: 42px;
+}
+.mem-editor-textarea {
+  min-height: 132px;
+  padding: 10px 12px;
+  line-height: 1.7;
+  resize: none;
+}
+.mem-completion-note {
+  min-height: 88px;
+}
+.mem-editor-input::placeholder,
+.mem-editor-textarea::placeholder {
+  font-size: 13px;
+  color: rgba(var(--secondary-color-rgb), 0.45);
+  opacity: 1;
+}
+.mem-editor-input:focus,
+.mem-editor-textarea:focus {
+  background-color: rgba(var(--secondary-color-rgb), 0.085);
+  box-shadow: inset 0 0 0 1px rgba(var(--primary-color-rgb), 0.45);
+}
+.mem-editor-input[aria-invalid="true"],
+.mem-editor-textarea[aria-invalid="true"] {
+  box-shadow: inset 0 0 0 1px var(--primary-color);
+}
+.mem-editor-error {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--primary-color);
+}
+.mem-editor-error[hidden] {
+  display: none;
+}
+
+/* 分组单选：胶囊靠底色区分选中，无描边分割 */
+.mem-editor-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.mem-editor-group-chip {
+  position: relative;
+  display: inline-flex;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.mem-editor-group-chip input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.mem-editor-group-chip span {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 13px;
+  border-radius: 4px;
+  background-color: rgba(var(--secondary-color-rgb), 0.055);
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  transition: background-color 0.16s ease, color 0.16s ease;
+}
+.mem-editor-group-chip input:checked + span {
+  background-color: var(--secondary-color);
+  color: var(--bg-color);
+}
+.mem-editor-group-chip input:focus-visible + span {
+  box-shadow: inset 0 0 0 1px rgba(var(--primary-color-rgb), 0.55);
+}
+.mem-editor-pool-hint {
+  margin: 2px 0 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--primary-color);
+  overflow-wrap: anywhere;
+}
+.mem-editor-pool-hint[hidden] {
+  display: none;
+}
+/* 永久额度用满时：选项置灰、不可点，靠底色区分（无描边） */
+.mem-editor-group-chip.is-full {
+  cursor: not-allowed;
+}
+.mem-editor-group-chip.is-full input {
+  cursor: not-allowed;
+}
+.mem-editor-group-chip.is-full span {
+  opacity: 0.4;
+}
+
+/* 时间：原生日期时间选择器，iOS 下值默认居中，这里改为左对齐 */
+.mem-editor-time {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  line-height: 42px;
+}
+.mem-editor-time::-webkit-date-and-time-value {
+  text-align: left;
+}
+.mem-editor-time::-webkit-calendar-picker-indicator {
+  opacity: 0.55;
+  cursor: pointer;
+}
+.mem-editor-foot {
+  flex: none;
+  padding: 10px 20px calc(env(safe-area-inset-bottom, 0px) + 14px);
+}
+.mem-editor-note {
+  margin: 0 0 10px;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.mem-editor-actions {
+  display: flex;
+  gap: 8px;
+}
+.mem-editor-btn {
+  flex: 1;
+  height: 42px;
+  border: none;
+  border-radius: 4px;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 650;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+.mem-editor-btn.is-ghost {
+  background-color: rgba(var(--secondary-color-rgb), 0.07);
+  color: var(--secondary-color);
+}
+.mem-editor-btn.is-primary {
+  background-color: var(--primary-color);
+  color: var(--bg-color);
+}
+.mem-editor-btn:active {
+  transform: scale(0.97);
+}
+.mem-editor-close:focus-visible,
+.mem-editor-btn:focus-visible {
+  outline: 1px solid rgba(var(--primary-color-rgb), 0.7);
+  outline-offset: 2px;
+}
+@media (max-width: 359px) {
+  .mem-detail-tool-text {
+    padding: 0 8px;
+  }
+  .mem-list-manage-bar {
+    width: calc(100% - 24px);
+    padding-left: 12px;
+  }
+  .mem-manage-btn {
+    padding: 0 10px;
+  }
+  .mem-editor-head {
+    padding-left: 16px;
+  }
+  .mem-editor-body,
+  .mem-editor-foot {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mem-editor-sheet,
+  .mem-editor-backdrop,
+  .mem-record-check,
+  .mem-record-check svg {
+    transition: none;
+  }
+}
+
 
 /* ============================================================
    UPDATE // 检查更新（终端配置 · 模块 3）
@@ -42329,6 +43948,66 @@ html:not(.is-native) #otaUpdateModule { display: none !important; }
   line-height: 1.6;
   color: var(--text-muted);
   opacity: 0.85;
+}
+
+/* 4. 底部悬浮控制台（反色战术指示器） */
+.mem-tab-bar {
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+  padding: 4px;
+  background: var(--text-color);
+  border-radius: 6px;
+  z-index: 2000;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+.mem-tab-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 16px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--bg-color);
+  cursor: pointer;
+  transition: background-color 0.16s ease, color 0.16s ease;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+.mem-tab-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+.mem-tab-en {
+  font-family: var(--mono-font, monospace);
+  font-size: 8.5px;
+  letter-spacing: 0.8px;
+  line-height: 1;
+  opacity: 0.65;
+}
+.mem-tab-zh {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  opacity: 0.85;
+}
+.mem-tab-btn.is-active {
+  background: var(--bg-color);
+  color: var(--text-color);
+}
+.mem-tab-btn.is-active .mem-tab-en {
+  opacity: 0.75;
+}
+.mem-tab-btn.is-active .mem-tab-zh {
+  font-weight: 700;
+  opacity: 1;
 }
 
 

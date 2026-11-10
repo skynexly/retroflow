@@ -61,6 +61,16 @@ window.AssistantChatCore = (() => {
   /** 工具循环上限兜底值。与 system-chat-ui 原有常量保持一致 */
   const DEFAULT_TOOL_LOOP_LIMIT = 10;
 
+  /** 正在进行的回复数。助手页和 DECK 舱共用本内核，记忆提取据此避开生成中的消息 */
+  let inflightCount = 0;
+
+  /** 一轮回复结束（正常 / 异常 / 取消）后广播，自动记忆提取监听此事件 */
+  function notifyReplySettled() {
+    try {
+      window.dispatchEvent(new CustomEvent('retroflow:assistant-reply-settled'));
+    } catch (_) { /* 广播失败不影响对话 */ }
+  }
+
   /* ======================= 纯字符串处理层 ======================= */
   /* 这一段是从 system-chat-ui.js 平移过来的纯函数，零 DOM、零业务依赖。
      搬过来而不是注入，是因为它们描述的是「模型输出长什么样」，
@@ -307,6 +317,7 @@ window.AssistantChatCore = (() => {
       try { hooks.onInferStart(abortController); } catch (_) { /* 钩子异常不影响主流程 */ }
     }
 
+    inflightCount += 1;
     const createdAt = Date.now();
 
     try {
@@ -525,13 +536,17 @@ window.AssistantChatCore = (() => {
       if (typeof hooks.onInferEnd === 'function') {
         try { hooks.onInferEnd(); } catch (_) { /* 钩子异常不影响收尾 */ }
       }
+      inflightCount = Math.max(0, inflightCount - 1);
       // 无论正常 / 异常 / 取消，都清掉残留的流式生图占位，避免孤儿转圈行
       renderer.resetGenPlaceholder();
+      notifyReplySettled();
     }
   }
 
   return {
     requestReply,
+    // 是否有回复正在生成；记忆提取不读取生成中的消息
+    isBusy: () => inflightCount > 0,
     // 下列纯函数一并导出：界面侧的历史恢复、编辑、上下文装配也需要同一套口径
     composeWithThinking,
     stripThinkingFromContext,

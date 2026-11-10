@@ -168,6 +168,8 @@ const DataRegistry = (() => {
     sysChatIndex: () => `${DOMAINS.sysChat.prefix}index`,
     /** 单条助手对话的元信息（标题 / 时间 / 消息数） */
     sysChatDoc: (convId) => `${DOMAINS.sysChat.prefix}doc.${convId}`,
+    /** 单条助手对话的记忆提取进度点（已提取到的最后一条消息的时间与 id） */
+    sysChatMemCursor: (convId) => `${DOMAINS.sysChat.prefix}memcursor.${convId}`,
 
     // —— memory 域（记忆库元配置）——
     /** 记忆库全局配置（提取开关、预算参数、播种标记） */

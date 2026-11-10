@@ -599,6 +599,8 @@ ${identityNote}`;
     buildSystemPrompt,
     buildDepthInjection,
     resolveConfig,
+    // 记忆提取复用同一套名字取值规则，保证记忆里的名字与聊天中一致
+    getVar,
     RETROFLOW_CANON
   };
 })();

@@ -44,6 +44,12 @@ const SystemChatStore = (() => {
       ? DataRegistry.key.sysChatDoc(convId)
       : `sysChat/doc.${convId}`;
   }
+  /** 记忆提取进度点。放在 sysChat/ 下，随聊天记录一起备份、导入和清理 */
+  function memCursorKey(convId) {
+    return window.DataRegistry && DataRegistry.key && typeof DataRegistry.key.sysChatMemCursor === 'function'
+      ? DataRegistry.key.sysChatMemCursor(convId)
+      : `sysChat/memcursor.${convId}`;
+  }
 
   /** 拼某条对话的流水 forkId */
   function forkIdOf(convId) {
@@ -384,6 +390,8 @@ const SystemChatStore = (() => {
       console.warn('[SystemChatStore] 清理对话流水失败：', id, err);
     }
     try { await Storage.removeDoc(docKey(id)); } catch (_) { /* 本体已不在也算删成功 */ }
+    // 记忆提取进度点随窗口一起删除；已提取的记忆保留在记忆库，不受影响
+    try { await Storage.removeDoc(memCursorKey(id)); } catch (_) { /* 没有进度点也算删成功 */ }
 
     const keep = index.convIds.filter((x) => x !== id);
     const nextActive = index.activeConvId === id ? (keep[0] || '') : index.activeConvId;
@@ -412,6 +420,7 @@ const SystemChatStore = (() => {
     LEGACY_CONV_ID,
     TITLE_MAX,
     forkIdOf,
+    memCursorKey,
     getIndex,
     getConv,
     listConvs,

@@ -6,17 +6,20 @@
  *   docs     配置类文本，有界小数据（身份、马甲、角色卡、主题配置），全量装载
  *   records  流水类记录，无界增长（副本记录、聊天历史），只按索引取切片
  *   memories 记忆库专属流水（事件记忆/角色记忆同库不同型），带关键词与在场角色反查索引
+ *   assistantMemories 助手记忆（对你的记忆、自我认知等六类），所有助手共用一份，
+ *            与副本记忆分库，规范见 design/助手记忆提取规范.md
  *
  * records 本轮只建 schema 不写业务逻辑，等副本功能落地时再接。
  * 一次性把版本号推到位，避免以后再升 schema。
  */
 const Storage = (() => {
   const DB_NAME = 'retroflow';
-  const DB_VERSION = 3;
+  const DB_VERSION = 4;
   const STORE_ASSETS = 'assets';
   const STORE_DOCS = 'docs';
   const STORE_RECORDS = 'records';
   const STORE_MEMORIES = 'memories';
+  const STORE_ASSISTANT_MEMORIES = 'assistantMemories';
 
   let dbPromise = null;
 
@@ -67,10 +70,34 @@ const Storage = (() => {
           // 角色记忆主查询（本阶段暂不写入，索引先备好）
           memories.createIndex('by_char_time', ['charId', 'createdAt']);
         }
+
+        // v4 助手记忆：与副本记忆分库，所有助手共用一份。
+        // 只新建本 store，不触碰已有 store，老用户升级时现有数据不受影响。
+        if (!db.objectStoreNames.contains(STORE_ASSISTANT_MEMORIES)) {
+          const asstMem = db.createObjectStore(STORE_ASSISTANT_MEMORIES, { keyPath: 'id' });
+          asstMem.createIndex('by_category', 'category');
+          asstMem.createIndex('by_keywords', 'keywords', { multiEntry: true });
+        }
       };
 
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const db = request.result;
+        // 其他标签页（或新版本）请求升级时主动让出连接，避免升级被本连接卡住。
+        // 关闭后清空缓存的 promise，下次读写会按新版本重新打开。
+        db.onversionchange = () => {
+          try { db.close(); } catch (_) { /* ignore */ }
+          dbPromise = null;
+        };
+        resolve(db);
+      };
+      request.onerror = () => {
+        dbPromise = null;
+        reject(request.error);
+      };
+      // 旧连接让出后 onsuccess 仍会触发；这里只留日志，不提前失败。
+      request.onblocked = () => {
+        console.warn('[Storage] 数据库升级被其他标签页的旧连接阻塞，等待其关闭');
+      };
     });
 
     return dbPromise;
@@ -231,6 +258,15 @@ const Storage = (() => {
       console.warn('[Storage] 读取配置失败：', key, err);
       return fallback;
     }
+  }
+
+  /**
+   * 读取一条配置文本，读取失败时抛错。
+   * 供「不存在」与「读取失败」必须区分的场景使用（如记忆提取进度点）。
+   * @returns {Promise<any>} 不存在时返回 undefined
+   */
+  async function getDocOrThrow(key) {
+    return await withAnyStore(STORE_DOCS, 'readonly', (store) => store.get(key));
   }
 
   /**
@@ -505,6 +541,106 @@ const Storage = (() => {
     return count;
   }
 
+  /* ---------------- 助手记忆（IndexedDB assistantMemories） ----------------
+     底层通道，业务读写统一走 AssistantMemoryStore。 */
+
+  /** 写入/更新一条助手记忆（需含 id 与 category） */
+  async function putAssistantMemory(record) {
+    if (!record || !record.id) throw new Error('助手记忆缺少 id');
+    if (!record.category) throw new Error('助手记忆缺少 category');
+    await withAnyStore(STORE_ASSISTANT_MEMORIES, 'readwrite', (store) => store.put(record));
+    return record;
+  }
+
+  /** 批量写入：同一事务，全部成功才提交 */
+  async function putAssistantMemories(records) {
+    const list = (Array.isArray(records) ? records : []).filter((r) => r && r.id && r.category);
+    if (!list.length) return 0;
+    const db = await openDB();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_ASSISTANT_MEMORIES, 'readwrite');
+      const store = tx.objectStore(STORE_ASSISTANT_MEMORIES);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error('IndexedDB 助手记忆批量写入已中止'));
+      try {
+        list.forEach((r) => store.put(r));
+      } catch (err) {
+        // 同步抛错（如数据无法序列化）时必须中止事务，否则已排队的写入仍会提交
+        try { tx.abort(); } catch (_) { /* ignore */ }
+        reject(err);
+      }
+    });
+    return list.length;
+  }
+
+  /** 读取全部助手记忆；读取失败会抛错，调用方据此区分「空库」与「读取失败」 */
+  async function getAllAssistantMemories() {
+    return await withAnyStore(STORE_ASSISTANT_MEMORIES, 'readonly', (store) => store.getAll()) || [];
+  }
+
+  /** 删除一条助手记忆 */
+  async function removeAssistantMemory(id) {
+    await withAnyStore(STORE_ASSISTANT_MEMORIES, 'readwrite', (store) => store.delete(id));
+    return true;
+  }
+
+  /** 批量删除：同一事务 */
+  async function removeAssistantMemories(ids) {
+    const list = (Array.isArray(ids) ? ids : []).filter(Boolean);
+    if (!list.length) return 0;
+    const db = await openDB();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_ASSISTANT_MEMORIES, 'readwrite');
+      const store = tx.objectStore(STORE_ASSISTANT_MEMORIES);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error('IndexedDB 助手记忆批量删除已中止'));
+      try {
+        list.forEach((id) => store.delete(id));
+      } catch (err) {
+        try { tx.abort(); } catch (_) { /* ignore */ }
+        reject(err);
+      }
+    });
+    return list.length;
+  }
+
+  /**
+   * 写入与删除放进同一事务：保存一条并淘汰最早记录时，要么全部生效，要么全部不生效。
+   * 可附带 docs 写入（如记忆提取进度点），与记忆在同一事务内提交。
+   * @param {Array<object>} records 要写入的记录（需含 id 与 category）
+   * @param {Array<string>} deleteIds 要删除的 id
+   * @param {Array<{key: string, value: any}>} [docPuts] 同事务写入的配置文本
+   */
+  async function commitAssistantMemories(records, deleteIds, docPuts) {
+    const puts = (Array.isArray(records) ? records : []).filter((r) => r && r.id && r.category);
+    const dels = (Array.isArray(deleteIds) ? deleteIds : []).filter(Boolean);
+    const docs = (Array.isArray(docPuts) ? docPuts : []).filter((d) => d && typeof d.key === 'string' && d.key);
+    if (!puts.length && !dels.length && !docs.length) return { put: 0, removed: 0, docs: 0 };
+    const db = await openDB();
+    const storeNames = docs.length ? [STORE_ASSISTANT_MEMORIES, STORE_DOCS] : STORE_ASSISTANT_MEMORIES;
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(storeNames, 'readwrite');
+      const store = tx.objectStore(STORE_ASSISTANT_MEMORIES);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error('IndexedDB 助手记忆提交已中止'));
+      try {
+        puts.forEach((r) => store.put(r));
+        dels.forEach((id) => store.delete(id));
+        if (docs.length) {
+          const docStore = tx.objectStore(STORE_DOCS);
+          docs.forEach((d) => docStore.put(d.value, d.key));
+        }
+      } catch (err) {
+        try { tx.abort(); } catch (_) { /* ignore */ }
+        reject(err);
+      }
+    });
+    return { put: puts.length, removed: dels.length, docs: docs.length };
+  }
+
   return {
     setAsset,
     getAssetSrc,
@@ -514,6 +650,7 @@ const Storage = (() => {
     removeAsset,
     setDoc,
     getDoc,
+    getDocOrThrow,
     getAllDocs,
     listDocKeys,
     removeDoc,
@@ -531,6 +668,12 @@ const Storage = (() => {
     getAllMemories,
     removeMemory,
     clearAllMemories,
+    putAssistantMemory,
+    putAssistantMemories,
+    getAllAssistantMemories,
+    removeAssistantMemory,
+    removeAssistantMemories,
+    commitAssistantMemories,
     compressImage
   };
 })();
