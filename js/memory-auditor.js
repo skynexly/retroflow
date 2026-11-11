@@ -327,7 +327,7 @@ const MemoryAuditor = (() => {
    */
   function buildPromptBatch(groups, category, groupId) {
     const categoryName = category || '未知分类';
-    const groupName = groupId || '未知Tab';
+    const groupName = groupId || '（无 Tab，整个分类）';
     
     let userMessage = `【category: ${categoryName} / groupId: ${groupName}】\n\n`;
     
@@ -363,8 +363,52 @@ const MemoryAuditor = (() => {
   /* ======================= AI 调用 ======================= */
 
   /**
+   * 转义 JSON 字符串字面量内部的裸控制字符（换行、回车、制表符等）。
+   * 模型常在 body/reason 里直接换行，JSON.parse 会报 Bad control character。
+   * 只处理双引号字符串内部，字符串外的结构性空白原样保留。
+   */
+  function escapeControlCharsInStrings(s) {
+    let out = '';
+    let inString = false;
+    let escaped = false;
+    for (let i = 0; i < s.length; i++) {
+      const ch = s[i];
+      if (!inString) {
+        if (ch === '"') inString = true;
+        out += ch;
+        continue;
+      }
+      if (escaped) {
+        escaped = false;
+        out += ch;
+        continue;
+      }
+      if (ch === '\\') {
+        escaped = true;
+        out += ch;
+        continue;
+      }
+      if (ch === '"') {
+        inString = false;
+        out += ch;
+        continue;
+      }
+      const code = ch.charCodeAt(0);
+      if (code < 0x20) {
+        if (ch === '\n') out += '\\n';
+        else if (ch === '\r') out += '\\r';
+        else if (ch === '\t') out += '\\t';
+        else out += '\\u' + code.toString(16).padStart(4, '0');
+        continue;
+      }
+      out += ch;
+    }
+    return out;
+  }
+
+  /**
    * 从模型返回文本中抢救出 JSON 对象
-   * 兼容：代码围栏包裹、前后夹带解释文字、中文引号、尾随逗号
+   * 兼容：代码围栏包裹、前后夹带解释文字、字符串内裸换行/制表符、中文引号、尾随逗号
    */
   function parseAuditJSON(content) {
     let s = String(content || '').replace(/^\uFEFF/, '').trim();
@@ -377,17 +421,22 @@ const MemoryAuditor = (() => {
     const last = s.lastIndexOf('}');
     if (first !== -1 && last > first) s = s.slice(first, last + 1);
 
-    // 第一次直接尝试
+    // 1. 直接尝试
     try {
       return JSON.parse(s);
     } catch (_) { /* 继续抢救 */ }
 
-    // 纠偏：中文引号 + 尾随逗号
-    const repaired = s
-      .replace(/[“”]/g, '"')
-      .replace(/[‘’]/g, '"')
-      .replace(/,(\s*[}\]])/g, '$1');
-    return JSON.parse(repaired); // 抛错由调用方处理
+    // 2. 转义字符串内部的控制字符 + 去尾随逗号
+    const step2 = escapeControlCharsInStrings(s).replace(/,(\s*[}\]])/g, '$1');
+    try {
+      return JSON.parse(step2);
+    } catch (_) { /* 继续抢救 */ }
+
+    // 3. 中文双引号当作结构引号（模型偶尔整段用中文引号），再转义一次
+    const step3 = escapeControlCharsInStrings(
+      s.replace(/[“”]/g, '"').replace(/,(\s*[}\]])/g, '$1')
+    );
+    return JSON.parse(step3); // 抛错由调用方处理
   }
 
   /**
@@ -775,25 +824,37 @@ const MemoryAuditor = (() => {
     // 4. 分批处理（每批最多 50 条记忆）
     let totalMerged = 0;
     let totalSkipped = 0;
+    let totalFailed = 0;
+    let firstError = '';
 
     const systemPrompt = await loadPromptTemplate();
 
-    // 简单分批：按 BATCH_SIZE 切割 groups
+    // 单批执行：失败只记数，不中断后续批次
+    const runBatch = async (batchGroups) => {
+      let plan;
+      try {
+        const userMessage = buildPromptBatch(batchGroups, category, groupId);
+        plan = await callAuditAPI(systemPrompt, userMessage);
+      } catch (err) {
+        console.warn(`[MemoryAuditor] ${category}/${groupId} 一批请求或解析失败，已跳过:`, err);
+        totalFailed++;
+        if (!firstError) firstError = (err && err.message) || String(err);
+        return;
+      }
+      const result = await executeAuditPlan(plan, category, groupId);
+      totalMerged += result.merged;
+      totalSkipped += result.skipped;
+    };
+
+    // 按组打包：凑到 50 条就发一批，单组不拆
     let batch = [];
     let batchRecordCount = 0;
 
     for (const group of groups) {
       const groupRecordCount = group.records.length;
-      
+
       if (batchRecordCount + groupRecordCount > BATCH_SIZE && batch.length > 0) {
-        // 当前批次已满，先处理
-        const userMessage = buildPromptBatch(batch, category, groupId);
-        const plan = await callAuditAPI(systemPrompt, userMessage);
-        const result = await executeAuditPlan(plan, category, groupId);
-        totalMerged += result.merged;
-        totalSkipped += result.skipped;
-        
-        // 重置批次
+        await runBatch(batch);
         batch = [];
         batchRecordCount = 0;
       }
@@ -804,14 +865,10 @@ const MemoryAuditor = (() => {
 
     // 处理最后一批
     if (batch.length > 0) {
-      const userMessage = buildPromptBatch(batch, category, groupId);
-      const plan = await callAuditAPI(systemPrompt, userMessage);
-      const result = await executeAuditPlan(plan, category, groupId);
-      totalMerged += result.merged;
-      totalSkipped += result.skipped;
+      await runBatch(batch);
     }
 
-    return { merged: totalMerged, skipped: totalSkipped };
+    return { merged: totalMerged, skipped: totalSkipped, failed: totalFailed, firstError };
   }
 
   /**
@@ -843,30 +900,35 @@ const MemoryAuditor = (() => {
 
     let totalMerged = 0;
     let totalSkipped = 0;
+    let totalFailed = 0;
+    let firstError = '';
+
+    const add = (result) => {
+      totalMerged += result.merged || 0;
+      totalSkipped += result.skipped || 0;
+      totalFailed += result.failed || 0;
+      if (!firstError && result.firstError) firstError = result.firstError;
+    };
 
     // 1. 处理有 Tab 的分类
     for (const category of Object.keys(SCHEMA.tabbed)) {
       const groupIds = SCHEMA.tabbed[category];
       for (const groupId of groupIds) {
-        const result = await audit(category, groupId);
-        totalMerged += result.merged;
-        totalSkipped += result.skipped;
+        add(await audit(category, groupId));
       }
     }
 
     // 2. 处理没有 Tab 的分类：把整个分类当作一个"Tab"来巡检
     for (const category of SCHEMA.flat) {
-      // 读取该分类下所有记忆（groupId 可能为空或混合）
+      // 读取该分类下所有记忆（这些分类没有 groupId）
       const allRecords = st.list(category);
       if (allRecords.length < 2) continue;
 
-      // 直接使用 audit 逻辑，但传入整个分类的记录
-      const result = await auditRecords(category, 'all', allRecords);
-      totalMerged += result.merged;
-      totalSkipped += result.skipped;
+      // groupId 传空：normalize 对无 Tab 分类不写 groupId
+      add(await auditRecords(category, '', allRecords));
     }
 
-    return { merged: totalMerged, skipped: totalSkipped };
+    return { merged: totalMerged, skipped: totalSkipped, failed: totalFailed, firstError };
   }
 
   return {
@@ -880,7 +942,9 @@ const MemoryAuditor = (() => {
       levenshtein,
       keywordSimilarity,
       extractTitleWords,
-      clusterKeywords
+      clusterKeywords,
+      escapeControlCharsInStrings,
+      parseAuditJSON
     }
   };
 })();

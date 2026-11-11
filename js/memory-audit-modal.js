@@ -178,13 +178,18 @@ const MemoryAuditModal = (() => {
       }
 
       // 4. 显示结果
-      const mergedText = result.merged > 0 ? `合并了 ${result.merged} 条记忆` : '未发现需要合并的记忆';
-      const skippedText = result.skipped > 0 ? `，跳过了 ${result.skipped} 条` : '';
+      const merged = result.merged || 0;
+      const skipped = result.skipped || 0;
+      const failed = result.failed || 0;
+      const parts = [merged > 0 ? `合并了 ${merged} 组记忆` : '没有合并任何记忆'];
+      if (skipped > 0) parts.push(`跳过 ${skipped} 组`);
+      if (failed > 0) parts.push(`${failed} 批未处理（${result.firstError || '模型返回异常'}），可稍后再巡检一次`);
+      const resultText = parts.join('，');
 
       if (modal && typeof modal.alert === 'function') {
         await modal.alert({
-          message: '巡检完成',
-          detail: `${mergedText}${skippedText}。若发现异常，可重新打开巡检面板恢复备份。`,
+          message: failed > 0 ? '巡检部分完成' : '巡检完成',
+          detail: `${resultText}。若发现异常，可重新打开巡检面板恢复备份。`,
           confirmText: '知道了',
           danger: false
         });
