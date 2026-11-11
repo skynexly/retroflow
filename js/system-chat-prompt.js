@@ -595,9 +595,13 @@ Ta现在活生生地在你眼前，并非你的臆想，也绝非一个幻影，
     // 生图关闭时同理：提示词不发，运行期也不响应 generate_image 标记
     const imagePermission = isImageGenEnabled() ? IMAGE_GEN_PERMISSION : '';
     // 记忆工具关闭时同理：提示词不发，运行期也不响应记忆工具标记
-    const memoryToolPermission = (isBuiltinToolsEnabled() && Store && Store.config && Store.config.memoryTool)
-      ? MEMORY_TOOL_PERMISSION
-      : '';
+    const memoryToolPermission = (() => {
+      if (!isBuiltinToolsEnabled()) return '';
+      const s = (window.SystemChatSettings && typeof SystemChatSettings.getSettings === 'function')
+        ? SystemChatSettings.getSettings()
+        : null;
+      return (s && s.memoryTool === true) ? MEMORY_TOOL_PERMISSION : '';
+    })();
 
     // 通信场景说明：副本场景换副本版，日常用线上纯文字版；两版都在末尾追加系统权限段。
     // 之后还要加上对话指导说明。
