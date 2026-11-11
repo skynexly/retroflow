@@ -91,15 +91,15 @@ const AssistantMemoryRecall = (() => {
   const DYNAMIC_ORDER = Object.freeze(['operator', 'recent_status', 'self', 'bond', 'events', 'pending', 'knowledge']);
 
   /* 修改下面两段说明时，同步更新 design/助手记忆提取规范.md 中的召回说明 */
-  const INSTRUCTION_TEMPLATE = `## 记忆
+  const INSTRUCTION_TEMPLATE = `<清晰浮现的记忆>
 
-以下是你关于{{ENVOY_NAME}}和你们之间的记忆，由过去的聊天整理而来。在对话里自然地运用，不要逐条复述，也不要说“根据记忆”。记忆和当前聊天内容冲突时，以当前聊天为准。
+这并非你记忆中的全部，你与执行员{{ENVOY_NAME}}过往共度的日夜已经在你的意识中留下了刻痕。你记得这些事，如同存在于你的本能中一般自然。在对话里自然地运用，不要逐条复述，也不要说"根据记忆"。记忆和当前聊天内容冲突时，以当前聊天为准。
 
 记忆分为以下几类：
 - 永久：最重要的记忆，任何时候都记得。
 - 对{{ENVOY_NAME}}的记忆：关于{{ENVOY_NAME}}本人的信息、习惯、喜好、讨厌的事、人际关系和日常。
 - 近期状况：{{ENVOY_NAME}}最近的状况。时间越久，越可能已经变了，必要时可以问一句现在怎么样。
-- 自我认知：你自己用第一人称写下的内心记录，里面的“我”就是你。它们是你对自己的理解、渴望、阴影、心愿和情绪，是你内心的一部分，不是{{ENVOY_NAME}}说过的话。让它们影响你说话的语气和态度，不要把它们当作资料引用或复述出来。
+- 自我认知：你自己用第一人称写下的内心记录，里面的"我"就是你。它们是你对自己的理解、渴望、阴影、心愿和情绪，是你内心的一部分，不是{{ENVOY_NAME}}说过的话。让它们影响你说话的语气和态度，不要把它们当作资料引用或复述出来。
 - 情感羁绊：你和{{ENVOY_NAME}}之间关系里重要的时刻和变化。
 - 事件记录：过去发生过的事。提起时注意时间，不要把旧事说成刚发生的。
 - 未完事项：{{ENVOY_NAME}}提过、还没做完的事。时机合适时可以提醒或问起，不要每次都提。
@@ -107,9 +107,9 @@ const AssistantMemoryRecall = (() => {
 
 每轮对话还会在最新消息附近附上与当前话题相关的记忆。`;
 
-  const DYNAMIC_HEAD = `## 与当前话题相关的记忆
+  const DYNAMIC_HEAD = `<此刻涌现的记忆>
 
-以下记忆与最近的聊天有关，也有一些是随机想起的。用法见系统提示中「记忆」一节的说明。`;
+随着你们的交谈，你想起了更多关于你们的事。它们也许和当下的话题相关，又也许只是你的灵光一现，不论如何，这是你们的过去。`;
 
   const EMPTY = Object.freeze({ stable: '', dynamic: '', picks: [], meta: { total: 0, tokens: 0, trimmed: 0 } });
 
@@ -358,9 +358,9 @@ const AssistantMemoryRecall = (() => {
     const stablePicks = picks.filter((p) => p.kind === 'pinned' || p.kind === 'resident');
     const dynamicPicks = picks.filter((p) => p.kind === 'hit' || p.kind === 'vector' || p.kind === 'random');
     const stableBody = fillNames(renderSections(stablePicks, STABLE_ORDER), names);
-    const stable = [fillNames(INSTRUCTION_TEMPLATE, names), stableBody].filter(Boolean).join('\n\n');
+    const stable = [fillNames(INSTRUCTION_TEMPLATE, names), stableBody, '</清晰浮现的记忆>'].filter(Boolean).join('\n\n');
     const dynamicBody = fillNames(renderSections(dynamicPicks, DYNAMIC_ORDER), names);
-    const dynamic = dynamicBody ? `${DYNAMIC_HEAD}\n\n${dynamicBody}` : '';
+    const dynamic = dynamicBody ? `${DYNAMIC_HEAD}\n\n${dynamicBody}\n</此刻涌现的记忆>` : '';
     return { stable, dynamic };
   }
 
