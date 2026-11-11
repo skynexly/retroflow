@@ -31,23 +31,18 @@
   "schemaVersion": 1,
   "channel": "stable",
   "latest": {
-    "version": "1.3.0",
-    "build": 1296,
+    "version": "1.3.1",
+    "build": 1297,
     "minBinary": 7,
-    "releasedAt": "2026-11-10T16:17:12Z",
+    "releasedAt": "2026-11-11T03:22:31Z",
     "notes": [
-      "助手记忆向量化（关键词 + 向量混合召回，支持 OpenAI 兼容 embeddings 接口）",
-      "新增功能模型配置的独立向量模型插槽，默认 bge-m3",
-      "记忆库新增向量化按钮，查漏补缺（换模型、改内容、删记忆后自动失效旧向量）",
-      "数据管理新增统一\"记忆\"备份块（副本记忆、助手记忆、提取进度），向量不备份",
-      "记忆注入提示词改为\"对{{ENVOY_NAME}}的记忆\"，按执行员名字动态显示",
-      "记忆库向量化按钮改为纯 SVG 图标，去掉重点色底"
+      "记忆巡检：自动聚类关键词、AI 合并重复/矛盾记忆、巡检前备份与恢复；反引号包裹特殊标记不再被吞或截断后续内容；巡检按钮图标更新为卡片+放大镜"
     ],
     "packages": {
       "full": {
-        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1296/retroflow-ota-full-b1296.zip",
-        "sha256": "3465a116ed674d2674d4fce18b23d2018efd117ab994915ae97d2954d2d8d01b",
-        "size": 1911991
+        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1297/retroflow-ota-full-b1297.zip",
+        "sha256": "b2b56ea90b48a6d319a49cbcbae22b12a9a4f0a59e3dcbfa9e3676300f4fdc89",
+        "size": 1925940
       },
       "patch": {
         "sinceBuild": 0,
@@ -57,5 +52,5 @@
       }
     }
   },
-  "_status": "已发布 build 1296（全量包，字体常驻不打包）。patch 差分留待后续。"
+  "_status": "已发布 build 1297（全量包，字体常驻不打包）。patch 差分留待后续。"
 }
