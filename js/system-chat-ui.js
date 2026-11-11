@@ -4996,14 +4996,127 @@ ${parts.join('\n\n———\n\n')}`;
   }
 
   if (batchQuoteBtn) {
-    batchQuoteBtn.addEventListener('click', () => {
+    batchQuoteBtn.addEventListener('click', async () => {
       const count = selectedRows.size;
+      if (!count) {
+        if (window.RetroToast) {
+          RetroToast.show({ tag: 'MEMORY // 提取失败', message: '请先选中至少一条消息', type: 'warning' });
+        }
+        return;
+      }
+
+      // 1. 收集选中的普通对话消息（排除工具调用、撤回通知、生图）
+      const rows = Array.from(selectedRows).filter(row => {
+        if (!row || !row.classList) return false;
+        return row.classList.contains('user') || row.classList.contains('assistant');
+      });
+
+      if (!rows.length) {
+        if (window.RetroToast) {
+          RetroToast.show({ tag: 'MEMORY // 无可用消息', message: '选中的消息中没有可提取的对话内容', type: 'warning' });
+        }
+        return;
+      }
+
+      // 2. 按时间升序排列
+      rows.sort((a, b) => {
+        const tsA = parseInt(a.dataset.createdAt, 10) || 0;
+        const tsB = parseInt(b.dataset.createdAt, 10) || 0;
+        return tsA - tsB;
+      });
+
+      // 3. 格式化成聊天记录（完整时间戳）
+      const lines = rows.map(row => {
+        const isAssistant = row.classList.contains('assistant');
+        const rawText = String(row.dataset.rawText || '').trim();
+        if (!rawText) return '';
+        const createdAt = parseInt(row.dataset.createdAt, 10) || Date.now();
+        const date = new Date(createdAt);
+        const p = (n) => String(n).padStart(2, '0');
+        const timeStr = `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())} ${p(date.getHours())}:${p(date.getMinutes())}`;
+        const senderName = String(row.dataset.senderName || '').trim();
+        const speaker = isAssistant
+          ? (senderName || '系统助手')
+          : (senderName || '执行员');
+        return `[${timeStr}] ${speaker}：${rawText}`;
+      }).filter(Boolean);
+
+      if (!lines.length) {
+        if (window.RetroToast) {
+          RetroToast.show({ tag: 'MEMORY // 无可用消息', message: '选中的消息内容为空', type: 'warning' });
+        }
+        return;
+      }
+
+      // 4. 调用提取
       if (window.RetroToast) {
-        window.RetroToast.show({
-          tag: 'BATCH // COMBINE',
-          message: `合并引用 ${count} 条消息至输入台（预留机能）`,
-          type: 'info'
-        });
+        RetroToast.show({ tag: 'MEMORY // 正在提取', message: `正在从 ${rows.length} 条消息中提取记忆`, type: 'info' });
+      }
+
+      try {
+        // 获取设置
+        const settings = window.SystemChatSettings && typeof SystemChatSettings.getSettings === 'function'
+          ? SystemChatSettings.getSettings()
+          : {};
+        const minCount = parseInt(settings.memoryMinCount, 10) || 20;
+
+        // 组装提示词
+        const chatLog = lines.join('\n');
+        const messages = window.AssistantMemoryPrompt.build(chatLog, { MIN_COUNT: minCount });
+
+        // 获取模型配置（与提取器同一套回退顺序）
+        let config = null;
+        if (window.RetroflowApiUI && typeof RetroflowApiUI.resolveSlot === 'function') {
+          config = RetroflowApiUI.resolveSlot('assistant');
+        } else if (window.SystemChatPrompt && typeof SystemChatPrompt.resolveConfig === 'function') {
+          config = SystemChatPrompt.resolveConfig();
+        }
+        if (!config || !config.baseUrl || !config.modelId) {
+          throw new Error('没有可用的辅助推理模型，请先配置');
+        }
+
+        // 调用 API
+        const reply = await window.RetroflowAPI.chat(config, messages, { logTag: '助手记忆提取' });
+        const content = String((reply && reply.content) || '');
+        const reasoning = String((reply && reply.reasoning) || '');
+
+        // 解析结果
+        let parsed = window.AssistantMemoryParser.parse(content);
+        if (!parsed.ok && reasoning) {
+          const fromReasoning = window.AssistantMemoryParser.parse(`${reasoning}\n${content}`);
+          if (fromReasoning.ok) parsed = fromReasoning;
+        }
+
+        if (!parsed || !parsed.ok) {
+          throw new Error(`解析失败：${parsed && parsed.reason || '未知错误'}`);
+        }
+
+        // 写入记忆库
+        const store = window.AssistantMemoryStore;
+        if (!store) throw new Error('记忆库模块未就绪');
+        await store.load();
+        const result = await store.addMany(parsed.memories, { source: 'auto' });
+
+        exitBatchMode();
+
+        if (window.RetroToast) {
+          RetroToast.show({
+            tag: 'MEMORY // 提取完成',
+            message: result.added && result.added.length
+              ? `已整理 ${rows.length} 条消息，新增 ${result.added.length} 条记忆`
+              : `已整理 ${rows.length} 条消息，没有需要记住的内容`,
+            type: result.added && result.added.length ? 'success' : 'info'
+          });
+        }
+      } catch (err) {
+        console.error('[System Chat] 批量提取记忆失败：', err);
+        if (window.RetroToast) {
+          RetroToast.show({
+            tag: 'MEMORY // 提取失败',
+            message: (err && err.message) || '提取失败',
+            type: 'error'
+          });
+        }
       }
     });
   }
