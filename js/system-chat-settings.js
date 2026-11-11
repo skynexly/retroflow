@@ -22,6 +22,7 @@
     toolResultKeepTurns: 3,
     autoMemory: true,
     memoryTokenInterval: 60000,
+    memoryMinCount: 20,
     memoryTool: false,
     markdownRender: true,
     segmentedBubbles: false,
@@ -57,6 +58,7 @@
   let customCssOpponentTextarea = null;
   let customCssSelfTextarea = null;
   let memoryIntervalInput = null;
+  let memoryMinCountInput = null;
   // 工具循环相关滑条
   let toolLoopSlider = null;
   let toolLoopDisplay = null;
@@ -216,6 +218,7 @@
     customCssOpponentTextarea = document.getElementById('systemChatCustomCssOpponent');
     customCssSelfTextarea = document.getElementById('systemChatCustomCssSelf');
     memoryIntervalInput = document.getElementById('systemChatMemoryIntervalInput');
+    memoryMinCountInput = document.getElementById('systemChatMemoryMinCountInput');
     toolLoopSlider = document.getElementById('systemChatToolLoopSlider');
     toolLoopDisplay = document.getElementById('systemChatToolLoopDisplay');
     toolKeepSlider = document.getElementById('systemChatToolKeepSlider');
@@ -328,6 +331,18 @@
           currentSettings.memoryTokenInterval = val;
           saveSettings();
           refreshMemoryStats();
+        }
+      });
+    }
+
+    // 最少提取条数
+    if (memoryMinCountInput) {
+      memoryMinCountInput.value = currentSettings.memoryMinCount || 20;
+      memoryMinCountInput.addEventListener('change', () => {
+        const val = parseInt(memoryMinCountInput.value, 10);
+        if (!isNaN(val) && val >= 1) {
+          currentSettings.memoryMinCount = val;
+          saveSettings();
         }
       });
     }
@@ -618,6 +633,7 @@
 
     // 悬浮球开关已迁往「设置 › 08 终端配置」，本页不再回填
     if (memoryIntervalInput) memoryIntervalInput.value = currentSettings.memoryTokenInterval || 60000;
+    if (memoryMinCountInput) memoryMinCountInput.value = currentSettings.memoryMinCount || 20;
     if (toolLoopSlider) {
       toolLoopSlider.value = String(currentSettings.toolLoopLimit || 10);
       if (toolLoopDisplay) toolLoopDisplay.textContent = toolLoopSlider.value;

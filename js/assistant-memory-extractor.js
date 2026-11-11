@@ -230,9 +230,11 @@ const AssistantMemoryExtractor = (() => {
       ? SystemChatSettings.getSettings()
       : {};
     const interval = parseInt(s.memoryTokenInterval, 10);
+    const minCount = parseInt(s.memoryMinCount, 10);
     return {
       autoMemory: s.autoMemory !== false,
-      interval: Number.isFinite(interval) && interval >= MIN_INTERVAL ? interval : DEFAULT_INTERVAL
+      interval: Number.isFinite(interval) && interval >= MIN_INTERVAL ? interval : DEFAULT_INTERVAL,
+      minCount: Number.isFinite(minCount) && minCount >= 1 ? minCount : 20
     };
   }
 
@@ -344,7 +346,11 @@ const AssistantMemoryExtractor = (() => {
 
     let reply;
     try {
-      const messages = AssistantMemoryPrompt.build(plan.chunk.lines.join('\n'), names);
+      const messages = AssistantMemoryPrompt.build(plan.chunk.lines.join('\n'), {
+        ASST_NAME: names.ASST_NAME,
+        ENVOY_NAME: names.ENVOY_NAME,
+        MIN_COUNT: settings.minCount
+      });
       reply = await RetroflowAPI.chat(config, messages, { logTag: LOG_TAG });
     } catch (err) {
       return fail('api', `模型请求失败：${(err && err.message) || err}`);

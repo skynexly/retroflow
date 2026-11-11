@@ -206,7 +206,11 @@ category, groupId, title, body, keywords, primaryKeyword, time, rank, evidence
 5. 正文字数符合该分类的要求。
 6. time 照抄自聊天记录，同一件事取第一次出现的时间。
 7. evidence 逐字照抄自聊天记录。
-8. 整体是合法的 JSON，标签外没有任何内容。`;
+8. 整体是合法的 JSON，标签外没有任何内容。
+
+# 十、数量要求
+
+本次提取的记忆条数必须不少于 {{MIN_COUNT}} 条。如果聊天记录中值得记录的内容不足 {{MIN_COUNT}} 条，请适当放宽标准，记录相对次要但仍有价值的内容，确保达到数量要求。`;
 
   const USER_TEMPLATE = `以下是{{ASST_NAME}}与{{ENVOY_NAME}}的聊天记录，每行一条消息，格式为「[时间] 说话人：内容」。
 
@@ -229,20 +233,30 @@ category, groupId, title, body, keywords, primaryKeyword, time, rank, evidence
     return { ASST_NAME: asst || '系统助手', ENVOY_NAME: envoy || '执行员' };
   }
 
-  function fillNames(template, names) {
-    return template.replace(/\{\{(ASST_NAME|ENVOY_NAME)\}\}/g, (_, key) => names[key]);
+  function fillVars(template, vars) {
+    return template.replace(/\{\{(ASST_NAME|ENVOY_NAME|MIN_COUNT)\}\}/g, (_, key) => {
+      if (key === 'MIN_COUNT') return String(vars.MIN_COUNT || 20);
+      return vars[key] || '';
+    });
   }
 
   /**
    * 拼出一次提取请求的消息数组。
    * @param {string} chatLog 已格式化的聊天记录，每行一条
-   * @param {{ASST_NAME: string, ENVOY_NAME: string}} [names] 不传时按当前助手与执行员取值
+   * @param {{ASST_NAME?: string, ENVOY_NAME?: string, MIN_COUNT?: number}} [options] 可选配置
    */
-  function build(chatLog, names) {
-    const n = names || resolveNames();
-    const system = fillNames(SYSTEM_TEMPLATE, n);
+  function build(chatLog, options) {
+    const opts = options || {};
+    const names = { ASST_NAME: opts.ASST_NAME, ENVOY_NAME: opts.ENVOY_NAME };
+    if (!names.ASST_NAME || !names.ENVOY_NAME) {
+      const resolved = resolveNames();
+      if (!names.ASST_NAME) names.ASST_NAME = resolved.ASST_NAME;
+      if (!names.ENVOY_NAME) names.ENVOY_NAME = resolved.ENVOY_NAME;
+    }
+    const vars = { ...names, MIN_COUNT: opts.MIN_COUNT || 20 };
+    const system = fillVars(SYSTEM_TEMPLATE, vars);
     // 用函数替换，避免聊天内容里的 $& 之类被当成替换模式
-    const user = fillNames(USER_TEMPLATE, n).replace('{{CHAT_LOG}}', () => String(chatLog || ''));
+    const user = fillVars(USER_TEMPLATE, vars).replace('{{CHAT_LOG}}', () => String(chatLog || ''));
     return [
       { role: 'system', content: system },
       { role: 'user', content: user }
