@@ -32,17 +32,17 @@
   "channel": "stable",
   "latest": {
     "version": "1.3.4",
-    "build": 1302,
+    "build": 1303,
     "minBinary": 7,
-    "releasedAt": "2026-11-11T10:53:59Z",
+    "releasedAt": "2026-11-11T11:09:11Z",
     "notes": [
-      "feat: 补全 create_memory 新增记忆工具"
+      "fix: 修复 JSON 字符串值内未转义双引号解析失败"
     ],
     "packages": {
       "full": {
-        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1302/retroflow-ota-full-b1302.zip",
-        "sha256": "8dad006bfc395889229c163e8c6a1b302fab39fb691cd0448b48cfcd221e43ad",
-        "size": 1932991
+        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1303/retroflow-ota-full-b1303.zip",
+        "sha256": "6cd239bc2497200057b726e8d4716d5d87dce9d4502b76fe8546fff883b9029d",
+        "size": 1933491
       },
       "patch": {
         "sinceBuild": 0,
@@ -52,5 +52,5 @@
       }
     }
   },
-  "_status": "已发布 build 1302（全量包，字体常驻不打包）。patch 差分留待后续。"
+  "_status": "已发布 build 1303（全量包，字体常驻不打包）。patch 差分留待后续。"
 }
