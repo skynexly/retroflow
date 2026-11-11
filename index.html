@@ -19,7 +19,7 @@
 
   <!-- 样式资产（带构建版本戳穿透 HTTP 磁盘缓存） -->
   <link rel="stylesheet" href="css/variables.css?v=190">
-  <link rel="stylesheet" href="css/style.css?v=901">
+  <link rel="stylesheet" href="css/style.css?v=902">
   <link rel="stylesheet" href="css/fork-deck-camera.css?v=3">
   <link rel="stylesheet" href="css/api-call-log.css?v=4">
 
@@ -738,6 +738,57 @@
 
       <!-- 底部取消按钮 -->
       <button type="button" class="picker-cancel-btn" id="imagePickerCancelBtn">取消</button>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       记忆巡检控制弹窗 (Memory Audit Modal)
+       居中显示、零分割线、纯 SVG 图标
+       ========================================================================== -->
+  <div id="memoryAuditModalOverlay" class="memory-audit-modal-overlay" hidden>
+    <div class="memory-audit-modal-card" role="dialog" aria-modal="true">
+      <div class="memory-audit-modal-header">
+        <span class="memory-audit-modal-tag">MEMORY // 记忆巡检</span>
+        <button class="memory-audit-modal-close" id="memAuditCloseBtn" type="button" aria-label="关闭">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="memory-audit-modal-body">
+        <!-- 自动巡检开关（即将推出，暂时禁用） -->
+        <div class="memory-audit-row disabled">
+          <span class="memory-audit-label">每周自动巡检</span>
+          <div class="memory-audit-toggle disabled">
+            <span class="memory-audit-hint">即将推出</span>
+          </div>
+        </div>
+
+        <!-- 立刻巡检按钮 -->
+        <button class="memory-audit-btn primary" id="memAuditStartBtn" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <!-- 搜索+对勾图标：巡检 -->
+            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+          </svg>
+          <span>立刻开始记忆巡检</span>
+        </button>
+
+        <!-- 恢复备份区 -->
+        <div class="memory-audit-restore-section">
+          <div class="memory-audit-restore-title">恢复巡检前记忆</div>
+          <div class="memory-audit-backup-info" id="memAuditBackupInfo">
+            暂无备份
+          </div>
+          <button class="memory-audit-btn secondary" id="memAuditRestoreBtn" type="button" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <!-- 恢复图标 -->
+              <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9z"/>
+            </svg>
+            <span>恢复备份</span>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -11221,10 +11272,12 @@
   <script src="js/fork-doc-ui.js?v=16"></script>
   <script src="js/fork-run-store.js?v=25"></script>
   <script src="js/memory-store.js?v=1"></script>
-  <script src="js/assistant-memory-store.js?v=3"></script>
+  <script src="js/assistant-memory-store.js?v=4"></script>
   <script src="js/memory-vectors.js?v=1"></script>
+  <script src="js/memory-auditor.js?v=2"></script>
   <script src="js/assistant-memory-parser.js?v=1"></script>
-  <script src="js/memory-bank-app.js?v=6"></script>
+  <script src="js/memory-bank-app.js?v=7"></script>
+  <script src="js/memory-audit-modal.js?v=2"></script>
   <script src="js/fork-run-wallpaper.js?v=1"></script>
   <script src="js/fork-run-settings.js?v=19"></script>
   <script src="js/fork-run-api.js?v=23"></script>
@@ -11233,7 +11286,7 @@
   <script src="js/fork-editor-ui.js?v=84"></script>
   <script src="js/onboarding-ui.js?v=61"></script>
   <script src="js/talent-prompt.js?v=3"></script>
-  <script src="js/markdown.js?v=303"></script>
+  <script src="js/markdown.js?v=304"></script>
   <script src="js/env-awareness.js?v=1"></script>
   <script src="js/system-chat-prompt.js?v=313"></script>
   <script src="js/online-chat-prompt.js?v=380"></script>

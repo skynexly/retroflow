@@ -12,11 +12,11 @@
 
 window.RetroflowVersion = {
   /** 功能版本，给人看 */
-  version: '1.3.0',
+  version: '1.3.1',
   /** 资源构建号，热更比对基线 */
-  build: 1296,
+  build: 1297,
   /** 原生壳版本（Android versionCode），热更 minBinary 门槛比对用 */
   versionCode: 7,
   /** 便于界面直接展示的短形态，如 v1.2.0 (b1275) */
-  label: 'v1.3.0 (b1296)'
+  label: 'v1.3.1 (b1297)'
 };

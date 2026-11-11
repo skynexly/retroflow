@@ -44051,3 +44051,227 @@ html:not(.is-native) #otaUpdateModule { display: none !important; }
 
 
 
+
+/* ==========================================================================
+   记忆巡检控制弹窗 (Memory Audit Modal)
+   居中显示、零分割线、纯 SVG 图标
+   ========================================================================== */
+.memory-audit-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 14600;
+  opacity: 1;
+  transition: opacity 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.memory-audit-modal-overlay[hidden] {
+  display: none !important;
+  opacity: 0;
+}
+
+.memory-audit-modal-card {
+  width: 100%;
+  max-width: 360px;
+  background-color: var(--card-bg-color);
+  border-radius: 8px;
+  padding: 20px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+  animation: retro-modal-pop 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.memory-audit-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 4px;
+}
+
+.memory-audit-modal-tag {
+  font-family: var(--mono-font);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--primary-color);
+  opacity: 0.9;
+}
+
+.memory-audit-modal-close {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.memory-audit-modal-close:active {
+  transform: scale(0.9);
+}
+
+.memory-audit-modal-close svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.memory-audit-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.memory-audit-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  background-color: rgba(var(--secondary-color-rgb), 0.05);
+  border-radius: 6px;
+}
+
+.memory-audit-row.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.memory-audit-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--secondary-color);
+}
+
+.memory-audit-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.memory-audit-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.3px;
+}
+
+.memory-audit-btn {
+  width: 100%;
+  padding: 13px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: transform 0.12s ease, opacity 0.12s ease;
+}
+
+.memory-audit-btn:active {
+  transform: scale(0.98);
+}
+
+.memory-audit-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.memory-audit-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.memory-audit-btn.primary {
+  background-color: var(--primary-color);
+  color: var(--bg-color);
+}
+
+.memory-audit-btn.secondary {
+  background-color: rgba(var(--secondary-color-rgb), 0.12);
+  color: var(--secondary-color);
+}
+
+.memory-audit-restore-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(var(--secondary-color-rgb), 0.1);
+}
+
+.memory-audit-restore-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--secondary-color);
+  opacity: 0.8;
+}
+
+.memory-audit-backup-info {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 8px 12px;
+  background-color: rgba(var(--secondary-color-rgb), 0.05);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.memory-audit-backup-label {
+  font-weight: 500;
+  color: var(--secondary-color);
+}
+
+.memory-audit-backup-time {
+  font-family: var(--mono-font);
+  font-size: 11px;
+  opacity: 0.75;
+}
+
+/* 助手记忆页顶栏右侧：记忆巡检按钮（纯 SVG，透明背景） */
+.mem-audit-btn {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  margin-left: 8px;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.12s ease, opacity 0.12s ease;
+}
+
+.mem-audit-btn svg {
+  width: 20px;
+  height: 20px;
+  color: var(--secondary-color);
+}
+
+.mem-audit-btn:active {
+  transform: scale(0.92);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mem-audit-btn:active {
+    transform: none;
+  }
+}

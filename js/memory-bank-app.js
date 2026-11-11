@@ -2260,7 +2260,26 @@ const MemoryBankApp = (() => {
           <span class="settings-title-slash">//</span>
           <span class="settings-title-zh">助手记忆</span>
         </div>
+        <button class="mem-audit-btn" id="memAuditBtn" type="button"
+          aria-label="记忆巡检：分析并合并重复、矛盾的记忆" title="记忆巡检">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.55"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M6 5V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-3"/>
+            <rect x="2" y="5" width="11" height="16" rx="2"/>
+            <path d="M5.5 9h4M5.5 12h3"/>
+            <circle cx="17" cy="16" r="4"/>
+            <path d="m19.8 18.8 2.2 2.2"/>
+          </svg>
+        </button>
       `;
+      const auditBtn = headerEl.querySelector('#memAuditBtn');
+      if (auditBtn) {
+        auditBtn.addEventListener('click', () => {
+          if (window.MemoryAuditModal && typeof window.MemoryAuditModal.open === 'function') {
+            window.MemoryAuditModal.open();
+          }
+        });
+      }
     } else if (mode === 'assistant-category') {
       const cat = fork || MEMORY_CATEGORIES[0];
       headerEl.innerHTML = `

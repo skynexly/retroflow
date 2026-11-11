@@ -130,6 +130,11 @@ const AssistantMemoryStore = (() => {
       updatedAt: now
     };
 
+    // mergeLog：记录巡检时合并了哪些旧记忆
+    if (Array.isArray(src.mergeLog) && src.mergeLog.length > 0) {
+      record.mergeLog = src.mergeLog.filter(log => log && Array.isArray(log.mergedIds));
+    }
+
     const groups = groupsOf(category);
     if (groups) {
       const groupId = cleanString(src.groupId);

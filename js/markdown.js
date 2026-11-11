@@ -74,8 +74,17 @@
     */
    function stripActionMarkers(raw) {
      if (!raw || typeof raw !== 'string') return '';
-     return raw
-       // 被代码围栏包住的完整标记
+     
+     // 先保护代码块和行内代码，防止误删里面的内容
+     const codeGuards = [];
+     const guard = (m) => { const i = codeGuards.length; codeGuards.push(m); return `\x1Bcg${i}\x1B`; };
+     let guarded = raw
+       .replace(/```[\s\S]*?```/g, guard)
+       .replace(/`[^`]+`/g, guard);
+     
+     // 在保护后的文本上删除动作标记
+     guarded = guarded
+       // 被代码围栏包住的完整标记（理论上已被保护，这是兜底）
        .replace(/```[a-z]*\s*<RETROFLOW_ACTION>[\s\S]*?<\/RETROFLOW_ACTION>\s*```/gi, '')
        // 独立的完整标记
        .replace(/<RETROFLOW_ACTION>[\s\S]*?<\/RETROFLOW_ACTION>/gi, '')
@@ -84,8 +93,19 @@
        .replace(/<RETROFLOW_ACTION>[\s\S]*$/i, '')
        // 流式残缺开标记：吐到一半的 `<RETRO`、`<RETROFLOW_ACTIO` 等前缀，隐藏之，
        // 避免半截标签闪现或干扰 markdown 解析。仅匹配 `<` + `RETROFLOW_ACTION` 的真前缀，
-       // 且要求 `<` 后至少有一个字母（不动正常文本里孤立的 `<`，如 “a < b”）。
-       .replace(/<(?:RETROFLOW_ACTIO|RETROFLOW_ACTI|RETROFLOW_ACT|RETROFLOW_AC|RETROFLOW_A|RETROFLOW_|RETROFLOW|RETROFLO|RETROFL|RETROF|RETRO|RETR|RET|RE|R)$/i, '');
+       // 且必须在行尾，不能穿透行内代码或正常文本里的尖括号（如 `<output>`）。
+       .replace(/<RETROFLOW_ACTIO(?:N)?$/i, '')
+       .replace(/<RETROFLOW_ACT(?:I)?$/i, '')
+       .replace(/<RETROFLOW_AC$/i, '')
+       .replace(/<RETROFLOW_A$/i, '')
+       .replace(/<RETROFLOW_?$/i, '')
+       .replace(/<RETROFLO$/i, '')
+       .replace(/<RETROFL$/i, '')
+       .replace(/<RETROF$/i, '')
+       .replace(/<RETRO$/i, '');
+     
+     // 还原被保护的代码
+     return guarded.replace(/\x1Bcg(\d+)\x1B/g, (_, i) => codeGuards[Number(i)] || '');
    }
 
    /**
