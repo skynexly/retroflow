@@ -3056,6 +3056,63 @@ ${parts.join('\n\n———\n\n')}`;
     return err && err.message ? err.message : '系统助手 API 调用失败';
   }
 
+  /**
+   * 修复 JSON 字符串值内未转义的双引号。
+   * 例如 {"title":"xxx"yyy"} 会修复成 {"title":"xxx\"yyy"}
+   */
+  function fixUnescapedQuotesInJSON(json) {
+    const chars = json.split('');
+    const result = [];
+    let inString = false;
+    let inKey = false;
+    let escapeNext = false;
+
+    for (let i = 0; i < chars.length; i++) {
+      const ch = chars[i];
+
+      if (escapeNext) {
+        result.push(ch);
+        escapeNext = false;
+        continue;
+      }
+
+      if (ch === '\\') {
+        result.push(ch);
+        escapeNext = true;
+        continue;
+      }
+
+      if (ch === '"') {
+        if (!inString) {
+          inString = true;
+          let j = i - 1;
+          while (j >= 0 && /\s/.test(chars[j])) j--;
+          inKey = j >= 0 && (chars[j] === '{' || chars[j] === ',' || chars[j] === '[');
+          result.push(ch);
+        } else {
+          let j = i + 1;
+          while (j < chars.length && /\s/.test(chars[j])) j++;
+          const next = j < chars.length ? chars[j] : '';
+
+          if (inKey && next === ':') {
+            inString = false;
+            inKey = false;
+            result.push(ch);
+          } else if (!inKey && (next === ',' || next === '}' || next === ']' || next === '')) {
+            inString = false;
+            result.push(ch);
+          } else {
+            result.push('\\', ch);
+          }
+        }
+      } else {
+        result.push(ch);
+      }
+    }
+
+    return result.join('');
+  }
+
   function extractAssistantActions(rawText) {
     const actions = [];
     let source = String(rawText || '');
@@ -3065,10 +3122,18 @@ ${parts.join('\n\n———\n\n')}`;
       // 去掉可能残留的代码块围栏
       text = text.replace(/^```[a-z]*\s*/i, '').replace(/\s*```$/i, '').trim();
       // 常见的中文引号 / 尾随逗号纠偏，尽量抢救成合法 JSON
-      const normalized = text
-        .replace(/[“”]/g, '"')
-        .replace(/[‘’]/g, '"')
+      let normalized = text
+        .replace(/[""]/g, '"')
+        .replace(/['']/g, '"')
         .replace(/,\s*([}\]])/g, '$1');
+      
+      // 修复字符串值内未转义的双引号（如 "title":"xxx"yyy" → "title":"xxx\"yyy"）
+      try {
+        normalized = fixUnescapedQuotesInJSON(normalized);
+      } catch (fixErr) {
+        console.warn('[System Chat] 字符串引号修复失败，使用原始归一化结果：', fixErr);
+      }
+      
       try {
         const action = JSON.parse(normalized);
         if (action && typeof action === 'object') {
