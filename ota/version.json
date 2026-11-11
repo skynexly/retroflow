@@ -32,17 +32,17 @@
   "channel": "stable",
   "latest": {
     "version": "1.3.4",
-    "build": 1301,
+    "build": 1302,
     "minBinary": 7,
-    "releasedAt": "2026-11-11T10:30:23Z",
+    "releasedAt": "2026-11-11T10:53:59Z",
     "notes": [
-      "fix: 记忆工具开关无效修复"
+      "feat: 补全 create_memory 新增记忆工具"
     ],
     "packages": {
       "full": {
-        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1301/retroflow-ota-full-b1301.zip",
-        "sha256": "a220d75a66e422ec09cf0ff7c1927a4043e3179d1d43dcde74e39ab854d4c21d",
-        "size": 1932444
+        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1302/retroflow-ota-full-b1302.zip",
+        "sha256": "8dad006bfc395889229c163e8c6a1b302fab39fb691cd0448b48cfcd221e43ad",
+        "size": 1932991
       },
       "patch": {
         "sinceBuild": 0,
@@ -52,5 +52,5 @@
       }
     }
   },
-  "_status": "已发布 build 1301（全量包，字体常驻不打包）。patch 差分留待后续。"
+  "_status": "已发布 build 1302（全量包，字体常驻不打包）。patch 差分留待后续。"
 }
