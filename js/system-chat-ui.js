@@ -3382,13 +3382,18 @@ ${parts.join('\n\n———\n\n')}`;
   const FILE_TOOL_TYPES = new Set(['read_file', 'search_file']);
   // 手册工具与文件工具同属「内置工具」，共用 builtinTools 开关与同一条工具循环轨道
   const MANUAL_TOOL_TYPES = new Set(['search_manual', 'read_manual']);
+  // 记忆工具：查询、修改、删除记忆库
+  const MEMORY_TOOL_TYPES = new Set(['search_memory', 'update_memory', 'remove_memory']);
 
   // 工具卡片上的中文显示名：胶囊直接显示英文函数名对用户没有信息量
   const TOOL_LABELS = {
     read_file: '读取文件',
     search_file: '检索文件',
     search_manual: '检索手册',
-    read_manual: '读取手册条目'
+    read_manual: '读取手册条目',
+    search_memory: '查询记忆',
+    update_memory: '修改记忆',
+    remove_memory: '删除记忆'
   };
 
   /** 工具的人类可读名，未登记时回落原始名 */
@@ -3404,6 +3409,7 @@ ${parts.join('\n\n———\n\n')}`;
   function toolCardTag(name, status) {
     if (status === 'error') return 'TOOL // 执行失败';
     const key = String(name || '').trim();
+    if (MEMORY_TOOL_TYPES.has(key)) return 'MEMORY // 记忆工具';
     if (MANUAL_TOOL_TYPES.has(key)) return 'MANUAL // 手册查阅';
     if (FILE_TOOL_TYPES.has(key)) return 'FILE // 工具调用';
     return 'TOOL // 工具调用';
@@ -3422,7 +3428,15 @@ ${parts.join('\n\n———\n\n')}`;
     // 提示词里也不会给出这些标记，即便模型硬凑出来也不触发工具循环、不额外消耗调用。
     if (!isBuiltinToolsEnabled()) return false;
     const type = String(action && (action.type || action.action) || '').trim().toLowerCase();
-    return FILE_TOOL_TYPES.has(type) || MANUAL_TOOL_TYPES.has(type);
+    if (FILE_TOOL_TYPES.has(type) || MANUAL_TOOL_TYPES.has(type)) return true;
+    // 记忆工具需要额外检查 memoryTool 开关
+    if (MEMORY_TOOL_TYPES.has(type)) {
+      const s = (window.SystemChatSettings && typeof SystemChatSettings.getSettings === 'function')
+        ? SystemChatSettings.getSettings()
+        : null;
+      return s && s.memoryTool === true;
+    }
+    return false;
   }
 
   /** 按 action 里的 fileId / fileName 解析出文件区条目 */
@@ -3438,6 +3452,229 @@ ${parts.join('\n\n———\n\n')}`;
       return FileStore.getEntryByName(name);
     }
     return null;
+  }
+
+  /* ---------------- 记忆工具执行函数 ---------------- */
+
+  /** 清理记录字段，只返回必要的字段给模型 */
+  function cleanMemoryRecord(r) {
+    if (!r || !r.id) return null;
+    const out = {
+      id: r.id,
+      category: r.category,
+      groupId: r.groupId,
+      title: r.title,
+      body: r.body,
+      keywords: r.keywords || [],
+      primaryKeyword: r.primaryKeyword || '',
+      time: r.time,
+      rank: r.rank,
+      evidence: r.evidence || []
+    };
+    if (r.completedDate) {
+      out.completedDate = r.completedDate;
+      out.completionNote = r.completionNote || '';
+    }
+    return out;
+  }
+
+  /** 计算记忆相关度分数（用于关键词排序） */
+  function computeMemoryRelevance(record, kw) {
+    const title = (record.title || '').toLowerCase();
+    const keywords = (record.keywords || []).join(' ').toLowerCase();
+    const body = (record.body || '').toLowerCase();
+    if (title === kw) return 1000;
+    if (title.indexOf(kw) !== -1) return 100;
+    if (keywords.indexOf(kw) !== -1) return 10;
+    if (body.indexOf(kw) !== -1) return 1;
+    return 0;
+  }
+
+  /**
+   * 执行 search_memory 工具
+   * @param {Object} action { keyword?, category?, mode?, limit? }
+   * @returns {Promise<{ name, input, status, output }>}
+   */
+  async function runSearchMemory(action) {
+    const input = { ...action };
+    const store = window.AssistantMemoryStore;
+    if (!store) {
+      return { name: 'search_memory', input, status: 'error', output: '记忆库模块未就绪，暂时无法查询。' };
+    }
+    if (!store.isLoaded()) {
+      try {
+        await store.load();
+      } catch (err) {
+        return { name: 'search_memory', input, status: 'error', output: `记忆库读取失败：${err && err.message || '未知错误'}` };
+      }
+    }
+
+    const keyword = String(action.keyword || '').trim();
+    const category = String(action.category || '').trim();
+    const mode = String(action.mode || '').trim();
+    const limit = Math.min(Math.max(1, parseInt(action.limit, 10) || 20), 100);
+
+    let pool = category && store.SCHEMA.categories.indexOf(category) !== -1
+      ? store.list(category)
+      : store.all();
+
+    // mode: 'completed' 过滤
+    if (mode === 'completed') {
+      pool = pool.filter(r => r.category === 'pending' && r.completedDate);
+    }
+
+    // keyword 过滤
+    if (keyword) {
+      const kw = keyword.toLowerCase();
+      pool = pool.filter(r => {
+        const text = [r.title, (r.keywords || []).join(' '), r.body].join(' ').toLowerCase();
+        return text.indexOf(kw) !== -1;
+      });
+    }
+
+    // 排序
+    if (mode === 'oldest') {
+      pool.sort(store.oldestFirst);
+    } else if (mode === 'newest') {
+      pool.sort((a, b) => (Date.parse(b.time) || 0) - (Date.parse(a.time) || 0));
+    } else if (mode === 'random') {
+      pool.sort(() => Math.random() - 0.5);
+    } else if (keyword) {
+      // 相关度排序
+      const kw = keyword.toLowerCase();
+      pool.sort((a, b) => {
+        const scoreA = computeMemoryRelevance(a, kw);
+        const scoreB = computeMemoryRelevance(b, kw);
+        return scoreB - scoreA || store.newestFirst(a, b);
+      });
+    }
+    // 否则保持 newestFirst（缓存默认顺序）
+
+    const total = pool.length;
+    const results = pool.slice(0, limit).map(cleanMemoryRecord).filter(Boolean);
+
+    if (!results.length) {
+      const hint = keyword ? `没有找到包含「${keyword}」的记忆` : '记忆库为空';
+      return { name: 'search_memory', input, status: 'success', output: hint };
+    }
+
+    const hasMore = total > limit;
+    const summary = `查询到 ${total} 条记忆${hasMore ? `（显示前 ${limit} 条）` : ''}：`;
+    const body = JSON.stringify({ results, total, hasMore }, null, 2);
+    return { name: 'search_memory', input, status: 'success', output: `${summary}\n${body}` };
+  }
+
+  /**
+   * 执行 update_memory 工具
+   * @param {Object} action { id, action: 'edit'|'complete', ... }
+   * @returns {Promise<{ name, input, status, output }>}
+   */
+  async function runUpdateMemory(action) {
+    const input = { ...action };
+    const store = window.AssistantMemoryStore;
+    if (!store) {
+      return { name: 'update_memory', input, status: 'error', output: '记忆库模块未就绪，暂时无法修改。' };
+    }
+    if (!store.isLoaded()) {
+      try {
+        await store.load();
+      } catch (err) {
+        return { name: 'update_memory', input, status: 'error', output: `记忆库读取失败：${err && err.message || '未知错误'}` };
+      }
+    }
+
+    const id = String(action.id || '').trim();
+    if (!id) {
+      return { name: 'update_memory', input, status: 'error', output: '缺少记忆 id，无法修改。' };
+    }
+
+    const original = store.get(id);
+    if (!original) {
+      return { name: 'update_memory', input, status: 'error', output: `记忆 ${id} 不存在。` };
+    }
+
+    const act = String(action.action || '').trim();
+
+    if (act === 'complete') {
+      if (original.category !== 'pending') {
+        return { name: 'update_memory', input, status: 'error', output: '只能给未完事项（pending）标记完成。' };
+      }
+      const completedDate = action.completedDate
+        ? String(action.completedDate).trim()
+        : new Date().toISOString().slice(0, 10);
+      const completionNote = action.completionNote
+        ? String(action.completionNote).trim()
+        : '这个目标被实现了';
+      const updated = Object.assign({}, original, { completedDate, completionNote, updatedAt: Date.now() });
+      try {
+        const normalized = store.normalize(updated);
+        await store.commit({ put: [normalized] });
+        const result = store.get(id);
+        return {
+          name: 'update_memory',
+          input,
+          status: 'success',
+          output: `未完事项已标记完成。\n${JSON.stringify(cleanMemoryRecord(result), null, 2)}`
+        };
+      } catch (err) {
+        return { name: 'update_memory', input, status: 'error', output: `修改失败：${err && err.message || '未知错误'}` };
+      }
+    }
+
+    if (act === 'edit') {
+      const patch = {};
+      ['title', 'body', 'keywords', 'time', 'rank', 'category', 'groupId'].forEach(key => {
+        if (action[key] !== undefined) patch[key] = action[key];
+      });
+      const updated = Object.assign({}, original, patch, { updatedAt: Date.now() });
+      try {
+        const normalized = store.normalize(updated);
+        await store.commit({ put: [normalized] });
+        const result = store.get(id);
+        return {
+          name: 'update_memory',
+          input,
+          status: 'success',
+          output: `记忆已修改。\n${JSON.stringify(cleanMemoryRecord(result), null, 2)}`
+        };
+      } catch (err) {
+        return { name: 'update_memory', input, status: 'error', output: `修改失败：${err && err.message || '未知错误'}` };
+      }
+    }
+
+    return { name: 'update_memory', input, status: 'error', output: `未知的 action：${act}` };
+  }
+
+  /**
+   * 执行 remove_memory 工具
+   * @param {Object} action { ids: string[] }
+   * @returns {Promise<{ name, input, status, output }>}
+   */
+  async function runRemoveMemory(action) {
+    const input = { ...action };
+    const store = window.AssistantMemoryStore;
+    if (!store) {
+      return { name: 'remove_memory', input, status: 'error', output: '记忆库模块未就绪，暂时无法删除。' };
+    }
+    if (!store.isLoaded()) {
+      try {
+        await store.load();
+      } catch (err) {
+        return { name: 'remove_memory', input, status: 'error', output: `记忆库读取失败：${err && err.message || '未知错误'}` };
+      }
+    }
+
+    const ids = Array.isArray(action.ids) ? action.ids.filter(Boolean).map(x => String(x).trim()) : [];
+    if (!ids.length) {
+      return { name: 'remove_memory', input, status: 'error', output: '没有指定要删除的记忆 id。' };
+    }
+
+    try {
+      await store.commit({ remove: ids });
+      return { name: 'remove_memory', input, status: 'success', output: `已删除 ${ids.length} 条记忆。` };
+    } catch (err) {
+      return { name: 'remove_memory', input, status: 'error', output: `删除失败：${err && err.message || '未知错误'}` };
+    }
   }
 
   /**
@@ -3457,6 +3694,14 @@ ${parts.join('\n\n———\n\n')}`;
         ? ManualRag.searchManual(action.keyword || action.query || action.q || '')
         : ManualRag.readManual(action.id || action.entryId || action.manualId || '');
       return { name: type, input, status: res.status, output: res.output };
+    }
+
+    // 记忆工具分流：直接走记忆库，不需要解析文件区条目
+    if (MEMORY_TOOL_TYPES.has(type)) {
+      if (type === 'search_memory') return await runSearchMemory(action);
+      if (type === 'update_memory') return await runUpdateMemory(action);
+      if (type === 'remove_memory') return await runRemoveMemory(action);
+      return { name: type, input, status: 'error', output: `不支持的记忆工具类型：${type}` };
     }
 
     const entry = resolveFileEntry(action);
@@ -3799,9 +4044,7 @@ ${parts.join('\n\n———\n\n')}`;
       throw new Error('尚未配置系统助手模型，或主模型配置不完整');
     }
 
-    const fitted = overrides
-      ? fitMessagesToContext(config, SystemChatPrompt.buildSystemPrompt(history, getForkSceneCtx()), history)
-      : await fitWithAssistantMemory(config, history);
+    const fitted = await fitWithAssistantMemory(config, history);
     const messages = fitted.messages;
     if (fitted.meta.trimmedCount > 0) {
       console.info(`[System Chat] 上下文容量 ${fitted.meta.contextLimit} tokens，已裁剪 ${fitted.meta.trimmedCount} 条旧消息`);

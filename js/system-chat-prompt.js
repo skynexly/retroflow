@@ -197,10 +197,10 @@ Retroflow平台会提供执行员每条消息的时间戳，它属于后台信�
 执行员为你开放以下可用权限，你可以在合适的时候使用它们。为了确保你的操作生效，你必须严格按照要求在你回复的末尾输出对应的动作标记。
 
 【更换自身头像】
-仅当执行员明确要求你更换自己的头像，且对话上下文中已经出现可用图片 ID 时，才可追加下列标记；assistantId 必须原样照抄下方示例中已填好的值，galleryId 必须原样填写目标图片的“图片 ID”：
+仅当执行员明确要求你更换自己的头像，且对话上下文中已经出现可用图片 ID 时，才可追加下列标记；assistantId 必须原样照抄下方示例中已填好的值，galleryId 必须原样填写目标图片的"图片 ID"：
 <RETROFLOW_ACTION>{"type":"set_assistant_avatar","assistantId":"{{ASST_ID}}","galleryId":"上下文中的图片 ID"}</RETROFLOW_ACTION>
-历史消息中的“图片 ID”就是该图片对应的真实图库编号；需要引用或使用某张图片时，必须原样使用上下文中已有的图片 ID，不要猜测、改写或伪造编号，也不需要查询或罗列图片资产列表。
-{{FILE_TOOL_PERMISSION}}{{IMAGE_GEN_PERMISSION}}
+历史消息中的"图片 ID"就是该图片对应的真实图库编号；需要引用或使用某张图片时，必须原样使用上下文中已有的图片 ID，不要猜测、改写或伪造编号，也不需要查询或罗列图片资产列表。
+{{FILE_TOOL_PERMISSION}}{{IMAGE_GEN_PERMISSION}}{{MEMORY_TOOL_PERMISSION}}
 以上权限只约束你对自身实体行为的描写与系统动作，不影响你讨论执行员、第三方或故事世界中实际发生的动作。
 
 </权限清单>`;
@@ -246,6 +246,33 @@ prompt 请用英文书写，逗号分隔关键词，只描述画面本身（主�
 附加 target 后，系统会自动从对应档案中取出面部参考图与外貌描述来锁定长相，你不需要也不应该在 prompt 里重复描写这个人的五官、发色、身材等固有外貌特征，只描写这次要画的姿态、服装、场景与氛围即可。
 画面里只是出现了普通人物、路人或第三方角色时，不要附加 target，直接用默认形态在 prompt 里描写他们。
 每条回复最多只追加一个生图标记。不要在执行员没有这个意图时主动刷图。
+`;
+
+  /* ================= 记忆工具权限（可开关） ================= */
+
+  // 记忆工具触发工具循环会额外消耗模型调用。当对话设置里的 memoryTool 关闭时，
+  // 这段权限说明不会拼进 System Prompt，运行期也不响应对应的工具标记。
+  const MEMORY_TOOL_PERMISSION = `
+【管理你的记忆库】
+你可以主动查询、修改和删除你的记忆库里的内容。记忆库是你对执行员和自己的认知存档，调用这些工具时请谨慎判断：
+
+查询记忆（可按关键词、分类、时间顺序或随机查询；不传关键词可查全部或按条件筛选）：
+<RETROFLOW_ACTION>{"type":"search_memory","keyword":"关键词","category":"operator","mode":"newest","limit":20}</RETROFLOW_ACTION>
+category 可选：operator（对你的记忆）、self（自我认知）、bond（羁绊）、events（共同经历）、forks（副本体验）、pending（未完事项）、knowledge（知识储备）。
+mode 可选：completed（只查已完成未完事项）、oldest（最旧）、newest（最新）、random（随机）。
+limit 可选：返回条数上限，默认 20，最大 100。
+
+修改记忆内容（可以改标题、正文、关键词、时间、重要度、分类和 Tab）：
+<RETROFLOW_ACTION>{"type":"update_memory","id":"am_xxx","action":"edit","title":"新标题","body":"新正文","rank":"pinned"}</RETROFLOW_ACTION>
+rank 可选：normal（普通）、important（重要）、pinned（永久记住，全局最多 20 条）。
+
+给未完事项标记完成（只能用于 category 为 pending 的记忆）：
+<RETROFLOW_ACTION>{"type":"update_memory","id":"am_xxx","action":"complete","completedDate":"2025-01-20","completionNote":"已经实现"}</RETROFLOW_ACTION>
+
+删除记忆（可以单条或多条一起删，删除后无法恢复，请确认后再操作）：
+<RETROFLOW_ACTION>{"type":"remove_memory","ids":["am_xxx"]}</RETROFLOW_ACTION>
+
+检索无果时如实告知执行员没有找到相关记忆。修改或删除前，最好先查询确认内容，避免误操作。
 `;
 
   /* ================= 执行员档案模板 ================= */
@@ -567,13 +594,18 @@ Ta现在活生生地在你眼前，并非你的臆想，也绝非一个幻影，
     const filePermission = isBuiltinToolsEnabled() ? FILE_TOOL_PERMISSION : '';
     // 生图关闭时同理：提示词不发，运行期也不响应 generate_image 标记
     const imagePermission = isImageGenEnabled() ? IMAGE_GEN_PERMISSION : '';
+    // 记忆工具关闭时同理：提示词不发，运行期也不响应记忆工具标记
+    const memoryToolPermission = (isBuiltinToolsEnabled() && Store && Store.config && Store.config.memoryTool)
+      ? MEMORY_TOOL_PERMISSION
+      : '';
 
     // 通信场景说明：副本场景换副本版，日常用线上纯文字版；两版都在末尾追加系统权限段。
     // 之后还要加上对话指导说明。
     const sceneHead = inFork ? CHAT_SCENE_FORK_TEMPLATE : CHAT_SCENE_TEMPLATE;
     const scene = (sceneHead + '\n\n' + replaceVars(CHAT_GUIDANCE_TEMPLATE) + '\n\n' + PERMISSION_SECTION_HEAD)
       .replace('{{FILE_TOOL_PERMISSION}}', filePermission)
-      .replace('{{IMAGE_GEN_PERMISSION}}', imagePermission);
+      .replace('{{IMAGE_GEN_PERMISSION}}', imagePermission)
+      .replace('{{MEMORY_TOOL_PERMISSION}}', memoryToolPermission);
 
     // 使用手册关键词命中段：整本手册常驻会撑爆 Token，故只注入与最近对话相关的条目。
     // 位置在场景与权限之后、执行员档案之前；无命中时返回空串，不占位。
