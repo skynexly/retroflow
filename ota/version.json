@@ -31,18 +31,18 @@
   "schemaVersion": 1,
   "channel": "stable",
   "latest": {
-    "version": "1.3.1",
-    "build": 1297,
+    "version": "1.3.2",
+    "build": 1298,
     "minBinary": 7,
-    "releasedAt": "2026-11-11T03:22:31Z",
+    "releasedAt": "2026-11-11T03:47:28Z",
     "notes": [
-      "记忆巡检：自动聚类关键词、AI 合并重复/矛盾记忆、巡检前备份与恢复；反引号包裹特殊标记不再被吞或截断后续内容；巡检按钮图标更新为卡片+放大镜"
+      "记忆巡检：模型返回带换行的内容不再导致巡检失败；某一批出错时跳过继续处理其余记忆，结果弹窗注明未处理批数和原因"
     ],
     "packages": {
       "full": {
-        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1297/retroflow-ota-full-b1297.zip",
-        "sha256": "b2b56ea90b48a6d319a49cbcbae22b12a9a4f0a59e3dcbfa9e3676300f4fdc89",
-        "size": 1925940
+        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1298/retroflow-ota-full-b1298.zip",
+        "sha256": "4da8a9f76242e4414964a3ececafc5c7b8d8ef78b4fc2e0a1c9c79a8ddaf86c3",
+        "size": 1926700
       },
       "patch": {
         "sinceBuild": 0,
@@ -52,5 +52,5 @@
       }
     }
   },
-  "_status": "已发布 build 1297（全量包，字体常驻不打包）。patch 差分留待后续。"
+  "_status": "已发布 build 1298（全量包，字体常驻不打包）。patch 差分留待后续。"
 }
