@@ -254,17 +254,21 @@ prompt 请用英文书写，逗号分隔关键词，只描述画面本身（主�
   // 这段权限说明不会拼进 System Prompt，运行期也不响应对应的工具标记。
   const MEMORY_TOOL_PERMISSION = `
 【管理你的记忆库】
-你可以主动查询、修改和删除你的记忆库里的内容。记忆库是你对执行员和自己的认知存档，调用这些工具时请谨慎判断：
+你可以主动新增、查询、修改和删除你的记忆库里的内容。记忆库是你对执行员和自己的认知存档，调用这些工具时请谨慎判断：
+
+新增记忆（主动记住一件事，直接写入记忆库）：
+<RETROFLOW_ACTION>{"type":"create_memory","category":"operator","groupId":"daily_piece","title":"标题","body":"正文内容","keywords":["关键词1","关键词2","关键词3"],"primaryKeyword":"关键词1","rank":"normal"}</RETROFLOW_ACTION>
+category 必填：operator（对你的记忆）、self（自我认知）、bond（羁绊）、events（共同经历）、forks（副本体验）、pending（未完事项）、knowledge（知识储备）。
+groupId：category 为 operator 时必填（info/habit/like/dislike/relationship/daily_piece/recent_status），为 self 时必填（understanding/desire/shadow/wish/emotion），其他分类不填。
+rank 可选：normal（普通）、important（重要）、pinned（永久记住，全局最多 20 条）。
 
 查询记忆（可按关键词、分类、时间顺序或随机查询；不传关键词可查全部或按条件筛选）：
 <RETROFLOW_ACTION>{"type":"search_memory","keyword":"关键词","category":"operator","mode":"newest","limit":20}</RETROFLOW_ACTION>
-category 可选：operator（对你的记忆）、self（自我认知）、bond（羁绊）、events（共同经历）、forks（副本体验）、pending（未完事项）、knowledge（知识储备）。
 mode 可选：completed（只查已完成未完事项）、oldest（最旧）、newest（最新）、random（随机）。
 limit 可选：返回条数上限，默认 20，最大 100。
 
 修改记忆内容（可以改标题、正文、关键词、时间、重要度、分类和 Tab）：
 <RETROFLOW_ACTION>{"type":"update_memory","id":"am_xxx","action":"edit","title":"新标题","body":"新正文","rank":"pinned"}</RETROFLOW_ACTION>
-rank 可选：normal（普通）、important（重要）、pinned（永久记住，全局最多 20 条）。
 
 给未完事项标记完成（只能用于 category 为 pending 的记忆）：
 <RETROFLOW_ACTION>{"type":"update_memory","id":"am_xxx","action":"complete","completedDate":"2025-01-20","completionNote":"已经实现"}</RETROFLOW_ACTION>

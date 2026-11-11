@@ -3382,8 +3382,8 @@ ${parts.join('\n\n———\n\n')}`;
   const FILE_TOOL_TYPES = new Set(['read_file', 'search_file']);
   // 手册工具与文件工具同属「内置工具」，共用 builtinTools 开关与同一条工具循环轨道
   const MANUAL_TOOL_TYPES = new Set(['search_manual', 'read_manual']);
-  // 记忆工具：查询、修改、删除记忆库
-  const MEMORY_TOOL_TYPES = new Set(['search_memory', 'update_memory', 'remove_memory']);
+  // 记忆工具：新增、查询、修改、删除记忆库
+  const MEMORY_TOOL_TYPES = new Set(['create_memory', 'search_memory', 'update_memory', 'remove_memory']);
 
   // 工具卡片上的中文显示名：胶囊直接显示英文函数名对用户没有信息量
   const TOOL_LABELS = {
@@ -3391,6 +3391,7 @@ ${parts.join('\n\n———\n\n')}`;
     search_file: '检索文件',
     search_manual: '检索手册',
     read_manual: '读取手册条目',
+    create_memory: '新增记忆',
     search_memory: '查询记忆',
     update_memory: '修改记忆',
     remove_memory: '删除记忆'
@@ -3488,6 +3489,51 @@ ${parts.join('\n\n———\n\n')}`;
     if (keywords.indexOf(kw) !== -1) return 10;
     if (body.indexOf(kw) !== -1) return 1;
     return 0;
+  }
+
+  /**
+   * 执行 create_memory 工具
+   * @param {Object} action { category, groupId?, title, body, keywords?, primaryKeyword?, time?, rank? }
+   * @returns {Promise<{ name, input, status, output }>}
+   */
+  async function runCreateMemory(action) {
+    const input = { ...action };
+    const store = window.AssistantMemoryStore;
+    if (!store) {
+      return { name: 'create_memory', input, status: 'error', output: '记忆库模块未就绪，暂时无法新增。' };
+    }
+    if (!store.isLoaded()) {
+      try {
+        await store.load();
+      } catch (err) {
+        return { name: 'create_memory', input, status: 'error', output: `记忆库读取失败：${err && err.message || '未知错误'}` };
+      }
+    }
+
+    try {
+      // 新增时不带 id，normalize 会自动生成
+      const raw = {
+        category: action.category,
+        groupId: action.groupId,
+        title: action.title,
+        body: action.body,
+        keywords: action.keywords,
+        primaryKeyword: action.primaryKeyword,
+        time: action.time,
+        rank: action.rank,
+        source: 'manual'
+      };
+      const record = store.normalize(raw, { source: 'manual' });
+      await store.commit({ put: [record] });
+      return {
+        name: 'create_memory',
+        input,
+        status: 'success',
+        output: `记忆已新增。\n${JSON.stringify(cleanMemoryRecord(record), null, 2)}`
+      };
+    } catch (err) {
+      return { name: 'create_memory', input, status: 'error', output: `新增失败：${err && err.message || '未知错误'}` };
+    }
   }
 
   /**
@@ -3698,6 +3744,7 @@ ${parts.join('\n\n———\n\n')}`;
 
     // 记忆工具分流：直接走记忆库，不需要解析文件区条目
     if (MEMORY_TOOL_TYPES.has(type)) {
+      if (type === 'create_memory') return await runCreateMemory(action);
       if (type === 'search_memory') return await runSearchMemory(action);
       if (type === 'update_memory') return await runUpdateMemory(action);
       if (type === 'remove_memory') return await runRemoveMemory(action);
