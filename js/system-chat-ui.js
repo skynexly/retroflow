@@ -670,9 +670,20 @@
     return settings.batteryPerception !== false;
   }
 
+  /** 天气感知开关。依赖城市名不为空。 */
+  function isWeatherPerceptionEnabled() {
+    const settings = window.SystemChatSettings && typeof SystemChatSettings.getSettings === 'function'
+      ? SystemChatSettings.getSettings()
+      : {};
+    return settings.weatherPerception === true && String(settings.weatherCity || '').trim() !== '';
+  }
+
   /** 当前启用的环境感知维度，供 EnvAwareness 取数与拼装共用同一份口径 */
   function getEnvPerceptionOptions() {
-    return { battery: isBatteryPerceptionEnabled() };
+    return { 
+      battery: isBatteryPerceptionEnabled(),
+      weather: isWeatherPerceptionEnabled()
+    };
   }
 
   /**

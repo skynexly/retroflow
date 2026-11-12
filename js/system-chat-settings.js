@@ -13,6 +13,8 @@
     imageGen: true,
     timePerception: true,
     batteryPerception: true,
+    weatherPerception: false,
+    weatherCity: '',
     builtinTools: true,
     webSearch: true,
     mcpProtocol: true,
@@ -217,9 +219,10 @@
     wallpaperPreviewText = document.getElementById('systemChatWallpaperPreviewText');
     customCssOpponentTextarea = document.getElementById('systemChatCustomCssOpponent');
     customCssSelfTextarea = document.getElementById('systemChatCustomCssSelf');
-    memoryIntervalInput = document.getElementById('systemChatMemoryIntervalInput');
-    memoryMinCountInput = document.getElementById('systemChatMemoryMinCountInput');
-    toolLoopSlider = document.getElementById('systemChatToolLoopSlider');
+memoryIntervalInput = document.getElementById('systemChatMemoryIntervalInput');
+     memoryMinCountInput = document.getElementById('systemChatMemoryMinCountInput');
+     weatherCityInput = document.getElementById('systemChatWeatherCity');
+     toolLoopSlider = document.getElementById('systemChatToolLoopSlider');
     toolLoopDisplay = document.getElementById('systemChatToolLoopDisplay');
     toolKeepSlider = document.getElementById('systemChatToolKeepSlider');
     toolKeepDisplay = document.getElementById('systemChatToolKeepDisplay');
@@ -227,7 +230,7 @@
     // 绑定所有 toggle 开关
     const toggleKeys = [
       'streaming', 'autoRetry', 'imageGen', 'timePerception',
-      'batteryPerception', 'builtinTools', 'webSearch', 'mcpProtocol',
+      'batteryPerception', 'weatherPerception', 'builtinTools', 'webSearch', 'mcpProtocol',
       'autoMemory', 'memoryTool', 'markdownRender', 'segmentedBubbles', 'hideThinking'
     ];
 
@@ -344,6 +347,15 @@
           currentSettings.memoryMinCount = val;
           saveSettings();
         }
+      });
+    }
+
+    // 天气城市
+    if (weatherCityInput) {
+      weatherCityInput.value = currentSettings.weatherCity || '';
+      weatherCityInput.addEventListener('change', () => {
+        currentSettings.weatherCity = weatherCityInput.value.trim();
+        saveSettings();
       });
     }
 
