@@ -32,17 +32,17 @@
   "channel": "stable",
   "latest": {
     "version": "1.3.4",
-    "build": 1304,
+    "build": 1305,
     "minBinary": 7,
-    "releasedAt": "2026-11-12T06:49:41Z",
+    "releasedAt": "2026-11-12T06:55:23Z",
     "notes": [
-      "feat: 后台助手天气感知功能（Open-Meteo免费API，30分钟缓存）"
+      "fix: 天气感知功能 - 修复对话设置打不开的bug"
     ],
     "packages": {
       "full": {
-        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1304/retroflow-ota-full-b1304.zip",
-        "sha256": "a4435a298976126079adaa8f2ad6bbeaf05ba0376f3acc0f4b74d5b03fb53ab4",
-        "size": 1935015
+        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1305/retroflow-ota-full-b1305.zip",
+        "sha256": "27402f2d21ec8cfa03e93bb154acaf70608affaefa324e4131daa13e2ebe3157",
+        "size": 1935019
       },
       "patch": {
         "sinceBuild": 0,
@@ -52,5 +52,5 @@
       }
     }
   },
-  "_status": "已发布 build 1304（全量包，字体常驻不打包）。patch 差分留待后续。"
+  "_status": "已发布 build 1305（全量包，字体常驻不打包）。patch 差分留待后续。"
 }
