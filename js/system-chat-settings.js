@@ -61,6 +61,7 @@
   let customCssSelfTextarea = null;
   let memoryIntervalInput = null;
   let memoryMinCountInput = null;
+  let weatherCityInput = null;
   // 工具循环相关滑条
   let toolLoopSlider = null;
   let toolLoopDisplay = null;
