@@ -32,17 +32,17 @@
   "channel": "stable",
   "latest": {
     "version": "1.3.4",
-    "build": 1303,
+    "build": 1304,
     "minBinary": 7,
-    "releasedAt": "2026-11-11T11:09:11Z",
+    "releasedAt": "2026-11-12T06:49:41Z",
     "notes": [
-      "fix: 修复 JSON 字符串值内未转义双引号解析失败"
+      "feat: 后台助手天气感知功能（Open-Meteo免费API，30分钟缓存）"
     ],
     "packages": {
       "full": {
-        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1303/retroflow-ota-full-b1303.zip",
-        "sha256": "6cd239bc2497200057b726e8d4716d5d87dce9d4502b76fe8546fff883b9029d",
-        "size": 1933491
+        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1304/retroflow-ota-full-b1304.zip",
+        "sha256": "a4435a298976126079adaa8f2ad6bbeaf05ba0376f3acc0f4b74d5b03fb53ab4",
+        "size": 1935015
       },
       "patch": {
         "sinceBuild": 0,
@@ -52,5 +52,5 @@
       }
     }
   },
-  "_status": "已发布 build 1303（全量包，字体常驻不打包）。patch 差分留待后续。"
+  "_status": "已发布 build 1304（全量包，字体常驻不打包）。patch 差分留待后续。"
 }
