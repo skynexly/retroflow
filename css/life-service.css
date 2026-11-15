@@ -1,0 +1,3605 @@
+/**
+ * ============================================================================
+ * 溯流计划 · 生活服务机能风视觉系统 (Life Service Tactical HUD)
+ *
+ * 设计语言：
+ *   - 工业机能 HUD + 瑞士网格排版 + 纵向装甲插槽 (参考 Armor/Weapon & Explore 仪表盘)
+ *   - 色彩全量跟随主题 CSS 变量 (--bg-color / --card-bg-color / --secondary-color /
+ *     --primary-color / --decor-color / --text-muted)
+ *   - 严格遵守《工地施工协议》：
+ *     1. 零分割线 (无 hr、无 border-top/bottom 切线，全靠深浅色块碰撞、斜切角与留白)
+ *     2. 零 Emoji (全矢量内联 SVG 刻度环、条形码、十字准星、几何徽标)
+ *     3. iOS 灵动岛安全区保护 (env(safe-area-inset-top))
+ * ============================================================================
+ */
+
+.life-service-page {
+  position: fixed;
+  inset: 0;
+  z-index: 920;
+  background-color: var(--bg-color);
+  color: var(--secondary-color);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  user-select: none;
+}
+
+.life-service-page.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* 背景机能点阵暗纹层（不阻挡点击） */
+.life-service-page::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(var(--secondary-color-rgb), 0.08) 1px, transparent 1px);
+  background-size: 16px 16px;
+  z-index: 0;
+}
+
+.life-page-shell {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ==========================================================================
+   1. 主滚动视口与独立直角铭牌（iOS 灵动岛安全区保护）
+   ========================================================================== */
+
+.life-deck-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: calc(env(safe-area-inset-top, 0px) + 14px) 14px calc(env(safe-area-inset-bottom, 0px) + 28px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.life-deck-scroll > * {
+  flex-shrink: 0;
+}
+
+.life-hud-header {
+  width: 100%;
+  height: 30px;
+  min-height: 30px;
+  margin: 0;
+  padding: 0 2px;
+  border: 0;
+  border-radius: 0;
+  clip-path: none;
+  background-color: transparent;
+  color: var(--secondary-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.life-back-btn {
+  align-self: center;
+  width: 84px;
+  height: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+  color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.life-back-btn:active {
+  opacity: 0.72;
+}
+
+.life-back-btn:focus-visible {
+  outline: 2px solid var(--decor-color);
+  outline-offset: -4px;
+}
+
+.life-back-chevrons {
+  width: 30px;
+  height: 18px;
+  fill: currentColor;
+  stroke: none;
+  flex-shrink: 0;
+}
+
+.life-back-crosses {
+  width: 38px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.3;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+  flex-shrink: 0;
+  margin-left: 20px;
+  color: var(--secondary-color);
+  opacity: 0.45;
+}
+.life-hud-title {
+  min-width: 0;
+  color: var(--secondary-color);
+  font-family: var(--display-font);
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  text-align: right;
+  text-transform: uppercase;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.life-core-mark {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--secondary-color);
+}
+
+.life-core-ring {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: square;
+}
+
+.life-core-dot {
+  fill: currentColor;
+  stroke: none;
+}
+
+/* ==========================================================================
+   2. 动态机能矩阵
+   ========================================================================== */
+
+.life-deck-matrix {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.life-deck-matrix > * {
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   3. 第一层：左环形总控雷达 + 右侧记账财务主舱 (对标参考图 2 & 图 5)
+   ========================================================================== */
+
+.life-hero-composite {
+  display: grid;
+  grid-template-columns: 142px 1fr;
+  gap: 10px;
+  align-items: stretch;
+}
+
+/* 左侧：双环刻度机能轮盘舱（透明线框版） */
+.life-dial-pod {
+  background-color: transparent;
+  color: var(--secondary-color);
+  padding: 12px 10px 10px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.life-dial-pod-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  color: var(--secondary-color);
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.life-dial-pod-top {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+
+.life-dial-svg-wrap {
+  position: relative;
+  width: 112px;
+  height: 112px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 2px 0;
+  cursor: grab;
+  touch-action: none;
+}
+
+.life-dial-svg-wrap:active {
+  cursor: grabbing;
+}
+
+.life-dial-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.life-dial-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.life-dial-num {
+  font-family: var(--mono-font);
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--secondary-color);
+  letter-spacing: -0.03em;
+}
+
+.life-dial-unit {
+  font-family: var(--mono-font);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+
+.life-dial-pod-foot {
+  width: 100%;
+  background-color: transparent;
+  padding: 4px 2px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.life-dial-foot-tag {
+  color: var(--primary-color);
+}
+
+/* 右侧：01 记账主控舱 (LEDGER // 财务信标) */
+.life-ledger-hero-card {
+  background-color: var(--card-bg-color);
+  color: var(--secondary-color);
+  padding: 14px 14px 12px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  cursor: pointer;
+  overflow: hidden;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
+}
+
+/* 顶部荧光高亮色带条 */
+.life-card-accent-strip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 56px;
+  height: 4px;
+  background-color: var(--primary-color);
+}
+
+.life-card-head-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
+}
+
+.life-slot-index-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.life-ledger-hero-card .life-slot-name {
+  font-size: 17px;
+}
+
+.life-ledger-cross-mark {
+  width: 40px;
+  height: 12px;
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 15px;
+  color: var(--primary-color);
+}
+
+.life-slot-code {
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--primary-color);
+  white-space: nowrap;
+}
+
+.life-slot-name {
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  color: var(--secondary-color);
+  white-space: nowrap;
+}
+
+.life-quick-trigger-pill {
+  background-color: var(--primary-color);
+  color: var(--bg-color);
+  padding: 5px 9px;
+  font-family: var(--mono-font);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  clip-path: polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 0 100%);
+}
+
+.life-quick-trigger-pill svg {
+  width: 11px;
+  height: 11px;
+  fill: currentColor;
+}
+
+.life-ledger-main-figures {
+  margin: 10px 0 8px;
+  position: relative;
+  z-index: 1;
+}
+
+.life-ledger-Caption {
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+
+.life-ledger-big-amount {
+  font-family: var(--mono-font);
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--secondary-color);
+  line-height: 1.1;
+  margin-top: 2px;
+}
+
+.life-ledger-sub-pills {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  position: relative;
+  z-index: 1;
+}
+
+.life-mini-stat-box {
+  background-color: rgba(var(--secondary-color-rgb), 0.06);
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.life-mini-stat-lbl {
+  font-family: var(--mono-font);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.life-mini-stat-val {
+  font-family: var(--mono-font);
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--secondary-color);
+}
+
+/* 卡片背景巨型机能编号水印 */
+.life-watermark-num {
+  position: absolute;
+  right: 8px;
+  bottom: -8px;
+  font-family: var(--mono-font);
+  font-size: 54px;
+  font-weight: 900;
+  line-height: 1;
+  color: rgba(var(--secondary-color-rgb), 0.05);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ==========================================================================
+   4. 第二层：02 运动健康双轨战术舱 (运动打卡 + 体重管理，对标图 3 / 图 5)
+   ========================================================================== */
+
+.life-fitness-index-wrap {
+  position: relative;
+  margin-top: 28px;
+}
+
+.life-fitness-fade-squares {
+  position: absolute;
+  top: -11px;
+  left: 3px;
+  z-index: 1;
+  display: flex;
+  gap: 6px;
+  color: var(--secondary-color);
+  pointer-events: none;
+}
+
+.life-fitness-fade-squares span {
+  width: 5px;
+  height: 5px;
+  flex: 0 0 5px;
+  background-color: currentColor;
+}
+
+.life-fitness-fade-squares span:nth-child(1) {
+  opacity: 1;
+}
+
+.life-fitness-fade-squares span:nth-child(2) {
+  opacity: 0.82;
+}
+
+.life-fitness-fade-squares span:nth-child(3) {
+  opacity: 0.64;
+}
+
+.life-fitness-fade-squares span:nth-child(4) {
+  opacity: 0.46;
+}
+
+.life-fitness-fade-squares span:nth-child(5) {
+  opacity: 0.28;
+}
+
+.life-fitness-fade-squares span:nth-child(6) {
+  opacity: 0.1;
+}
+
+.life-fitness-index-group {
+  position: absolute;
+  top: -22px;
+  left: 179px;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  color: var(--secondary-color);
+  font-family: var(--mono-font);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.life-fitness-index {
+  font-family: var(--display-font);
+  font-size: 38px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  transform: translateY(1px);
+}
+
+.life-fitness-index-label {
+  font-family: var(--display-font);
+  position: relative;
+  top: -3px;
+  font-size: 19px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  word-spacing: 0;
+}
+
+.life-fitness-wide-card {
+  background-color: var(--secondary-color);
+  color: var(--bg-color);
+  padding: 14px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  clip-path: polygon(0 0, 166px 0, 186px 20px, 100% 20px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+}
+
+.life-fitness-wide-card::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  right: 0;
+  left: 0;
+  height: 22px;
+  background-color: var(--decor-color);
+  clip-path: polygon(0 0, 166px 0, 186px 20px, 100% 20px, 100% 22px, 185.17px 22px, 165.17px 2px, 0 2px);
+  pointer-events: none;
+}
+
+.life-fitness-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.life-dark-card-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  min-height: 20px;
+  background-color: transparent;
+  color: var(--bg-color);
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+
+.life-acid-badge {
+  font-family: var(--display-font);
+  background-color: var(--decor-color);
+  color: var(--secondary-color);
+  padding: 3px 7px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.life-dark-card-zh {
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--bg-color);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.life-dark-card-en {
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(var(--bg-color-rgb), 0.55);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.life-geometric-markers {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--decor-color);
+  flex-shrink: 0;
+}
+
+.life-geometric-markers svg {
+  width: 34px;
+  height: 10px;
+}
+
+.life-fitness-dual-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.life-fitness-subpod {
+  background-color: rgba(var(--bg-color-rgb), 0.08);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 6px;
+  position: relative;
+}
+
+.life-subpod-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--decor-color);
+}
+
+.life-subpod-main {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.life-subpod-big {
+  font-family: var(--mono-font);
+  font-size: 24px;
+  font-weight: 900;
+  color: var(--bg-color);
+  line-height: 1;
+}
+
+.life-subpod-unit {
+  font-family: var(--mono-font);
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(var(--bg-color-rgb), 0.65);
+}
+
+.life-subpod-foot {
+  font-family: var(--mono-font);
+  font-size: 10px;
+  color: rgba(var(--bg-color-rgb), 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ==========================================================================
+   5. 第三层：03 经期开放式引出线 Callout HUD + 05 睡眠声波舱
+   ========================================================================== */
+
+.life-period-callout {
+  position: relative;
+  margin-top: 8px;
+  padding: 0 2px 6px;
+  color: var(--secondary-color);
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.life-period-callout-track {
+  position: relative;
+  width: 100%;
+  height: 46px;
+}
+
+.life-period-leader-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 46px;
+  display: block;
+  color: var(--secondary-color);
+  pointer-events: none;
+}
+
+.life-period-leader-dot {
+  position: absolute;
+  left: 0;
+  top: 39px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--secondary-color);
+  pointer-events: none;
+}
+
+.life-period-callout-above {
+  position: absolute;
+  left: 12px;
+  right: 6px;
+  bottom: 9px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 1;
+}
+
+.life-period-ring-icon {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+}
+
+.life-period-callout-index {
+  font-family: var(--display-font);
+  font-size: 34px;
+  font-weight: 400;
+  line-height: 0.86;
+  letter-spacing: 0.04em;
+  color: var(--secondary-color);
+  transform: translateY(2px);
+}
+
+.life-period-callout-title-box {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.life-period-callout-en {
+  font-family: var(--display-font);
+  font-size: 9px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.life-period-callout-zh {
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: 0.04em;
+  color: var(--secondary-color);
+}
+
+.life-period-zh-line {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+.life-period-title-bar {
+  flex: 0 1 46%;
+  min-width: 34px;
+  height: 4px;
+  background-color: var(--primary-color);
+  transform: translateY(-2px);
+}
+
+.life-period-callout-below {
+  margin-top: 4px;
+  padding-left: 12px;
+  padding-right: 48px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.life-period-alert-icon {
+  position: absolute;
+  right: 2px;
+  bottom: 6px;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  color: var(--secondary-color);
+}
+
+.life-period-phase-block {
+  background-color: var(--secondary-color);
+  color: var(--bg-color);
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.life-period-telemetry {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.life-period-telemetry-main {
+  font-family: var(--mono-font);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--primary-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.life-period-telemetry-sub {
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   5.5 第四层：04 随身药盒 裸出 Callout HUD（数据左置 / 标题右置 / 大序号）
+   ========================================================================== */
+
+.life-meds-callout {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 0 2px 26px;
+  color: var(--secondary-color);
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 左侧数据区 */
+.life-meds-data {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.life-meds-eyebrow {
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.life-meds-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.life-meds-count {
+  font-family: var(--display-font);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--secondary-color);
+  display: inline-flex;
+  align-items: baseline;
+  flex-shrink: 0;
+}
+
+.life-meds-big-sep {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 0 2px;
+}
+
+.life-meds-dots-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.life-meds-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background-color: transparent;
+  border: 1.5px solid var(--secondary-color);
+}
+
+.life-meds-dot.done {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+/* 右侧标题区 */
+.life-meds-title-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.life-meds-zh {
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: 0.04em;
+  color: var(--secondary-color);
+  white-space: nowrap;
+}
+
+.life-meds-en {
+  font-family: var(--display-font);
+  font-size: 9px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.life-meds-index {
+  font-family: var(--display-font);
+  font-size: 34px;
+  font-weight: 400;
+  line-height: 0.86;
+  letter-spacing: 0.04em;
+  color: var(--primary-color);
+  flex-shrink: 0;
+  align-self: center;
+}
+
+/* 底部通栏长箭头装饰 */
+.life-meds-arrow {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  bottom: 14px;
+  width: calc(100% - 4px);
+  height: 10px;
+  display: block;
+  color: var(--secondary-color);
+  opacity: 0.55;
+  pointer-events: none;
+}
+ 
+ /* 箭头下方一整排英文装饰 */
+ .life-meds-footer-strip {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  bottom: 0px;
+  width: calc(100% - 4px);
+  display: flex;
+  justify-content: flex-start;
+  gap: 8px;
+  align-items: center;
+  font-family: var(--mono-font);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  white-space: nowrap;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.life-bottom-dual-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: stretch;
+  margin-top: 6px;
+}
+
+.life-bottom-dual-row .life-tactical-tile {
+  padding: 0;
+  min-height: 186px;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+}
+
+.life-bottom-dual-row .life-tile-top {
+  padding: 13px 13px 0;
+}
+
+.life-bottom-dual-row .life-tile-body {
+  padding: 0 13px;
+  margin: 10px 0 8px;
+}
+
+.life-bottom-dual-row .life-tile-status-zh {
+  font-family: var(--mono-font);
+  font-size: 26px;
+  line-height: 1;
+}
+
+.life-bottom-dual-row .life-tile-foot-strip {
+  padding: 7px 11px;
+}
+
+.life-bottom-dual-row .life-armor-card {
+  min-height: 186px;
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);
+}
+
+.life-armor-sub-nearest {
+  color: var(--decor-color);
+  margin-top: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.life-mid-bento-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.life-mid-bento-row.life-sleep-solo-row {
+  grid-template-columns: 1fr;
+}
+
+/* 订阅卡独占整行（药盒拆走后只剩单卡，覆盖双列网格） */
+.life-armor-slots-row.life-armor-slots-solo {
+  grid-template-columns: 1fr;
+}
+
+.life-tactical-tile {
+  background-color: var(--card-bg-color);
+  color: var(--secondary-color);
+  padding: 13px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 148px;
+  cursor: pointer;
+  overflow: hidden;
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+}
+
+.life-tile-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.life-tile-badge {
+  background-color: var(--secondary-color);
+  color: var(--bg-color);
+  padding: 2px 6px;
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.life-tile-phase-ring {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+}
+
+.life-tile-body {
+  margin: 8px 0;
+}
+
+.life-tile-status-zh {
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--primary-color);
+  line-height: 1.15;
+}
+
+.life-tile-status-en {
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.life-tile-foot-strip {
+  background-color: rgba(var(--secondary-color-rgb), 0.07);
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--mono-font);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+/* ==========================================================================
+   6. 第四层：纵向装甲插槽双联卡 04 药盒 + 06 订阅管理 (对标参考图 1 右侧修长条形码卡)
+   ========================================================================== */
+
+.life-armor-slots-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.life-armor-card {
+  background-color: var(--secondary-color);
+  color: var(--bg-color);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 196px;
+  cursor: pointer;
+  overflow: hidden;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 10px 100%, 0 calc(100% - 10px));
+}
+
+.life-armor-inner {
+  padding: 13px 13px 10px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.life-armor-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.life-armor-spec {
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: rgba(var(--bg-color-rgb), 0.6);
+}
+
+.life-armor-name-block {
+  margin-top: 6px;
+}
+
+.life-armor-zh {
+  font-size: 17px;
+  font-weight: 900;
+  color: var(--bg-color);
+  letter-spacing: 0.04em;
+}
+
+.life-armor-en {
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  color: var(--decor-color);
+  margin-top: 2px;
+}
+
+.life-armor-metric {
+  margin: 10px 0 8px;
+}
+
+.life-armor-big-val {
+  font-family: var(--mono-font);
+  font-size: 26px;
+  font-weight: 900;
+  color: var(--decor-color);
+  line-height: 1;
+}
+
+.life-armor-sub-desc {
+  font-family: var(--mono-font);
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(var(--bg-color-rgb), 0.72);
+  margin-top: 4px;
+}
+
+/* 药盒胶囊槽位矩阵 */
+.life-pill-dots-bar {
+  display: flex;
+  gap: 5px;
+  margin-top: 4px;
+}
+
+.life-pill-slot-dot {
+  flex: 1;
+  height: 6px;
+  background-color: rgba(var(--bg-color-rgb), 0.18);
+}
+
+.life-pill-slot-dot.done {
+  background-color: var(--decor-color);
+}
+
+/* 图 1 标志性底部高对比荧光装甲封条 + 矢量条形码 + CE 标 */
+.life-armor-barcode-band {
+  background-color: var(--decor-color);
+  color: var(--secondary-color);
+  padding: 6px 11px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.life-armor-card.variant-primary .life-armor-barcode-band {
+  background-color: var(--primary-color);
+  color: var(--bg-color);
+}
+
+.life-barcode-svg {
+  height: 16px;
+  width: 78px;
+  fill: currentColor;
+  flex-shrink: 0;
+}
+
+.life-ce-stamp {
+  font-family: var(--mono-font);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ==========================================================================
+   7. 二级板块全屏操作舱 (Drawer / Module Detail Deck)
+   ========================================================================== */
+
+.life-module-sheet {
+  position: absolute;
+  inset: 0;
+  z-index: 25;
+  background-color: var(--bg-color);
+  color: var(--secondary-color);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  will-change: transform;
+}
+
+.life-module-sheet.open {
+  transform: translateX(0);
+}
+
+.life-sheet-header {
+  width: 100%;
+  min-height: 30px;
+  margin: 0;
+  padding: calc(env(safe-area-inset-top, 0px) + 14px) 16px 6px;
+  background-color: var(--bg-color);
+  color: var(--secondary-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+/* 修正 Module Sheet 顶栏与首页对齐 */
+.life-sheet-header .life-back-btn {
+  align-self: center;
+  width: 84px;
+  height: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+  color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.life-sheet-header .life-back-btn:active {
+  opacity: 0.72;
+}
+
+.life-sheet-header .life-back-chevrons {
+  width: 30px;
+  height: 18px;
+  fill: currentColor;
+  stroke: none;
+  flex-shrink: 0;
+}
+
+.life-sheet-header .life-back-crosses {
+  width: 38px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.3;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+  flex-shrink: 0;
+  margin-left: 20px;
+  color: var(--secondary-color);
+  opacity: 0.45;
+}
+
+.life-sheet-header .life-hud-title {
+  min-width: 0;
+  color: var(--secondary-color);
+  font-family: var(--display-font);
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  text-align: right;
+  text-transform: uppercase;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.life-sheet-back-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.life-sheet-title-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.life-sheet-code {
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  color: var(--decor-color);
+}
+
+.life-sheet-title {
+  font-size: 17px;
+  font-weight: 900;
+  color: var(--secondary-color);
+  letter-spacing: 0.04em;
+}
+
+.life-sheet-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 16px calc(env(safe-area-inset-bottom, 0px) + 32px);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.life-sheet-body > * {
+  flex-shrink: 0;
+}
+
+.life-sheet-body.has-flat-footer {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 74px);
+}
+
+/* 底部双 Tab 超薄平铺主导航（无芯片框 / 零分割线 / 绝对定位绝不被输入法顶起） */
+.life-sheet-footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  background-color: var(--card-bg-color);
+  padding: 4px 12px calc(env(safe-area-inset-bottom, 0px) + 4px);
+  box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.05);
+}
+
+.life-sheet-footer[hidden],
+.life-sheet-footer.is-kb-hidden {
+  visibility: hidden;
+  pointer-events: none;
+  height: 0;
+  overflow: hidden;
+  opacity: 0;
+}
+
+/* 顶部 2px 主题色弹簧游标 */
+.life-footer-cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 28px;
+  height: 2px;
+  background-color: var(--primary-color);
+  pointer-events: none;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+.life-footer-tab {
+  flex: 1;
+  height: 36px;
+  background-color: transparent;
+  color: rgba(var(--secondary-color-rgb), 0.42);
+  border: none;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.life-footer-tab:active {
+  opacity: 0.72;
+}
+
+.life-footer-tab svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+  flex-shrink: 0;
+}
+
+.life-footer-tab-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  line-height: 1.05;
+}
+
+.life-footer-tab-cn {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.life-footer-tab-en {
+  font-family: var(--mono-font);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  opacity: 0.75;
+}
+
+.life-footer-tab.active {
+  color: var(--secondary-color);
+}
+
+.life-footer-tab.active svg {
+  color: var(--primary-color);
+}
+
+.life-footer-tab.active .life-footer-tab-en {
+  color: var(--primary-color);
+  opacity: 0.92;
+}
+
+/* 统计页 Z 字高低阶梯引出线 HUD（右侧折线上下严格单行对齐，纯中文无底色） */
+.life-stats-kpi-step {
+  position: relative;
+  height: 66px;
+  color: var(--secondary-color);
+  user-select: none;
+}
+
+.life-stats-kpi-step-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 66px;
+  display: block;
+  color: var(--secondary-color);
+  pointer-events: none;
+}
+
+.life-stats-kpi-dot-left {
+  position: absolute;
+  left: 0;
+  top: 57px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+  pointer-events: none;
+}
+
+.life-stats-kpi-dot-right {
+  position: absolute;
+  right: 0;
+  top: 29.5px;
+  width: 5px;
+  height: 5px;
+  background-color: var(--secondary-color);
+  pointer-events: none;
+}
+
+.life-stats-kpi-left {
+  position: absolute;
+  left: 10px;
+  bottom: 11px;
+  right: 54%;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.life-stats-kpi-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.life-stats-kpi-bar {
+  width: 24px;
+  height: 3px;
+  background-color: var(--primary-color);
+  flex-shrink: 0;
+}
+
+.life-stats-kpi-hero-val {
+  font-family: var(--mono-font);
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  color: var(--secondary-color);
+  white-space: nowrap;
+}
+
+.life-stats-kpi-right-top,
+.life-stats-kpi-right-bot {
+  position: absolute;
+  left: 52%;
+  right: 4px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.life-stats-kpi-right-top {
+  top: 6px;
+}
+
+.life-stats-kpi-right-bot {
+  top: 41px;
+}
+
+.life-stats-kpi-lbl-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.life-stats-kpi-sq {
+  width: 5px;
+  height: 5px;
+  background-color: var(--primary-color);
+  flex-shrink: 0;
+  transform: translateY(-0.5px);
+}
+
+.life-stats-kpi-sq.is-muted {
+  background-color: var(--secondary-color);
+  opacity: 0.35;
+}
+
+.life-stats-kpi-inc-val {
+  font-family: var(--mono-font);
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--secondary-color);
+  white-space: nowrap;
+}
+
+.life-stats-kpi-inc-val.is-sub {
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.life-stats-kpi-lbl {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+/* 机能录入表单舱 */
+.life-form-pod {
+  background-color: var(--card-bg-color);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+}
+
+.life-form-pod-title {
+  font-family: var(--mono-font);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.life-form-pod-title-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.life-form-pod-title-right .life-mini-act-btn {
+  height: 24px;
+  padding: 0 8px;
+  letter-spacing: 0.04em;
+}
+
+.life-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.life-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.life-field.full {
+  grid-column: 1 / -1;
+}
+
+.life-field label {
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.life-input,
+.life-select {
+  width: 100%;
+  height: 38px;
+  background-color: var(--bg-color);
+  color: var(--secondary-color);
+  border: none;
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* 通用机能下拉与日期选择触发钮（零分割线 / 纯色块切角胶囊） */
+.life-picker-trigger {
+  width: 100%;
+  height: 38px;
+  background-color: var(--bg-color);
+  color: var(--secondary-color);
+  border: none;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  text-align: left;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%);
+}
+
+.life-picker-trigger:active,
+.life-filter-acc-trigger:active {
+  background-color: var(--primary-color);
+  color: var(--bg-color);
+}
+
+.life-picker-main {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  flex: 1;
+}
+
+.life-picker-ico {
+  width: 15px;
+  height: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-color);
+  flex-shrink: 0;
+}
+
+.life-picker-trigger:active .life-picker-ico,
+.life-picker-trigger:active .life-picker-arrow,
+.life-filter-acc-trigger:active .life-picker-arrow {
+  color: var(--bg-color);
+}
+
+.life-picker-ico svg {
+  width: 15px;
+  height: 15px;
+}
+
+.life-picker-txt {
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.life-picker-trigger.is-date .life-picker-txt {
+  font-family: var(--mono-font);
+  font-size: 12px;
+  letter-spacing: 0.03em;
+}
+
+.life-picker-txt.is-placeholder {
+  color: var(--text-muted);
+  font-family: inherit;
+  font-weight: 600;
+}
+
+.life-picker-arrow {
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.life-textarea {
+  width: 100%;
+  min-height: 88px;
+  background-color: var(--bg-color);
+  color: var(--secondary-color);
+  border: none;
+  padding: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.life-seg-group {
+  position: relative;
+  display: flex;
+  gap: 6px;
+}
+
+.life-seg-fluid-pill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 36px;
+  background-color: var(--primary-color);
+  pointer-events: none;
+  z-index: 1;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+.life-seg-btn {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  height: 36px;
+  background-color: var(--bg-color);
+  color: var(--secondary-color);
+  border: none;
+  font-family: var(--mono-font);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.life-seg-group.has-feel-pill .life-seg-btn {
+  background-color: rgba(var(--bg-color-rgb), 0.72);
+}
+
+.life-seg-btn.active {
+  background-color: var(--primary-color);
+  color: var(--bg-color);
+}
+
+.life-seg-group.has-feel-pill .life-seg-btn.active {
+  background-color: transparent;
+  color: var(--bg-color);
+}
+
+/* 流水 Tab 顶部：月预算微缩条 + 单 SVG 切换钮 */
+.life-flow-top-bar {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+}
+
+.life-budget-meter-pod {
+  flex: 1;
+  min-width: 0;
+  margin-right: 6px;
+  background-color: transparent;
+  border: none;
+  padding: 10px 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.life-budget-meter-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.life-budget-meter-lbl {
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(var(--secondary-color-rgb), 0.45);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.life-budget-meter-val {
+  font-family: var(--mono-font);
+  font-size: 11px;
+  font-weight: 900;
+  color: var(--secondary-color);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.life-budget-meter-val.is-over {
+  color: var(--primary-color);
+}
+
+.life-budget-meter-track {
+  height: 3px;
+  background-color: rgba(var(--secondary-color-rgb), 0.12);
+  overflow: hidden;
+}
+
+.life-budget-meter-fill {
+  height: 100%;
+  background-color: var(--primary-color);
+  transform-origin: left center;
+}
+
+.life-budget-meter-fill.is-over {
+  background-color: var(--primary-color);
+  opacity: 0.6;
+}
+
+.life-flow-toggle-btn {
+  width: 32px;
+  flex-shrink: 0;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.life-flow-toggle-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: var(--secondary-color);
+  transform-origin: center center;
+}
+
+.life-flow-toggle-btn.is-active svg {
+  fill: var(--primary-color);
+}
+
+.life-view-switch-btn {
+  position: relative;
+}
+
+.life-view-switch-btn svg {
+  position: absolute;
+  will-change: transform, opacity;
+}
+
+/* 记账「流水 / 统计」双轨横向滑移视口与轨道 */
+.life-ledger-view-viewport {
+  width: 100%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.life-ledger-view-track {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  will-change: transform;
+  transform-origin: center top;
+}
+
+.life-ledger-view-pane {
+  width: 100%;
+  min-width: 100%;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  will-change: opacity;
+}
+
+.life-ledger-view-pane.is-collapsed-pane {
+  height: 0;
+  overflow: hidden;
+}
+
+/* 记账录入舱物理折叠轨道（flex-shrink:0 防止被 Flex 容器挤压裁切） */
+.life-ledger-drawer-clip {
+  flex-shrink: 0;
+  overflow: hidden;
+  will-change: height;
+}
+
+.life-ledger-drawer-clip > .life-form-pod {
+  transform-origin: top center;
+}
+
+/* 记账流水舞台包裹层（随表单展开物理位移退场） */
+.life-ledger-flow-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+.life-submit-btn {
+  height: 42px;
+  min-height: 42px;
+  flex-shrink: 0;
+  background-color: var(--primary-color);
+  color: var(--bg-color);
+  border: none;
+  font-family: var(--mono-font);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+}
+
+.life-submit-btn svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+/* 历史记录列表（零分割线，靠色块胶囊间隔） */
+.life-log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.life-date-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.life-date-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 4px 0;
+}
+
+.life-date-group-label {
+  font-family: var(--mono-font);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.life-date-group-net {
+  font-family: var(--mono-font);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--secondary-color);
+}
+
+.life-date-group-net.is-pos {
+  color: var(--primary-color);
+}
+
+.life-load-more-btn {
+  width: 100%;
+  height: 38px;
+  background-color: var(--card-bg-color);
+  color: var(--text-muted);
+  border: none;
+  font-family: var(--mono-font);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%);
+}
+
+.life-log-item {
+  background-color: var(--card-bg-color);
+  padding: 11px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.life-log-left {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.life-log-main {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--secondary-color);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.life-log-tag {
+  background-color: var(--secondary-color);
+  color: var(--bg-color);
+  padding: 1px 6px;
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.life-log-sub {
+  font-family: var(--mono-font);
+  font-size: 10px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.life-log-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.life-log-val {
+  font-family: var(--mono-font);
+  font-size: 15px;
+  font-weight: 900;
+  color: var(--primary-color);
+}
+
+.life-log-del-btn {
+  width: 28px;
+  height: 28px;
+  background-color: rgba(var(--secondary-color-rgb), 0.08);
+  color: var(--secondary-color);
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.life-log-del-btn svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+/* 药盒打卡行按钮 */
+.life-med-check-card {
+  background-color: var(--card-bg-color);
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.life-med-check-card.taken {
+  background-color: var(--secondary-color);
+  color: var(--bg-color);
+}
+
+.life-med-check-card.taken .life-log-main,
+.life-med-check-card.taken .life-log-sub {
+  color: var(--bg-color);
+}
+
+.life-med-status-pill {
+  padding: 5px 10px;
+  font-family: var(--mono-font);
+  font-size: 10px;
+  font-weight: 900;
+  background-color: var(--primary-color);
+  color: var(--bg-color);
+}
+
+.life-med-check-card.taken .life-med-status-pill {
+  background-color: var(--decor-color);
+  color: var(--secondary-color);
+}
+
+/* 06 备忘录：待办 / 购物草单勾选行与自由便签卡（零分割线） */
+.life-memo-check-card {
+  background-color: var(--card-bg-color);
+  padding: 11px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.life-memo-check-box {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  background-color: var(--bg-color);
+  border: 1.5px solid var(--secondary-color);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--bg-color);
+}
+
+.life-memo-check-box svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+.life-memo-check-card.done {
+  opacity: 0.58;
+}
+
+.life-memo-check-card.done .life-memo-check-box {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.life-memo-check-card.done .life-memo-title-text {
+  text-decoration: line-through;
+}
+
+.life-memo-note-card {
+  background-color: var(--card-bg-color);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.life-memo-note-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.life-memo-note-body {
+  background-color: rgba(var(--secondary-color-rgb), 0.05);
+  padding: 9px 10px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--secondary-color);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.life-empty-hint {
+  background-color: rgba(var(--secondary-color-rgb), 0.05);
+  padding: 20px;
+  text-align: center;
+  font-family: var(--mono-font);
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+}
+
+/* ==========================================================================
+   8. 01 记账终端 Phase 1：多账户 / 信用透支 / 分期试算 / 分类芯片与子预算（零分割线）
+   ========================================================================== */
+
+.life-vec-ico {
+  width: 16px;
+  height: 16px;
+  display: block;
+  flex-shrink: 0;
+}
+
+.life-cat-chip-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.life-cat-chip {
+  background-color: var(--bg-color);
+  color: var(--secondary-color);
+  border: none;
+  padding: 8px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.life-cat-chip.active {
+  background-color: var(--secondary-color);
+  color: var(--decor-color);
+}
+
+.life-flag-check-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.life-flag-check {
+  background-color: var(--bg-color);
+  padding: 7px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--secondary-color);
+  cursor: pointer;
+}
+
+.life-flag-check input[type="checkbox"] {
+  accent-color: var(--primary-color);
+  width: 14px;
+  height: 14px;
+  margin: 0;
+}
+
+.life-log-ico-box {
+  width: 34px;
+  height: 34px;
+  background-color: rgba(var(--secondary-color-rgb), 0.08);
+  color: var(--secondary-color);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.life-log-item[data-ledger-edit] {
+  cursor: pointer;
+}
+
+.life-log-item.is-editing {
+  background-color: rgba(var(--primary-color-rgb), 0.12);
+}
+
+.life-log-note-txt {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.life-log-val.is-inc,
+.life-log-val.is-ref {
+  color: var(--secondary-color);
+}
+
+.life-log-val.is-trf,
+.life-log-val.is-adj {
+  color: var(--text-muted);
+}
+
+.life-inline-pill {
+  padding: 1px 5px;
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.life-inline-pill.warn {
+  background-color: var(--primary-color);
+  color: var(--bg-color);
+}
+
+.life-inline-pill.is-clickable {
+  border: none;
+  outline: none;
+  cursor: pointer;
+  line-height: 1.25;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.14s ease, transform 0.12s ease;
+}
+
+.life-inline-pill.is-clickable:active {
+  opacity: 0.78;
+  transform: scale(0.95);
+}
+
+.life-inline-pill.ok {
+  background-color: var(--decor-color);
+  color: var(--secondary-color);
+}
+
+.life-inline-pill.muted {
+  background-color: rgba(var(--secondary-color-rgb), 0.12);
+  color: var(--secondary-color);
+}
+
+.life-mini-act-btn {
+  height: 26px;
+  padding: 0 9px;
+  background-color: rgba(var(--secondary-color-rgb), 0.1);
+  color: var(--secondary-color);
+  border: none;
+  font-family: var(--mono-font);
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.life-mini-act-btn.primary {
+  background-color: var(--primary-color);
+  color: var(--bg-color);
+}
+
+.life-mini-act-btn.danger {
+  background-color: rgba(var(--primary-color-rgb), 0.14);
+  color: var(--primary-color);
+}
+
+.life-reimburse-strip {
+  background-color: var(--secondary-color);
+  color: var(--bg-color);
+  padding: 11px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.life-reimburse-strip-head {
+  font-family: var(--mono-font);
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--decor-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.life-reimburse-strip-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.life-reimburse-row {
+  background-color: rgba(var(--bg-color-rgb), 0.1);
+  padding: 7px 9px;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.life-section-caption {
+  font-family: var(--mono-font);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  padding: 2px 2px 0;
+}
+
+.life-acc-card {
+  background-color: var(--card-bg-color);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
+}
+
+.life-acc-card.is-credit {
+  background-color: var(--secondary-color);
+  color: var(--bg-color);
+}
+
+.life-acc-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.life-acc-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.life-acc-ico {
+  width: 34px;
+  height: 34px;
+  background-color: rgba(var(--secondary-color-rgb), 0.1);
+  color: var(--secondary-color);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.life-acc-card.is-credit .life-acc-ico {
+  background-color: rgba(var(--bg-color-rgb), 0.12);
+  color: var(--decor-color);
+}
+
+.life-acc-name {
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.life-acc-meta {
+  font-family: var(--mono-font);
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.life-acc-card.is-credit .life-acc-meta {
+  color: rgba(var(--bg-color-rgb), 0.68);
+}
+
+.life-acc-bal {
+  font-family: var(--mono-font);
+  font-size: 17px;
+  font-weight: 900;
+  color: var(--secondary-color);
+}
+
+.life-acc-debt-box {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.life-acc-debt-lbl {
+  font-family: var(--mono-font);
+  font-size: 9px;
+  color: rgba(var(--bg-color-rgb), 0.65);
+}
+
+.life-acc-debt-val {
+  font-family: var(--mono-font);
+  font-size: 17px;
+  font-weight: 900;
+  color: var(--decor-color);
+}
+
+.life-credit-bar-track {
+  width: 100%;
+  height: 6px;
+  background-color: rgba(var(--secondary-color-rgb), 0.12);
+  overflow: hidden;
+}
+
+.life-acc-card.is-credit .life-credit-bar-track {
+  background-color: rgba(var(--bg-color-rgb), 0.15);
+}
+
+.life-credit-bar-fill {
+  height: 100%;
+  background-color: var(--primary-color);
+}
+
+.life-credit-bar-fill.is-over {
+  background-color: var(--primary-color);
+}
+
+.life-credit-telemetry {
+  font-family: var(--mono-font);
+  font-size: 10px;
+  color: rgba(var(--bg-color-rgb), 0.78);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.life-acc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.life-acc-card.is-credit .life-mini-act-btn {
+  background-color: rgba(var(--bg-color-rgb), 0.14);
+  color: var(--bg-color);
+}
+
+.life-acc-card.is-credit .life-mini-act-btn.primary {
+  background-color: var(--primary-color);
+  color: var(--bg-color);
+}
+
+.life-highlight-pod {
+  background-color: rgba(var(--primary-color-rgb), 0.1);
+}
+
+.life-inst-preview-box {
+  background-color: var(--bg-color);
+  padding: 9px 10px;
+  font-family: var(--mono-font);
+  font-size: 11px;
+  color: var(--secondary-color);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.life-inst-preview-box strong {
+  color: var(--primary-color);
+}
+
+.life-inst-card {
+  background-color: var(--card-bg-color);
+  padding: 11px 12px;
+}
+
+.life-inst-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.life-inst-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.life-inst-btns {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.life-budget-inline-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.life-budget-inline-row .life-submit-btn {
+  padding: 0 20px;
+  white-space: nowrap;
+}
+
+.life-ico-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.life-ico-pick-btn {
+  height: 36px;
+  background-color: var(--bg-color);
+  color: var(--secondary-color);
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.life-ico-pick-btn.active {
+  background-color: var(--primary-color);
+  color: var(--bg-color);
+}
+
+.life-cat-manage-card {
+  background-color: var(--card-bg-color);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.life-cat-manage-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.life-cat-budget-input {
+  width: 84px;
+  height: 30px;
+  background-color: var(--bg-color);
+  color: var(--secondary-color);
+  border: none;
+  padding: 0 8px;
+  font-family: var(--mono-font);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: right;
+}
+
+.life-log-item.is-expired-row,
+.life-sub-card.is-expired-row {
+  opacity: 0.62;
+}
+
+/* 订阅与次卡：折叠新增触发按钮 & 上下双层订阅卡（零分割线） */
+.life-sub-add-trigger {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 13px;
+  background-color: var(--card-bg-color);
+  color: var(--secondary-color);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+  text-align: left;
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+}
+
+.life-sub-add-trigger-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--secondary-color);
+  min-width: 0;
+}
+
+.life-sub-add-trigger-left svg {
+  width: 16px;
+  height: 16px;
+  fill: var(--primary-color);
+  flex-shrink: 0;
+}
+
+.life-sub-add-trigger-en {
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.life-sub-card {
+  background-color: var(--card-bg-color);
+  padding: 12px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.life-sub-card-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.life-sub-card-name {
+  font-size: 14px;
+  font-weight: 900;
+  color: var(--secondary-color);
+  line-height: 1.3;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.life-sub-card-top .life-log-val {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.life-sub-card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.life-sub-card-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.life-sub-card-sub {
+  font-family: var(--mono-font);
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.35;
+  min-width: 0;
+}
+
+.life-sub-card-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.life-sub-card-actions .life-mini-act-btn {
+  height: 26px;
+  white-space: nowrap;
+}
+
+.life-sub-card-actions .life-log-del-btn {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.life-sub-card[data-sub-edit],
+.life-pass-card[data-card-edit] {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.life-sub-card.is-editing,
+.life-pass-card.is-editing {
+  background-color: rgba(var(--primary-color-rgb), 0.12);
+  opacity: 1;
+}
+
+.life-pass-card {
+  background-color: var(--card-bg-color);
+  padding: 12px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.life-pass-card.is-dimmed {
+  opacity: 0.65;
+}
+
+.life-pass-recent-log {
+  font-family: var(--mono-font);
+  font-size: 10px;
+  color: var(--text-muted);
+  background-color: var(--bg-color);
+  padding: 5px 8px;
+}
+
+/* =========================================================
+   01 记账终端 · 账单检索筛选栏 & 四维时间统计视图（零分割线 / 零手写时长）
+   ========================================================= */
+.life-filter-pod {
+  background-color: var(--card-bg-color);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
+}
+
+.life-search-box {
+  height: 36px;
+  background-color: var(--bg-color);
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.life-search-box svg {
+  width: 15px;
+  height: 15px;
+  fill: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.life-search-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  background: transparent;
+  color: var(--secondary-color);
+  border: none;
+  outline: none;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.life-filter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.life-filter-pills {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.life-filter-pill {
+  height: 26px;
+  padding: 0 9px;
+  background-color: var(--bg-color);
+  color: var(--secondary-color);
+  border: none;
+  font-family: var(--mono-font);
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.life-filter-pill.active {
+  background-color: var(--primary-color);
+  color: var(--bg-color);
+}
+
+.life-filter-acc-select,
+.life-filter-acc-trigger {
+  height: 26px;
+  max-width: 126px;
+  background-color: var(--bg-color);
+  color: var(--secondary-color);
+  border: none;
+  padding: 0 8px;
+  font-family: var(--mono-font);
+  font-size: 10px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  cursor: pointer;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%);
+}
+
+.life-filter-acc-trigger .life-picker-txt {
+  font-family: var(--mono-font);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.life-filter-acc-trigger .life-picker-arrow {
+  width: 12px;
+  height: 12px;
+}
+
+.life-filter-telemetry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--mono-font);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  background-color: var(--bg-color);
+  padding: 5px 8px;
+}
+
+/* 统计周期步进导航条（极简通透裸排：无卡片底、无按钮底、左右贴边） */
+.life-period-nav-bar {
+  background: transparent;
+  padding: 2px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.life-period-step-btn {
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  color: var(--secondary-color);
+  border: none;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.life-period-step-btn:first-child {
+  justify-content: flex-start;
+}
+
+.life-period-step-btn:last-child {
+  justify-content: flex-end;
+}
+
+.life-period-step-btn:active {
+  opacity: 0.55;
+  transform: scale(0.9);
+}
+
+.life-period-step-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.life-period-center {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.life-period-title {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-family: var(--mono-font);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: var(--secondary-color);
+}
+
+.life-period-title.is-offset {
+  color: var(--primary-color);
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.life-period-title.is-offset:active {
+  opacity: 0.6;
+}
+
+/* SVG 趋势柱图舱 & 月度热力日历矩阵 */
+.life-stats-chart-pod {
+  background-color: var(--card-bg-color);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+}
+
+.life-stats-svg-bar {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.life-svg-val-txt {
+  font-family: var(--mono-font);
+  font-size: 8px;
+  font-weight: 800;
+  fill: var(--secondary-color);
+}
+
+.life-svg-axis-txt {
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 800;
+  fill: var(--secondary-color);
+}
+
+.life-svg-axis-txt.is-hi,
+.life-svg-sub-txt.is-hi {
+  fill: var(--primary-color);
+  font-weight: 900;
+}
+
+.life-svg-sub-txt {
+  font-family: var(--mono-font);
+  font-size: 8px;
+  font-weight: 700;
+  fill: var(--text-muted);
+}
+
+.life-cal-grid-head {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.life-cal-head-cell {
+  text-align: center;
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--text-muted);
+  padding: 2px 0;
+}
+
+.life-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.life-cal-cell {
+  min-height: 40px;
+  background-color: var(--bg-color);
+  color: var(--secondary-color);
+  border: none;
+  padding: 4px 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.life-cal-cell.is-empty {
+  opacity: 0.25;
+  pointer-events: none;
+  cursor: default;
+}
+
+.life-cal-cell.heat-1 {
+  background-color: rgba(var(--primary-color-rgb, 214, 72, 42), 0.14);
+}
+
+.life-cal-cell.heat-2 {
+  background-color: rgba(var(--primary-color-rgb, 214, 72, 42), 0.28);
+}
+
+.life-cal-cell.heat-3 {
+  background-color: rgba(var(--primary-color-rgb, 214, 72, 42), 0.45);
+}
+
+.life-cal-cell.heat-4 {
+  background-color: var(--primary-color);
+  color: var(--bg-color);
+}
+
+.life-cal-cell.is-today {
+  background-color: var(--secondary-color);
+  color: var(--bg-color);
+}
+
+.life-cal-cell.is-selected {
+  background-color: var(--primary-color);
+  color: var(--bg-color);
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%);
+}
+
+.life-cal-day-num {
+  font-family: var(--mono-font);
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.life-cal-day-amt {
+  font-family: var(--mono-font);
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1.1;
+  opacity: 0.86;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 资产总览大厅 Hub 样式 */
+.life-asset-hub-networth {
+  background-color: var(--secondary-color);
+  color: var(--bg-color);
+  padding: 20px 16px 18px;
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.life-asset-hub-networth-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.life-asset-hub-networth-lbl {
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: rgba(var(--bg-color-rgb), 0.6);
+}
+
+.life-asset-hub-networth-tag {
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--decor-color);
+}
+
+.life-asset-hub-networth-val {
+  font-family: var(--mono-font);
+  font-size: 32px;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--bg-color);
+}
+
+.life-asset-hub-networth-val.is-neg {
+  color: var(--decor-color);
+}
+
+.life-asset-hub-networth-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.life-asset-hub-networth-sub {
+  font-family: var(--mono-font);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.life-asset-hub-networth-sub.is-pos {
+  color: rgba(var(--bg-color-rgb), 0.72);
+}
+
+.life-asset-hub-networth-sub.is-neg {
+  color: var(--decor-color);
+  opacity: 0.9;
+}
+
+/* 三张通栏入口卡片 */
+.life-asset-hub-card {
+  width: 100%;
+  background-color: var(--card-bg-color);
+  border: none;
+  padding: 15px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.12s ease;
+}
+
+.life-asset-hub-card:active {
+  opacity: 0.76;
+}
+
+.life-asset-hub-card-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.life-asset-hub-card-ico {
+  width: 38px;
+  height: 38px;
+  background-color: rgba(var(--secondary-color-rgb), 0.09);
+  color: var(--secondary-color);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.life-asset-hub-card-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.life-asset-hub-card-name {
+  font-size: 15px;
+  font-weight: 900;
+  color: var(--secondary-color);
+  letter-spacing: 0.02em;
+}
+
+.life-asset-hub-card-en {
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.life-asset-hub-card-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.life-asset-hub-card-metric {
+  font-family: var(--mono-font);
+  font-size: 11px;
+  font-weight: 900;
+  color: var(--secondary-color);
+  white-space: nowrap;
+}
+
+.life-asset-hub-card-hint {
+  font-family: var(--mono-font);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.life-asset-hub-card-hint.is-warn {
+  color: var(--primary-color);
+}
+
+/* 子视图内嵌返回栏 */
+.life-asset-sub-back-bar {
+  display: flex;
+  align-items: center;
+  padding: 0 0 2px;
+}
+
+.life-asset-sub-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  color: var(--primary-color);
+  font-family: var(--mono-font);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  padding: 6px 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.life-asset-sub-back-btn svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+/* 分类构成占比排行行 */
+.life-rank-row {
+  background-color: var(--bg-color);
+  padding: 9px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.life-rank-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.life-rank-pct {
+  font-family: var(--mono-font);
+  font-size: 10px;
+  font-weight: 900;
+  color: var(--primary-color);
+  margin-left: 4px;
+}
+
+/* ==========================================================================
+   Lieflat Charts · Lupi Basics 机能矢量图表语法 (零分割线 / 刻度单位表达 / 明度分级)
+   ========================================================================== */
+.life-lupi-footnote {
+  font-family: var(--mono-font);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  text-align: right;
+  opacity: 0.82;
+  margin-top: -2px;
+}
+
+.life-lupi-footnote.is-spread {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 2px;
+  white-space: nowrap;
+}
+
+.life-lupi-donut-wrap {
+  background-color: var(--bg-color);
+  padding: 10px 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.life-tick-row-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.lf-stroke-hero {
+  stroke: var(--primary-color);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.lf-stroke-ink {
+  stroke: var(--secondary-color);
+  stroke-width: 1.35;
+  stroke-linecap: round;
+}
+
+.lf-stroke-muted {
+  stroke: var(--secondary-color);
+  stroke-linecap: round;
+}
+
+.lf-stroke-faint {
+  stroke: var(--secondary-color);
+  stroke-width: 0.85;
+  stroke-linecap: round;
+  opacity: 0.22;
+}
+
+.lf-dot-hero {
+  fill: var(--primary-color);
+}
+
+.lf-dot-ink {
+  fill: var(--secondary-color);
+}
+
+.lf-dot-faint {
+  fill: var(--secondary-color);
+  opacity: 0.28;
+}
+
+.lf-dot-weekend {
+  fill: var(--bg-color);
+  stroke: var(--secondary-color);
+  stroke-width: 1.15;
+}
+
+.lf-dot-weekend-hero {
+  fill: var(--bg-color);
+  stroke: var(--primary-color);
+  stroke-width: 1.45;
+}
+
+.lf-contour-path {
+  stroke: var(--secondary-color);
+  stroke-width: 1.15;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  opacity: 0.78;
+}
+
+.lf-halo {
+  paint-order: stroke fill;
+  stroke: var(--bg-color);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.life-svg-val-txt.is-hi {
+  fill: var(--primary-color);
+  font-weight: 900;
+}
+
+/* 百刻环形表盘明度阶梯（0 号主色高亮，1~5 号墨色透明度诚实递减） */
+.lf-donut-tick {
+  stroke-width: 1.45;
+  stroke-linecap: round;
+}
+
+.lf-donut-tick.lf-seg-0 { stroke: var(--primary-color); stroke-width: 1.75; }
+.lf-donut-tick.lf-seg-1 { stroke: var(--secondary-color); opacity: 0.9; }
+.lf-donut-tick.lf-seg-2 { stroke: var(--secondary-color); opacity: 0.66; }
+.lf-donut-tick.lf-seg-3 { stroke: var(--secondary-color); opacity: 0.46; }
+.lf-donut-tick.lf-seg-4 { stroke: var(--secondary-color); opacity: 0.32; }
+.lf-donut-tick.lf-seg-5 { stroke: var(--secondary-color); opacity: 0.2; }
+
+.lf-leader-line {
+  stroke: var(--secondary-color);
+  stroke-width: 0.65;
+  stroke-dasharray: 1.5 2;
+  opacity: 0.45;
+}
+
+.lf-donut-lbl {
+  font-family: var(--mono-font);
+  font-size: 8.5px;
+  font-weight: 800;
+  fill: var(--secondary-color);
+}
+
+.lf-donut-lbl.lf-seg-0 {
+  fill: var(--primary-color);
+  font-weight: 900;
+}
+
+.lf-donut-center-val {
+  font-family: var(--mono-font);
+  font-size: 13px;
+  font-weight: 900;
+  fill: var(--secondary-color);
+}
+
+.lf-donut-center-sub {
+  font-family: var(--mono-font);
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  fill: var(--text-muted);
+}
+
+/* Lieflat Lupi 微动效入场与无障碍降级 */
+@keyframes lfFadeIn {
+  from { opacity: 0; }
+}
+
+@keyframes lfDrawLine {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes lfPopDot {
+  from { opacity: 0; transform: scale(0.35); }
+  to { transform: scale(1); }
+}
+
+.lf-fade {
+  animation: lfFadeIn 0.36s ease-out both;
+}
+
+.lf-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  animation: lfDrawLine 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.lf-pop {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lfPopDot 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lf-fade,
+  .lf-draw,
+  .lf-pop {
+    animation: none !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .life-hero-composite {
+    grid-template-columns: 126px 1fr;
+  }
+}

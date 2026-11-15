@@ -39,7 +39,10 @@
      执行员在设置中激活自定义字体时，theme.js 只需重写这一个变量，
      全终端所有文字（含输入框、按钮、弹窗、列表）即刻同步切换。
      --mono-font 为机能等宽通道，专供编号、时钟、序列号等需要
-     等宽对齐的战术组件，不受自定义字体影响，保证数字不歪斜。 */
+     等宽对齐的战术组件，不受自定义字体影响，保证数字不歪斜。
+     --display-font 为机能展示通道，专供大号编号、卡片英文标签等
+     强调元素，使用 Bebas Neue 窄长无衬线体，力量感与工业感更强。 */
   --main-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   --mono-font: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --display-font: 'BebasNeue', 'Arial Narrow', 'Helvetica Neue', sans-serif;
 }

@@ -74,6 +74,19 @@
       if (window.MemoryBankApp && typeof MemoryBankApp.open === 'function') {
         MemoryBankApp.open();
       }
+    } else if (appId === 'lifeService') {
+      if (window.LifeServiceUI && typeof LifeServiceUI.open === 'function') {
+        LifeServiceUI.open();
+      }
+    } else if (appId === 'retroSpace') {
+      if (window.RetroToast) {
+        RetroToast.show({
+          tag: 'SYSTEM // 模块连接',
+          message: `${appName || appId} 正在构筑中`,
+          detail: '核心时空通道校准中，后续更新开放。',
+          type: 'info'
+        });
+      }
     } else {
       if (window.RetroToast) {
         RetroToast.show({

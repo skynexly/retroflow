@@ -215,6 +215,16 @@ const DataVault = (() => {
       assetPrefixes: [],
       localKeys: [],
       records: false
+    },
+    life: {
+      zh: '生活服务',
+      en: 'LIFE // LOGISTICS DECK',
+      desc: '记账流水、运动打卡、体重管理、经期管理、药盒方案、睡眠作息与订阅管理',
+      docKeys: ['life/config'],
+      docPrefixes: ['life/'],
+      assetPrefixes: ['life/'],
+      localKeys: [],
+      recordPrefixes: ['life:']
     }
   };
 

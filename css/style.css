@@ -590,12 +590,12 @@ body.has-wallpaper {
 
 .desktop-carousel-track {
   display: flex;
-  width: 200%;
+  width: 300%;
   transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .desktop-carousel-page {
-  width: 50%;
+  width: calc(100% / 3);
   flex-shrink: 0;
   scroll-snap-align: start;
   scroll-snap-stop: always;
@@ -694,6 +694,10 @@ body.has-wallpaper {
   grid-template-columns: repeat(2, 1fr);
   gap: clamp(10px, 2.5vw, 14px);
   width: 100%;
+}
+
+.app-bento-grid-p3 {
+  margin-top: 12px;
 }
 
 .bento-card {
@@ -4049,6 +4053,13 @@ html.theme-color-transition *::after {
 @font-face {
   font-family: 'PresetSampleMincho';
   src: url("../assets/fonts/font-mincho.otf");
+  font-display: swap;
+}
+
+/* Bebas Neue：机能展示字体，专供大编号、标题标签等强调元素 */
+@font-face {
+  font-family: 'BebasNeue';
+  src: url("../assets/fonts/bebas-neue.ttf");
   font-display: swap;
 }
 

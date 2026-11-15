@@ -140,6 +140,14 @@ const DataRegistry = (() => {
       // 记忆是叙事沉淀，整域清空等于抹除因果，不允许一键清
       assetClearable: false,
       hasText: true
+    },
+    life: {
+      prefix: 'life/',
+      zh: '生活服务',
+      en: 'LIFE SUPPORT',
+      desc: '后勤整备配置（记账预算、经期周期参数、药盒方案、订阅协议）',
+      assetClearable: true,
+      hasText: true
     }
   };
 

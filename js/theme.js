@@ -687,7 +687,7 @@ ${sizeAdjustLine}      }
 
   /* ---------------- 桌面磁贴图标美化 ---------------- */
 
-  // 13 张桌面卡片的美化配置清单。
+  // 15 张桌面卡片的美化配置清单。
   // canIcon=false 的卡片（音乐/备忘录）是功能组件形态，只支持换背景。
   const TILE_DEFS = [
     { id: 'profile',   name: '红卡',     index: '00', bgSel: '.profile-card',                    iconSel: null,                                                 canIcon: false },
@@ -703,7 +703,9 @@ ${sizeAdjustLine}      }
     { id: 'music',     name: '音乐',     index: '10', bgSel: '#bentoAudioDeck',                   iconSel: null,                                                 canIcon: false, canBg: true },
     { id: 'memo',      name: '备忘录',   index: '11', bgSel: '#bentoMemoCard',                    iconSel: null,                                                 canIcon: false, canBg: true },
     { id: 'credits',   name: '积分资产', index: '12', bgSel: '.bento-card[data-app="credits"]',   iconSel: '.bento-card[data-app="credits"] .bento-icon-wrap',   canIcon: true },
-    { id: 'inventory', name: '储物室',   index: '13', bgSel: '.bento-card[data-app="inventory"]', iconSel: '.bento-card[data-app="inventory"] .bento-icon-wrap', canIcon: true }
+    { id: 'inventory', name: '储物室',   index: '13', bgSel: '.bento-card[data-app="inventory"]', iconSel: '.bento-card[data-app="inventory"] .bento-icon-wrap', canIcon: true },
+    { id: 'lifeService', name: '生活服务', index: '14', bgSel: '.bento-card[data-app="lifeService"]', iconSel: '.bento-card[data-app="lifeService"] .bento-icon-wrap', canIcon: true },
+    { id: 'retroSpace',  name: '溯流空间', index: '15', bgSel: '.bento-card[data-app="retroSpace"]',  iconSel: '.bento-card[data-app="retroSpace"] .bento-icon-wrap',  canIcon: true }
   ];
 
   // 内部缓存：图标容器的原始 SVG（首次应用前快照，供清除时还原）
@@ -939,7 +941,7 @@ ${sizeAdjustLine}      }
     await applyTile(id);
   }
 
-  // 恢复默认：清空全部 13 张卡片的背景、图标定制，并关闭全局去底座开关
+  // 恢复默认：清空全部 15 张卡片的背景、图标定制，并关闭全局去底座开关
   async function resetAllTiles() {
     for (const def of TILE_DEFS) {
       // eslint-disable-next-line no-await-in-loop

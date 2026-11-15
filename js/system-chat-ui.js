@@ -2947,13 +2947,57 @@
       }
     }
 
-    // 统一按 createdAt 升序排序时间线，排完清掉内部时间戳字段。
+    // 记账流水注入：执行员在生活服务记的账，按记账时刻交错进助手时间线。
+    // 与副本 recap 同一套机制：不写聊天记录、界面不显示，每次装配上下文时现场读取，
+    // 随对话推进被 fitMessagesToContext 从旧往新挤出。流水被编辑或删除，下次装配自动跟着变。
+    if (isLedgerContextEnabled()) {
+      try {
+        const ledgerEvents = await collectLedgerContextEvents(records, allRecords, stopBeforeRecordId);
+        for (const ev of ledgerEvents) {
+          history.push({ role: 'system', content: '', _createdAt: ev.at, _ledgerLine: ev });
+        }
+      } catch (err) {
+        console.warn('[System Chat] 记账流水注入失败：', err);
+      }
+    }
+
+    // 统一按 createdAt 升序排序时间线。
     history.sort((a, b) => {
       const ta = (typeof a._createdAt === 'number') ? a._createdAt : 0;
       const tb = (typeof b._createdAt === 'number') ? b._createdAt : 0;
       return ta - tb;
     });
-    for (const item of history) delete item._createdAt;
+
+    // 相邻的记账条目（中间没有聊天消息或副本摘要隔开）合并成一条，省 token 也不刷屏。
+    if (history.some((item) => item._ledgerLine)) {
+      const merged = [];
+      for (const item of history) {
+        if (item._ledgerLine) {
+          const prev = merged[merged.length - 1];
+          if (prev && prev._ledgerLines) {
+            prev._ledgerLines.push(item._ledgerLine);
+          } else {
+            merged.push({ role: 'system', content: '', _ledgerLines: [item._ledgerLine] });
+          }
+          continue;
+        }
+        merged.push(item);
+      }
+      const ledgerEnvoyName = (window.Store && Store.envoy && Store.envoy.identity && Store.envoy.identity.name)
+        ? String(Store.envoy.identity.name).trim()
+        : '执行员';
+      for (const item of merged) {
+        if (item._ledgerLines) item.content = buildLedgerContextBlock(item._ledgerLines, ledgerEnvoyName, includeTime);
+      }
+      history.splice(0, history.length, ...merged);
+    }
+
+    // 排完清掉内部字段。
+    for (const item of history) {
+      delete item._createdAt;
+      delete item._ledgerLine;
+      delete item._ledgerLines;
+    }
 
     // —— 尾部常驻块（不参与时间排序，恒定贴在时间线之后）——
 
@@ -2968,6 +3012,157 @@
     if (vaultBlock) history.push({ role: 'system', content: vaultBlock });
 
     return history;
+  }
+
+  /* ---------------- 记账流水上下文注入 ---------------- */
+
+  // 单次装配最多注入的记账事件数（取最新的这些条）。再早的本来也会被 token 预算挤掉，
+  // 先在这里截断，免得长期不聊天时一次读进几百条流水白白参与裁剪计算。
+  const LEDGER_CONTEXT_MAX_EVENTS = 80;
+  // 聊天记录为空时，往回看多少天的流水
+  const LEDGER_CONTEXT_EMPTY_CHAT_DAYS = 7;
+  const LEDGER_NOTE_MAX_CHARS = 60;
+
+  /**
+   * 记账同步开关（预留口子）：读对话设置 ledgerContext，缺省视为开启。
+   * 目前设置页没有对应控件，需要时在 system-chat-settings 里加一个开关写这个字段即可。
+   */
+  function isLedgerContextEnabled() {
+    const settings = window.SystemChatSettings && typeof SystemChatSettings.getSettings === 'function'
+      ? SystemChatSettings.getSettings()
+      : null;
+    return !settings || settings.ledgerContext !== false;
+  }
+
+  function formatLedgerClock(ts) {
+    const d = new Date(ts);
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  }
+
+  function localDateKeyOf(ts) {
+    const d = new Date(ts);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  /**
+   * 把记账流水整理成时间线事件 { at, text }。
+   * 注入范围：支出 / 收入 / 退款 / 转账（含信用还款）/ 报销到账（取核销时刻）/ 自动续费。
+   * 余额校准（adjust）是记账工具内部的修正，不注入。
+   * 时间窗：下限是当前对话最早一条记录（对话为空时取最近 7 天），
+   * 回溯重写时上限截到锚点记录，保证重写看到的是「当时」的账。
+   */
+  async function collectLedgerContextEvents(records, allRecords, stopBeforeRecordId) {
+    if (!window.LifeStore || typeof LifeStore.listModuleRecords !== 'function') return [];
+    const ledger = await LifeStore.listModuleRecords('ledger');
+    if (!Array.isArray(ledger) || !ledger.length) return [];
+
+    const firstRec = (records || []).find((r) => r && Number(r.createdAt) > 0);
+    const lowerBound = firstRec
+      ? Number(firstRec.createdAt)
+      : Date.now() - LEDGER_CONTEXT_EMPTY_CHAT_DAYS * 86400000;
+    let upperBound = Infinity;
+    if (stopBeforeRecordId) {
+      const anchor = (allRecords || []).find((r) => r && String(r.id || '') === stopBeforeRecordId);
+      if (anchor && Number(anchor.createdAt) > 0) upperBound = Number(anchor.createdAt);
+    }
+
+    const cfg = (typeof LifeStore.getConfig === 'function' && LifeStore.getConfig()) || {};
+    const cur = String(cfg.currencySymbol || '¥');
+    const accMap = new Map((cfg.accounts || []).map((a) => [a.id, a]));
+    const accName = (id) => {
+      const a = accMap.get(id);
+      return a ? String(a.name || '').trim() : '';
+    };
+    const money = (v) => `${cur}${(Number(v) || 0).toFixed(2)}`;
+    const cleanNote = (s) => {
+      const t = String(s || '').replace(/\s+/g, ' ').trim();
+      return t.length > LEDGER_NOTE_MAX_CHARS ? `${t.slice(0, LEDGER_NOTE_MAX_CHARS)}…` : t;
+    };
+    const inWindow = (ts) => ts >= lowerBound && ts < upperBound;
+
+    const events = [];
+    for (const r of ledger) {
+      if (!r) continue;
+      const type = r.type || 'expense';
+      const at = Number(r.createdAt) || 0;
+      const amt = money(r.amount);
+      const cat = String(r.category || '').trim();
+      const rawNote = String(r.note || '').trim();
+
+      if (at && inWindow(at) && type !== 'adjust') {
+        const parts = [];
+        let label = '';
+        let note = cleanNote(rawNote);
+
+        if (type === 'expense') {
+          const autoMatch = /^\[自动续费\]\s*(.*)$/.exec(rawNote);
+          if (autoMatch) {
+            label = '自动续费';
+            note = '';
+            parts.push(cleanNote(autoMatch[1]) || cat);
+          } else {
+            label = '支出';
+            if (cat) parts.push(cat);
+          }
+          const acc = accName(r.accountId);
+          if (acc) parts.push(acc);
+          if (r.reimbursable && !r.reimbursed) parts.push('待报销');
+          if (r.excludeFromStats) parts.push('不计预算');
+        } else if (type === 'income') {
+          label = '收入';
+          if (cat) parts.push(cat);
+          const acc = accName(r.accountId);
+          if (acc) parts.push(acc);
+        } else if (type === 'refund') {
+          label = '退款';
+          if (cat) parts.push(cat);
+          const acc = accName(r.accountId);
+          if (acc) parts.push(`退回${acc}`);
+        } else if (type === 'transfer') {
+          label = cat === '信用还款' ? '还款' : '转账';
+          const from = accName(r.fromAccountId || r.accountId) || '转出账户';
+          const to = accName(r.toAccountId) || '转入账户';
+          parts.push(`${from} → ${to}`);
+          if (Number(r.fee) > 0) parts.push(`手续费 ${money(r.fee)}`);
+        }
+
+        if (label) {
+          // 补记过去日期的账：标出账单日期，避免助手以为是刚刚花的
+          if (r.dateKey && r.dateKey !== localDateKeyOf(at)) parts.push(`账单日期 ${r.dateKey}`);
+          if (note) parts.push(`备注：${note}`);
+          events.push({ at, text: `${label} ${amt}${parts.length ? ` · ${parts.join(' · ')}` : ''}` });
+        }
+      }
+
+      // 报销到账是独立事件，时间取核销时刻
+      const reimAt = Number(r.reimbursedAt) || 0;
+      if (type === 'expense' && r.reimbursable && r.reimbursed && reimAt && inWindow(reimAt)) {
+        const parts = [];
+        if (cat) parts.push(cat);
+        const acc = accName(r.reimburseAccountId || r.accountId);
+        if (acc) parts.push(`回款至${acc}`);
+        const note = cleanNote(rawNote);
+        if (note) parts.push(`原备注：${note}`);
+        events.push({ at: reimAt, text: `报销到账 ${amt}${parts.length ? ` · ${parts.join(' · ')}` : ''}` });
+      }
+    }
+
+    events.sort((a, b) => a.at - b.at);
+    return events.length > LEDGER_CONTEXT_MAX_EVENTS
+      ? events.slice(events.length - LEDGER_CONTEXT_MAX_EVENTS)
+      : events;
+  }
+
+  /** 把一组相邻记账事件拼成一条上下文消息 */
+  function buildLedgerContextBlock(lines, envoyName, includeTime) {
+    const first = lines[0];
+    const headTime = includeTime ? formatRealityDateTime(first.at) : '';
+    const header = headTime ? `[记账 · ${headTime}]` : '[记账]';
+    const showClock = includeTime && lines.length > 1;
+    const body = lines
+      .map((ev) => `- ${showClock ? `${formatLedgerClock(ev.at)} ` : ''}${ev.text}`)
+      .join('\n');
+    return `${header}\n执行员「${envoyName}」在生活服务里记了 ${lines.length} 笔账：\n${body}`;
   }
 
   /**

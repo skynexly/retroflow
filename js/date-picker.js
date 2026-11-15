@@ -27,6 +27,7 @@ const DatePickerModal = (() => {
 
   // DOM 节点
   let overlay = null;
+  let tagEl = null;
   let titleEl = null;
   let previewText = null;
   let previewZodiac = null;
@@ -46,6 +47,8 @@ const DatePickerModal = (() => {
   let selYear = '';
   let selMonth = '08';
   let selDay = '29';
+  let curMode = 'birthday'; // 'birthday' | 'date'
+  let curAllowClear = true;
 
   let currentResolver = null;
   let isInitialized = false;
@@ -106,6 +109,7 @@ const DatePickerModal = (() => {
     overlay = document.getElementById('datePickerOverlay');
     if (!overlay) return;
 
+    tagEl = overlay.querySelector('.picker-tag');
     titleEl = document.getElementById('datePickerTitle');
     previewText = document.getElementById('datePreviewText');
     previewZodiac = document.getElementById('datePreviewZodiac');
@@ -125,13 +129,18 @@ const DatePickerModal = (() => {
     if (yearTrigger) {
       yearTrigger.addEventListener('click', async () => {
         const currentYear = new Date().getFullYear();
-        const opts = [{ value: '', label: '-- 不设', hint: '不指定出生年份' }];
-        for (let y = currentYear + 2; y >= 1940; y--) {
+        const opts = [];
+        if (curMode !== 'date') {
+          opts.push({ value: '', label: '-- 不设', hint: '不指定出生年份' });
+        }
+        const maxYear = curMode === 'date' ? currentYear + 10 : currentYear + 2;
+        const minYear = curMode === 'date' ? currentYear - 20 : 1940;
+        for (let y = maxYear; y >= minYear; y--) {
           opts.push({ value: String(y), label: `${y} 年` });
         }
         const picked = await SelectModal.pick({
-          title: '选择出生年份',
-          tag: 'CALENDAR // 年份校准',
+          title: curMode === 'date' ? '选择年份' : '选择出生年份',
+          tag: curMode === 'date' ? 'CALENDAR 年份校准' : 'CALENDAR // 年份校准',
           options: opts,
           value: selYear
         });
@@ -153,7 +162,7 @@ const DatePickerModal = (() => {
         }
         const picked = await SelectModal.pick({
           title: '选择月份',
-          tag: 'CALENDAR // 月份校准',
+          tag: curMode === 'date' ? 'CALENDAR 月份校准' : 'CALENDAR // 月份校准',
           options: opts,
           value: selMonth,
           searchable: false
@@ -177,7 +186,7 @@ const DatePickerModal = (() => {
         }
         const picked = await SelectModal.pick({
           title: '选择日期',
-          tag: `CALENDAR // 当月共 ${maxDays} 天`,
+          tag: curMode === 'date' ? `CALENDAR 当月共 ${maxDays} 天` : `CALENDAR // 当月共 ${maxDays} 天`,
           options: opts,
           value: selDay
         });
@@ -191,6 +200,7 @@ const DatePickerModal = (() => {
 
     if (clearYearBtn) {
       clearYearBtn.addEventListener('click', () => {
+        if (curMode === 'date') return;
         selYear = '';
         clampDay();
         renderTriggers();
@@ -204,6 +214,15 @@ const DatePickerModal = (() => {
 
     if (clearBtn) {
       clearBtn.addEventListener('click', () => {
+        if (curMode === 'date' && !curAllowClear) {
+          const now = new Date();
+          selYear = String(now.getFullYear());
+          selMonth = pad(now.getMonth() + 1);
+          selDay = pad(now.getDate());
+          renderTriggers();
+          updatePreview();
+          return;
+        }
         close('');
       });
     }
@@ -212,6 +231,11 @@ const DatePickerModal = (() => {
       confirmBtn.addEventListener('click', () => {
         if (!selMonth || !selDay) {
           close('');
+          return;
+        }
+        if (curMode === 'date') {
+          const y = selYear || String(new Date().getFullYear());
+          close(`${y}-${selMonth}-${selDay}`);
           return;
         }
         const result = selYear ? `${selYear}.${selMonth}.${selDay}` : `${selMonth}.${selDay}`;
@@ -250,6 +274,32 @@ const DatePickerModal = (() => {
     const m = selMonth || '01';
     const d = selDay || '01';
 
+    if (curMode === 'date') {
+      const fullY = Number(y) || new Date().getFullYear();
+      const target = new Date(fullY, Number(m) - 1, Number(d));
+      const today = new Date();
+      const todayZero = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const diffDays = Math.round((target.getTime() - todayZero.getTime()) / 86400000);
+      const weekCn = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][target.getDay()];
+      const weekEn = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][target.getDay()];
+
+      if (previewText) {
+        previewText.textContent = `${fullY}-${m}-${d}`;
+      }
+      if (previewZodiac) {
+        previewZodiac.textContent = `${weekCn} · ${weekEn}`;
+      }
+      if (previewAge) {
+        if (diffDays === 0) previewAge.textContent = '今天';
+        else if (diffDays === -1) previewAge.textContent = '昨天';
+        else if (diffDays === 1) previewAge.textContent = '明天';
+        else if (diffDays < 0) previewAge.textContent = `${Math.abs(diffDays)} 天前`;
+        else previewAge.textContent = `${diffDays} 天后`;
+        previewAge.hidden = false;
+      }
+      return;
+    }
+
     if (previewText) {
       previewText.textContent = y ? `${y}.${m}.${d}` : `-- · ${m}.${d}`;
     }
@@ -273,9 +323,16 @@ const DatePickerModal = (() => {
   // 解析传入的字符串并回填状态
   function parseAndSet(val) {
     const applyDefault = () => {
-      selYear = '';
-      selMonth = '08';
-      selDay = '29';
+      if (curMode === 'date') {
+        const now = new Date();
+        selYear = String(now.getFullYear());
+        selMonth = pad(now.getMonth() + 1);
+        selDay = pad(now.getDate());
+      } else {
+        selYear = '';
+        selMonth = '08';
+        selDay = '29';
+      }
     };
 
     if (!val || typeof val !== 'string') {
@@ -292,7 +349,7 @@ const DatePickerModal = (() => {
         selMonth = pad(matchFull[2]);
         selDay = pad(matchFull[3]);
       } else if (matchShort) {
-        selYear = '';
+        selYear = curMode === 'date' ? String(new Date().getFullYear()) : '';
         selMonth = pad(matchShort[1]);
         selDay = pad(matchShort[2]);
       } else {
@@ -309,8 +366,21 @@ const DatePickerModal = (() => {
     initDOM();
     if (!overlay) return Promise.resolve(null);
 
-    const { value = '', title = '选择诞生日' } = options;
+    const {
+      value = '',
+      title = options.mode === 'date' ? '选择日期' : '选择诞生日',
+      tag = options.mode === 'date' ? 'CALENDAR 日期校准' : 'CALENDAR // 星历校准',
+      mode = 'birthday',
+      allowClear = mode !== 'date'
+    } = options;
+
+    curMode = mode === 'date' ? 'date' : 'birthday';
+    curAllowClear = Boolean(allowClear);
+
+    if (tagEl) tagEl.textContent = tag;
     if (titleEl) titleEl.textContent = title;
+    if (clearYearBtn) clearYearBtn.hidden = curMode === 'date';
+    if (clearBtn) clearBtn.textContent = (curMode === 'date' && !curAllowClear) ? '今天' : '清空';
 
     parseAndSet(value);
 
