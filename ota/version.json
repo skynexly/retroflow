@@ -32,17 +32,21 @@
   "channel": "stable",
   "latest": {
     "version": "1.3.4",
-    "build": 1306,
+    "build": 1307,
     "minBinary": 7,
-    "releasedAt": "2026-11-12T07:10:36Z",
+    "releasedAt": "2026-11-15T12:44:26Z",
     "notes": [
-      "fix: 天气感知 - 城市输入框样式修复，对齐提取频率布局，删除说明文字"
+      "feat: 订阅管理UI精简、记账流水自动同步与数据清理",
+      "订阅管理：移除状态胶囊、整卡点击编辑、防重复记账",
+      "预算与分类：清理双斜杠文案、修复底部按钮压缩bug",
+      "记账流水：自动同步进助手上下文（支出/收入/转账/报销）",
+      "数据清理：移除3条预设订阅假数据并自动清理旧存档"
     ],
     "packages": {
       "full": {
-        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1306/retroflow-ota-full-b1306.zip",
-        "sha256": "cb314a9040dd5c620a83ea9f1ee87909e8b3014599d0fbc3f838531d2d7e9d7c",
-        "size": 1934953
+        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1307/retroflow-ota-full-b1307.zip",
+        "sha256": "e0ce1c6b946181a3bf4df02529f3a8d164fc1bdaad6d31f6761bfcf68076697e",
+        "size": 2042874
       },
       "patch": {
         "sinceBuild": 0,
@@ -52,5 +56,5 @@
       }
     }
   },
-  "_status": "已发布 build 1306（全量包，字体常驻不打包）。patch 差分留待后续。"
+  "_status": "已发布 build 1307（全量包，字体常驻不打包）。patch 差分留待后续。"
 }
