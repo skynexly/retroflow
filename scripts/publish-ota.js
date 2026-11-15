@@ -42,7 +42,9 @@ const REPO = 'skynexly/retroflow';
 const [OWNER, REPO_NAME] = REPO.split('/');
 const MANIFEST = path.join(ROOT, 'ota', 'version.json');
 const WWW = path.join(ROOT, 'www');
-const FONT_DIR_REL = path.join('assets', 'fonts'); // 相对 www，打包时排除
+const FONT_DIR_REL = path.join('assets', 'fonts'); // 相对 www，打包时排除（除白名单外）
+// 字体白名单：这些文件即使位于 fonts 目录也允许热更（小体积、新增、APK 可能未内置）
+const FONT_WHITELIST = ['bebas-neue.ttf'];
 const JSDELIVR_PURGE = `https://purge.jsdelivr.net/gh/${REPO}@main/ota/version.json`;
 const RAW_MANIFEST = `https://raw.githubusercontent.com/${REPO}/main/ota/version.json`;
 
@@ -158,35 +160,39 @@ function buildWww() {
 
 /* ------------------------------- 打包（python3 zipfile，排除字体） ------------------------------- */
 function makeZip(outZip) {
-  log(`打包热更 zip（排除 ${FONT_DIR_REL}/）…`);
+  log(`打包热更 zip（排除 ${FONT_DIR_REL}/，白名单：${FONT_WHITELIST.join(', ') || '无'}）…`);
   const py = `
 import zipfile, os, sys
-www = sys.argv[1]; out = sys.argv[2]; fontRel = sys.argv[3]
+www = sys.argv[1]; out = sys.argv[2]; fontRel = sys.argv[3]; whitelist = sys.argv[4].split(',') if sys.argv[4] else []
 fontAbs = os.path.join(www, fontRel)
 # 固定时间戳：www 每次重建，文件 mtime 都会变，若按真实 mtime 写入 zip 元数据，
 # 同样的源码每次产出的字节都不同，sha256 无法复现，也没法核对「这包是不是这份代码打的」。
 # 固定成 1980-01-01（zip 格式能表示的最早时间）即可让打包结果确定。
 FIXED = (1980, 1, 1, 0, 0, 0)
-n = 0; skipped = 0
+n = 0; skipped = 0; whitelisted = 0
 with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
     for root, dirs, files in os.walk(www):
         dirs.sort(); files.sort()   # 遍历顺序也要确定，否则条目次序随文件系统而变
-        # 跳过字体目录（常驻 APK，不热更）
-        if os.path.abspath(root) == os.path.abspath(fontAbs) or os.path.abspath(root).startswith(os.path.abspath(fontAbs) + os.sep):
-            skipped += len(files); continue
+        inFontDir = os.path.abspath(root) == os.path.abspath(fontAbs) or os.path.abspath(root).startswith(os.path.abspath(fontAbs) + os.sep)
         for fn in files:
             if fn.startswith('.'): continue
             full = os.path.join(root, fn)
             arc = os.path.relpath(full, www)
+            # 字体目录默认跳过，白名单放行
+            if inFontDir:
+                if fn in whitelist:
+                    whitelisted += 1
+                else:
+                    skipped += 1; continue
             zi = zipfile.ZipInfo(arc.replace(os.sep, '/'), date_time=FIXED)
             zi.compress_type = zipfile.ZIP_DEFLATED
             zi.external_attr = 0o644 << 16
             with open(full, 'rb') as f:
                 z.writestr(zi, f.read(), compresslevel=9)
             n += 1
-print('ZIP_FILES=%d ZIP_SKIPPED_FONTS=%d' % (n, skipped))
+print('ZIP_FILES=%d ZIP_SKIPPED_FONTS=%d ZIP_WHITELISTED=%d' % (n, skipped, whitelisted))
 `;
-  const res = execFileSync('python3', ['-c', py, WWW, outZip, FONT_DIR_REL], { cwd: ROOT, encoding: 'utf8' });
+  const res = execFileSync('python3', ['-c', py, WWW, outZip, FONT_DIR_REL, FONT_WHITELIST.join(',')], { cwd: ROOT, encoding: 'utf8' });
   log(res.trim());
   if (!fs.existsSync(outZip)) die('zip 未生成');
 }
