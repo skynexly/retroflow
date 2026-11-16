@@ -64,7 +64,28 @@ const LifeServiceUI = (() => {
   let cardFormType = 'count'; // 'count' | 'balance'
   let cardActionId = null; // 当前展开储值核销或续充面板的 cardId
   let cardActionKind = ''; // 'redeem' | 'topup'
-  let fitnessTab = 'workout'; // 'workout' | 'weight'
+  let fitnessTab = 'workout'; // 'workout' | 'stats' | 'weight' | 'diet'
+  let fitnessPlanId = null; // 当前查看详情的运动计划 id（null 为计划列表视图）
+  let fitnessPlanFormOpen = false; // 新建/编辑运动计划表单是否展开
+  let fitnessPlanEditId = null; // 当前编辑中的运动计划 id
+  let fitnessCheckinFormOpen = false; // 计划内运动打卡表单是否展开
+  let fitnessCheckinEditId = null; // 当前编辑中的运动打卡记录 id
+  let dietCategory = 'breakfast';
+  let dietHistoryOpen = false;
+  let dietHistoryDate = '';
+  let dietEditId = null;
+  let weightEditId = null;
+  let statsDomain = 'fitness'; // 'fitness' | 'diet' | 'weight'
+  let statsDim = 'week'; // 'week' | 'month' | 'year'
+  let statsOffset = 0; // 0 = 当前周期，负数 = 往前翻
+  let statsFocusKey = ''; // 图表上被点中的日期 / 月份键
+  const DIET_CATEGORIES = Object.freeze([
+    { key: 'breakfast', label: '早餐' },
+    { key: 'lunch', label: '午餐' },
+    { key: 'dinner', label: '晚餐' },
+    { key: 'drink', label: '饮品' },
+    { key: 'snack', label: '零食' }
+  ]);
   let memoTab = 'todo'; // 'todo' | 'wish' | 'note'
 
   // Feel 物理刚体句柄（无固定时长 / 无手写缓动曲线）
@@ -98,6 +119,42 @@ const LifeServiceUI = (() => {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&#34;')
       .replace(/'/g, '&#39;');
+  }
+
+  function formatFitnessTimeHHMM(ts) {
+    const d = ts ? new Date(ts) : new Date();
+    if (Number.isNaN(d.getTime())) return '09:00';
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    return `${hh}:${mm}`;
+  }
+
+  function combineFitnessDateTime(dateKeyStr, timeStr) {
+    const dk = /^\d{4}-\d{2}-\d{2}$/.test(String(dateKeyStr || '').trim())
+      ? String(dateKeyStr).trim()
+      : (window.LifeStore ? LifeStore.toDateKey() : formatFitnessTimeHHMM());
+    const parts = dk.split('-').map(Number);
+    const tm = /^(\d{1,2}):(\d{2})$/.exec(String(timeStr || '').trim());
+    const now = new Date();
+    const hh = tm ? Math.min(23, Math.max(0, Number(tm[1]))) : now.getHours();
+    const mm = tm ? Math.min(59, Math.max(0, Number(tm[2]))) : now.getMinutes();
+    const dt = new Date(parts[0] || now.getFullYear(), (parts[1] || (now.getMonth() + 1)) - 1, parts[2] || now.getDate(), hh, mm, 0, 0);
+    return dt.getTime();
+  }
+
+  function formatFitnessRecordWhen(rec) {
+    if (!rec) return '';
+    const occ = Number(rec.occurredAt) || Number(rec.createdAt) || 0;
+    const dk = rec.dateKey || (occ > 0 && window.LifeStore ? LifeStore.toDateKey(occ) : '');
+    const tm = (rec.timeStr && /^\d{2}:\d{2}$/.test(rec.timeStr))
+      ? rec.timeStr
+      : (occ > 0 ? formatFitnessTimeHHMM(occ) : '');
+    return tm ? `${dk} ${tm}` : dk;
+  }
+
+  function formatDurationLabel(mins) {
+    const n = Math.max(0, Math.round((Number(mins) || 0) * 10) / 10);
+    return Number.isInteger(n) ? String(n) : n.toFixed(1);
   }
 
   /** Lieflat Lupi Basics 确定性伪随机抖动函数（确保同一数据每次渲染完全一致） */
@@ -635,23 +692,6 @@ const LifeServiceUI = (() => {
       };
     }
 
-    if (kind === 'fitness-type') {
-      return {
-        title: '选择运动训练项目',
-        tag: 'KINETIC TYPE 训练科目',
-        value: currentVal || '有氧慢跑',
-        searchable: false,
-        options: [
-          { value: '有氧慢跑', label: '有氧慢跑', hint: '心肺耐力与基础燃脂训练' },
-          { value: '力量抗阻', label: '力量抗阻', hint: '器械/自重肌群强化训练' },
-          { value: '核心燃脂', label: '核心燃脂', hint: 'HIIT 与腰腹核心稳定' },
-          { value: '柔韧拉伸', label: '柔韧拉伸', hint: '瑜伽/普拉提与筋膜放松' },
-          { value: '战术骑行', label: '战术骑行', hint: '户外骑行或动感单车训练' },
-          { value: '快走通勤', label: '快走通勤', hint: '日常高步频有氧消耗' }
-        ]
-      };
-    }
-
     if (kind === 'period-pain') {
       return {
         title: '选择周期体感状态',
@@ -906,16 +946,16 @@ const LifeServiceUI = (() => {
         <div class="life-fitness-dual-grid">
           <div class="life-fitness-subpod">
             <div class="life-subpod-head">
-              <span>运动打卡</span>
+              <span>运动计划</span>
               <span>+${snap.fitness.weekSessions} WK</span>
             </div>
             <div class="life-subpod-main">
-              <span class="life-subpod-big">${snap.fitness.todayMinutes}</span>
+              <span class="life-subpod-big">${formatDurationLabel(snap.fitness.todayMinutes)}</span>
               <span class="life-subpod-unit">MIN TODAY</span>
             </div>
             <div class="life-subpod-foot">
-              <span>KCAL BURNED</span>
-              <span>${snap.fitness.todayCalories} KCAL</span>
+              <span>PLANS · LOGS</span>
+              <span>${snap.fitness.planCount} 计划 · ${snap.fitness.totalCheckins} 次</span>
             </div>
           </div>
 
@@ -1473,8 +1513,8 @@ const LifeServiceUI = (() => {
         if (e.button !== 0 && e.pointerType === 'mouse') return;
         const w = getW();
         sheetBody.max = w * 1.05;
-        // 资产二级页内拖顶栏：拖动的是内容区，松手后先回 Hub，而不是关闭整个记账面板
-        const subMode = isLedgerAssetSubView();
+        // 二级子视图内拖顶栏：拖动内容区，松手后先回上一层列表，而不是关闭整个模块面板
+        const subMode = isLedgerAssetSubView() || isFitnessPlanSubView();
         dragState = { id: e.pointerId, sx: e.clientX, sy: e.clientY, base: subMode ? 0 : sheetBody.x, dragging: false, subMode };
       });
       headerEl.addEventListener('pointermove', (e) => {
@@ -1502,9 +1542,13 @@ const LifeServiceUI = (() => {
         const w = getW();
         if (subMode && pageEnterBody) {
           pageEnterBody.release();
-          // 同样用投射点 x + v*m/c 决定：越过 28% 宽度回 Hub，否则弹回原位
-          if (pageEnterBody.projected() > w * 0.28 && isLedgerAssetSubView()) {
-            exitLedgerAssetSubView(false);
+          // 同样用投射点 x + v*m/c 决定：越过 28% 宽度回上一级列表，否则弹回原位
+          if (pageEnterBody.projected() > w * 0.28 && (isLedgerAssetSubView() || isFitnessPlanSubView())) {
+            if (isFitnessPlanSubView()) {
+              exitFitnessPlanDetail(false);
+            } else {
+              exitLedgerAssetSubView(false);
+            }
             syncSheetHeaderTitle();
           } else {
             pageEnterBody.to(0);
@@ -1663,7 +1707,7 @@ const LifeServiceUI = (() => {
     paintView(ledgerViewBody);
   }
 
-  /** 底部双轨平铺导航游标物理弹簧（Model: 1-unit mass on a 4 Hz spring with ζ 0.65, feel: "snappy, bouncy"） */
+  /** 底部平铺导航游标物理弹簧，每次按当前展开后的激活项重新测量，适配四轨伸缩布局 */
   function mountFooterNavPhysics() {
     if (!sheetEl || !window.Feel) return;
     const footerEl = sheetEl.querySelector('.life-sheet-footer');
@@ -1672,9 +1716,12 @@ const LifeServiceUI = (() => {
     const cursorEl = footerEl.querySelector('.life-footer-cursor');
     if (tabs.length < 2 || !cursorEl) return;
 
-    const activeIdx = Math.max(0, tabs.findIndex((t) => t.classList.contains('active')));
     const syncCursor = () => {
-      const btn = tabs[activeIdx] || tabs[0];
+      const currentFooter = sheetEl ? sheetEl.querySelector('.life-sheet-footer') : null;
+      if (currentFooter !== footerEl || footerEl.hidden) return false;
+      const currentTabs = Array.from(footerEl.querySelectorAll('.life-footer-tab'));
+      const activeBtn = currentTabs.find((tab) => tab.classList.contains('active'));
+      const btn = activeBtn || currentTabs[0];
       if (!btn || !btn.offsetWidth) return false;
       const indicatorW = 28;
       const targetLeft = btn.offsetLeft + (btn.offsetWidth - indicatorW) / 2;
@@ -1810,9 +1857,34 @@ const LifeServiceUI = (() => {
       && (ledgerTab === 'accounts' || ledgerTab === 'sub' || ledgerTab === 'categories');
   }
 
+  function isFitnessPlanSubView() {
+    return activeModule === 'fitness' && fitnessTab === 'workout' && Boolean(fitnessPlanId);
+  }
+
+  function resetFitnessViewState() {
+    fitnessPlanId = null;
+    fitnessPlanFormOpen = false;
+    fitnessPlanEditId = null;
+    fitnessCheckinFormOpen = false;
+    fitnessCheckinEditId = null;
+    dietEditId = null;
+    dietCategory = 'breakfast';
+    dietHistoryOpen = false;
+    dietHistoryDate = '';
+    weightEditId = null;
+    statsFocusKey = '';
+  }
+
   function syncSheetHeaderTitle() {
     if (!sheetTitleEl || !activeModule) return;
     const backBtnEl = document.getElementById('lifeSheetBackBtn');
+    if (isFitnessPlanSubView()) {
+      const plan = (latestSnap && latestSnap.fitness && latestSnap.fitness.plans || [])
+        .find((p) => p.id === fitnessPlanId);
+      sheetTitleEl.textContent = `02 KINETIC // ${plan ? plan.name : '运动计划'}`;
+      if (backBtnEl) backBtnEl.setAttribute('aria-label', '返回运动计划');
+      return;
+    }
     if (activeModule === 'ledger' && ledgerPrimaryTab === 'assets') {
       if (ledgerTab === 'accounts') {
         sheetTitleEl.textContent = '01 ACCOUNT VAULT';
@@ -1887,9 +1959,50 @@ const LifeServiceUI = (() => {
     }
   }
 
+  function enterFitnessPlanDetail(planId) {
+    const plan = (latestSnap && latestSnap.fitness && latestSnap.fitness.plans || [])
+      .find((p) => p.id === planId);
+    if (!plan) return;
+    fitnessTab = 'workout';
+    fitnessPlanId = plan.id;
+    fitnessPlanFormOpen = false;
+    fitnessPlanEditId = null;
+    fitnessCheckinFormOpen = false;
+    fitnessCheckinEditId = null;
+    const curHash = window.location.hash || '';
+    try {
+      const detailHash = `#life-fitness-plan-${encodeURIComponent(plan.id)}`;
+      const nextState = { rfPage: 'life-service', rfModule: 'fitness', rfFitnessPlan: plan.id };
+      if (curHash.startsWith('#life-fitness-plan-')) {
+        history.replaceState(nextState, '', detailHash);
+      } else if (curHash === '#life-fitness') {
+        history.pushState(nextState, '', detailHash);
+      }
+    } catch (_) { /* ignore */ }
+    syncSheetHeaderTitle();
+    spinHeaderCore(260);
+    renderModuleSheetBody('fitness');
+    if (sheetBodyEl) sheetBodyEl.scrollTop = 0;
+    playSheetPageEnter(1, 'solid, snappy', 48);
+  }
+
+  function exitFitnessPlanDetail(fromPopState = false) {
+    resetFitnessViewState();
+    syncSheetHeaderTitle();
+    spinHeaderCore(-260);
+    renderModuleSheetBody('fitness');
+    if (sheetBodyEl) sheetBodyEl.scrollTop = 0;
+    playSheetPageEnter(-1, 'solid, snappy', 48);
+    if (!fromPopState && (window.location.hash || '').startsWith('#life-fitness-plan-')) {
+      pendingProgrammaticBack = true;
+      try { history.back(); } catch (_) { /* ignore */ }
+    }
+  }
+
   async function openModuleSheet(moduleKey, pushHistory = true) {
     if (!sheetEl || !window.LifeStore) return;
     activeModule = moduleKey;
+    if (moduleKey === 'fitness') resetFitnessViewState();
     if (moduleKey === 'ledger' && ledgerPrimaryTab === 'assets') {
       ledgerTab = 'hub';
     }
@@ -1926,6 +2039,7 @@ const LifeServiceUI = (() => {
   function closeModuleSheet(fromPopState = false) {
     if (!sheetEl || !activeModule) return;
     activeModule = null;
+    resetFitnessViewState();
     subEditId = null;
     cardEditId = null;
     subFormOpen = false;
@@ -2180,6 +2294,272 @@ const LifeServiceUI = (() => {
     }
 
     return true;
+  }
+
+  /* ---------------------------------------------------------------------------
+     运动健康 · 统计（周 / 月 / 年）
+     计算与绘图在 js/life-stats.js；这里只拼外壳、取主题色、处理点选
+     交互属性统一用 data-hstats-*，类名统一用 life-hstats-*，和记账统计的 data-stats-* 隔开
+     ------------------------------------------------------------------------- */
+  const HSTATS_DIM_LABELS = { week: '周', month: '月', year: '年' };
+  const HSTATS_DOMAIN_LABELS = { fitness: '运动', diet: '饮食', weight: '体重' };
+  const HSTATS_WEEKDAY = ['日', '一', '二', '三', '四', '五', '六'];
+  let hstatsSeries = { fitness: [], weight: [] };
+
+  function hstatsColors() {
+    const cs = getComputedStyle(document.documentElement);
+    const pick = (name, fallback) => cs.getPropertyValue(name).trim() || fallback;
+    return {
+      INK: pick('--secondary-color', '#1B1717'),
+      MUTED: pick('--text-muted', '#756A5B'),
+      PAPER: pick('--bg-color', '#EDEBDD'),
+      ACCENT: pick('--primary-color', '#B4472F'),
+      GRID: `rgba(${pick('--secondary-color-rgb', '27, 23, 23')}, 0.12)`
+    };
+  }
+
+  function hstatsKeyLabel(key) {
+    const k = String(key || '');
+    if (/^\d{4}-\d{2}$/.test(k)) return `${k.slice(0, 4)} 年 ${Number(k.slice(5, 7))} 月`;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(k)) {
+      const d = new Date(Number(k.slice(0, 4)), Number(k.slice(5, 7)) - 1, Number(k.slice(8, 10)));
+      return `${k.slice(5, 7)}.${k.slice(8, 10)} 周${HSTATS_WEEKDAY[d.getDay()]}`;
+    }
+    return k;
+  }
+
+  function hstatsShortKey(key) {
+    const k = String(key || '');
+    if (/^\d{4}-\d{2}$/.test(k)) return `${Number(k.slice(5, 7))} 月`;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(k)) return `${k.slice(5, 7)}.${k.slice(8, 10)}`;
+    return k;
+  }
+
+  function hstatsFormatMinutes(m) {
+    const n = Math.max(0, Math.round(Number(m) || 0));
+    if (n < 60) return `${n}m`;
+    return n % 60 ? `${Math.floor(n / 60)}h ${n % 60}m` : `${Math.floor(n / 60)}h`;
+  }
+
+  /** 点中柱子 / 圆点后：图上高亮 + 图下数值栏 */
+  function renderHstatsFocusInfo() {
+    if (!sheetBodyEl) return;
+    const c = hstatsColors();
+    if (window.LifeStats) LifeStats.updateFocus(sheetBodyEl, statsFocusKey, c.ACCENT, c.INK);
+    const unitWord = statsDim === 'year' ? '这个月' : '这一天';
+    const fill = (id, series, fmt, hint) => {
+      const el = sheetBodyEl.querySelector(`#${id}`);
+      if (!el) return;
+      const hit = statsFocusKey ? series.find((s) => s.key === statsFocusKey) : null;
+      el.textContent = hit ? `${hstatsKeyLabel(hit.key)} · ${fmt(hit.value)}` : hint;
+      el.classList.toggle('is-visible', Boolean(hit));
+    };
+    fill('lifeHstatsFitnessInfo', hstatsSeries.fitness,
+      (v) => (v > 0 ? `${v} 分钟` : '没有运动'),
+      `点一下柱子，查看${unitWord}的运动时长`);
+    fill('lifeHstatsWeightInfo', hstatsSeries.weight,
+      (v) => `${Number(v).toFixed(1)} kg${statsDim === 'year' ? '（月均）' : ''}`,
+      `点一下圆点，查看${unitWord}的体重`);
+  }
+
+  function hstatsViewHtml(snap) {
+    const emptyIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9h3v10H4zm6.5 0V4h3v15h-3zM17 19v-7h3v7h-3zM3 21v-2h18v2H3z"/></svg>';
+    const empty = (title, msg) => `
+      <div class="life-hstats-empty">
+        ${emptyIcon}
+        <strong>${esc(title)}</strong>
+        <span>${esc(msg)}</span>
+      </div>`;
+    if (!window.LifeStats) {
+      return `<section class="life-hstats-view" aria-label="健康统计">${empty('统计模块没有加载', '刷新页面后再试一次')}</section>`;
+    }
+
+    const todayKey = snap.todayKey;
+    const dimLabel = HSTATS_DIM_LABELS[statsDim] || '周';
+    const period = LifeStats.computePeriod(statsDim, statsOffset, todayKey);
+    const prevPeriod = LifeStats.computePeriod(statsDim, statsOffset - 1, todayKey);
+    const fitnessRecs = (snap.fitness && snap.fitness.records) || [];
+    const plans = (snap.fitness && snap.fitness.plans) || [];
+    const dietRecs = (snap.diet && snap.diet.records) || [];
+    const weightRecs = (snap.weight && snap.weight.records) || [];
+    const initW = snap.weight ? snap.weight.initialWeight : null;
+    const targW = snap.weight ? snap.weight.targetWeight : null;
+
+    const domainBar = Object.keys(HSTATS_DOMAIN_LABELS).map((d) =>
+      `<button type="button" class="life-hstats-domain-btn${statsDomain === d ? ' is-active' : ''}" data-hstats-domain="${d}" role="tab" aria-selected="${statsDomain === d}">${HSTATS_DOMAIN_LABELS[d]}</button>`
+    ).join('');
+    const dimBar = Object.keys(HSTATS_DIM_LABELS).map((d) =>
+      `<button type="button" class="life-hstats-dim-btn${statsDim === d ? ' is-active' : ''}" data-hstats-dim="${d}" role="tab" aria-selected="${statsDim === d}">${HSTATS_DIM_LABELS[d]}视图</button>`
+    ).join('');
+
+    const isCurrent = statsOffset === 0;
+    const periodTitle = isCurrent
+      ? `<span class="life-hstats-period-label">${esc(period.rangeLabel)}</span>`
+      : `<button type="button" class="life-hstats-period-label is-offset" data-hstats-reset="1" title="回到本${dimLabel}">${esc(period.rangeLabel)}</button>`;
+    const nav = `
+      <div class="life-hstats-period-nav">
+        <button type="button" class="life-hstats-step-btn" data-hstats-step="-1" aria-label="上一${dimLabel}">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6 1.4 1.4-4.6 4.6 4.6 4.6L15 18z"/></svg>
+        </button>
+        ${periodTitle}
+        <button type="button" class="life-hstats-step-btn" data-hstats-step="1" ${isCurrent ? 'disabled' : ''} aria-label="下一${dimLabel}">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6-1.4 1.4 4.6 4.6-4.6 4.6L9 18z"/></svg>
+        </button>
+      </div>`;
+
+    const deltaHtml = (cur, prev, unit, fmt) => {
+      if (cur === null || cur === undefined || prev === null || prev === undefined) return '';
+      const d = Math.round((Number(cur) - Number(prev)) * 10) / 10;
+      if (d === 0) return `<div class="life-hstats-card-delta is-flat">与上${dimLabel}持平</div>`;
+      const text = fmt ? fmt(Math.abs(d)) : `${Math.abs(d)}${unit}`;
+      return `<div class="life-hstats-card-delta ${d > 0 ? 'is-up' : 'is-down'}">${d > 0 ? '+' : '-'}${esc(text)} 较上${dimLabel}</div>`;
+    };
+    const card = (label, value, unit, extra) => `
+      <div class="life-hstats-card">
+        <div class="life-hstats-card-label">${esc(label)}</div>
+        <div class="life-hstats-card-value">${esc(value === null || value === undefined ? '--' : String(value))}${unit ? `<small>${esc(unit)}</small>` : ''}</div>
+        ${extra || ''}
+      </div>`;
+    const chart = (title, sub, svgId, infoId) => `
+      <div class="life-hstats-chart-block">
+        <div class="life-hstats-chart-title">${title}<small>${esc(sub)}</small></div>
+        <div class="life-hstats-svg-wrap"><svg id="${svgId}" viewBox="0 0 400 240" preserveAspectRatio="xMidYMid meet"></svg></div>
+        ${infoId ? `<div class="life-hstats-focus-info" id="${infoId}" aria-live="polite"></div>` : ''}
+      </div>`;
+    const textList = (title, sub, rows) => `
+      <div class="life-hstats-text-list">
+        <div class="life-hstats-text-list-title">${title}<small>${esc(sub)}</small></div>
+        ${rows.map(([name, val]) => `
+          <div class="life-hstats-text-row">
+            <span class="life-hstats-text-row-name">${esc(name)}</span>
+            <span class="life-hstats-text-row-val">${esc(val)}</span>
+          </div>`).join('')}
+      </div>`;
+    const perUnit = statsDim === 'year' ? '每月' : '每天';
+
+    let body = '';
+    if (statsDomain === 'diet') {
+      const d = LifeStats.aggregateDiet(dietRecs, period, DIET_CATEGORIES);
+      const dp = LifeStats.aggregateDiet(dietRecs, prevPeriod, DIET_CATEGORIES);
+      if (!d.recordCount) {
+        body = empty(`本${dimLabel}没有饮食记录`, '记下每一餐，这里就会出现统计');
+      } else {
+        body = `
+          <div class="life-hstats-cards">
+            ${card('记录条数', d.recordCount, '条', deltaHtml(d.recordCount, dp.recordCount, ' 条'))}
+            ${card('有记录天数', d.daysWithRecord, '天', deltaHtml(d.daysWithRecord, dp.daysWithRecord, ' 天'))}
+            ${card('三餐齐全', d.fullMealDays, '天', '')}
+            ${card('没记早餐', d.missedBreakfast, '天', '')}
+          </div>
+          ${chart('MEAL GRID', `${perUnit}各餐次记录 · 点越大次数越多`, 'lifeHstatsDietGrid', '')}
+          ${chart('MEAL COUNT', '各餐次记录次数', 'lifeHstatsDietCat', '')}
+          ${textList('MEAL TIME', '平均用餐时间', d.mealTimes.map((m) => [m.label, m.avg ? `${m.avg} · ${m.count} 次` : '没有记录']))}
+          ${d.topContent.length ? textList('TOP FOODS', '吃得最多的 5 样', d.topContent.map((t) => [t.content, `${t.count} 次`])) : ''}`;
+      }
+    } else if (statsDomain === 'weight') {
+      const w = LifeStats.aggregateWeight(weightRecs, period, initW, targW);
+      if (!w.count) {
+        body = empty(`本${dimLabel}没有体重记录`, '去体重管理记一次称重，这里就会出现走势');
+      } else {
+        const change = w.delta === 0
+          ? '<div class="life-hstats-card-delta is-flat">本期没有变化</div>'
+          : `<div class="life-hstats-card-delta ${w.delta > 0 ? 'is-up' : 'is-down'}">${w.delta > 0 ? '+' : ''}${w.delta} kg 本期变化</div>`;
+        body = `
+          <div class="life-hstats-cards">
+            ${card('本期最新', w.end.toFixed(1), 'kg', w.count > 1 ? change : '')}
+            ${card('平均', w.avg.toFixed(1), 'kg', '')}
+            ${card('最高', w.max.toFixed(1), 'kg', '')}
+            ${card('最低', w.min.toFixed(1), 'kg', '')}
+          </div>
+          ${chart('WEIGHT TREND', statsDim === 'year' ? '每月平均体重（kg）· 虚线为目标' : '每天体重（kg）· 同日多次取最后一次 · 虚线为目标', 'lifeHstatsWeightLine', 'lifeHstatsWeightInfo')}
+          ${w.progress !== null ? chart('GOAL PROGRESS', '按本期最新体重计算', 'lifeHstatsWeightGauge', '') : ''}`;
+      }
+    } else {
+      const f = LifeStats.aggregateFitness(fitnessRecs, plans, period, todayKey);
+      const fp = LifeStats.aggregateFitness(fitnessRecs, plans, prevPeriod, todayKey);
+      if (!f.checkinCount) {
+        body = empty(`本${dimLabel}没有运动打卡`, '去运动打卡，这里就会出现统计');
+      } else {
+        body = `
+          <div class="life-hstats-cards">
+            ${card('总时长', hstatsFormatMinutes(f.totalMinutes), '', deltaHtml(f.totalMinutes, fp.totalMinutes, '', hstatsFormatMinutes))}
+            ${card('打卡次数', f.checkinCount, '次', deltaHtml(f.checkinCount, fp.checkinCount, ' 次'))}
+            ${card('运动天数', f.daysWithCheckin, '天', deltaHtml(f.daysWithCheckin, fp.daysWithCheckin, ' 天'))}
+            ${card('运动日均', hstatsFormatMinutes(f.avgMinutes), '', '')}
+            ${card('当前连续', f.currentStreak, '天', '')}
+            ${card('本期最长连续', f.maxStreak, '天', '')}
+          </div>
+          ${chart('TIME PER ' + (statsDim === 'year' ? 'MONTH' : 'DAY'), `${perUnit}运动时长（分钟）`, 'lifeHstatsFitnessBar', 'lifeHstatsFitnessInfo')}
+          ${f.planDistribution.length > 1 ? chart('PLAN BREAKDOWN', '各计划时长（分钟）', 'lifeHstatsFitnessPlan', '') : ''}`;
+      }
+    }
+
+    return `<section class="life-hstats-view" aria-label="健康统计">
+      <div class="life-hstats-domain-bar" role="tablist" aria-label="统计类型">${domainBar}</div>
+      <div class="life-hstats-dim-bar" role="tablist" aria-label="统计周期">${dimBar}</div>
+      ${nav}
+      ${body}
+    </section>`;
+  }
+
+  function drawHstatsCharts(snap) {
+    if (!window.LifeStats || !sheetBodyEl) return;
+    const c = hstatsColors();
+    const opts = { INK: c.INK, MUTED: c.MUTED, PAPER: c.PAPER, GRID: c.GRID, ACCENT: c.ACCENT };
+    const period = LifeStats.computePeriod(statsDim, statsOffset, snap.todayKey);
+    const fitnessRecs = (snap.fitness && snap.fitness.records) || [];
+    const plans = (snap.fitness && snap.fitness.plans) || [];
+    const dietRecs = (snap.diet && snap.diet.records) || [];
+    const weightRecs = (snap.weight && snap.weight.records) || [];
+    const q = (id) => sheetBodyEl.querySelector(`#${id}`);
+    hstatsSeries = { fitness: [], weight: [] };
+
+    const barSvg = q('lifeHstatsFitnessBar');
+    if (barSvg) {
+      hstatsSeries.fitness = LifeStats.buildFitnessSeries(fitnessRecs, period, statsDim);
+      LifeStats.drawRungBars(barSvg, hstatsSeries.fitness, Object.assign({
+        todayKey: statsDim === 'year' ? snap.todayKey.slice(0, 7) : snap.todayKey
+      }, opts));
+    }
+
+    const planSvg = q('lifeHstatsFitnessPlan');
+    if (planSvg) {
+      const agg = LifeStats.aggregateFitness(fitnessRecs, plans, period, snap.todayKey);
+      const rows = agg.planDistribution.map((p) => [p.name.length > 6 ? `${p.name.slice(0, 6)}…` : p.name, p.minutes]);
+      LifeStats.drawTickRows(planSvg, rows, Object.assign({ unitLabel: '分钟' }, opts));
+    }
+
+    const gridSvg = q('lifeHstatsDietGrid');
+    if (gridSvg) {
+      LifeStats.drawDotHeat(gridSvg, LifeStats.buildDietGrid(dietRecs, period, statsDim, DIET_CATEGORIES), opts);
+    }
+
+    const catSvg = q('lifeHstatsDietCat');
+    if (catSvg) {
+      const agg = LifeStats.aggregateDiet(dietRecs, period, DIET_CATEGORIES);
+      const rows = DIET_CATEGORIES.map((cat) => [cat.label, agg.catCount[cat.key] || 0]);
+      LifeStats.drawTickRows(catSvg, rows, Object.assign({ unitLabel: '次' }, opts));
+    }
+
+    const lineSvg = q('lifeHstatsWeightLine');
+    if (lineSvg) {
+      hstatsSeries.weight = LifeStats.buildWeightSeries(weightRecs, period, statsDim);
+      const targW = snap.weight ? Number(snap.weight.targetWeight) : NaN;
+      const hasTarget = Number.isFinite(targW) && targW > 0;
+      LifeStats.drawHairlineLine(lineSvg, hstatsSeries.weight, Object.assign({
+        refValue: hasTarget ? targW : undefined,
+        refLabel: hasTarget ? `目标 ${targW.toFixed(1)}` : '',
+        formatKey: hstatsShortKey
+      }, opts));
+    }
+
+    const gaugeSvg = q('lifeHstatsWeightGauge');
+    if (gaugeSvg && snap.weight) {
+      const agg = LifeStats.aggregateWeight(weightRecs, period, snap.weight.initialWeight, snap.weight.targetWeight);
+      if (agg.progress !== null) LifeStats.drawTickGauge(gaugeSvg, agg.progress, opts);
+    }
+
+    renderHstatsFocusInfo();
   }
 
   function renderModuleSheetBody(moduleKey, prevSegIndices) {
@@ -3532,11 +3912,13 @@ const LifeServiceUI = (() => {
       // 底部双 Tab 平铺主导航（仅首次挂载 DOM，后续原地切换 active，杜绝重绘时底栏游标跳闪）
       let footerEl = sheetEl.querySelector('.life-sheet-footer');
       if (!footerEl || !footerEl.querySelector('[data-ledger-primary]')) {
-        if (!footerEl) {
-          footerEl = document.createElement('div');
-          footerEl.className = 'life-sheet-footer';
-          sheetEl.appendChild(footerEl);
+        if (footerEl) {
+          footerEl.remove();
+          footerCursorBody = null;
         }
+        footerEl = document.createElement('div');
+        footerEl.className = 'life-sheet-footer';
+        sheetEl.appendChild(footerEl);
         footerEl.innerHTML = `
           <span class="life-footer-cursor" aria-hidden="true"></span>
           <button type="button" class="life-footer-tab" data-ledger-primary="flow">
@@ -3566,108 +3948,409 @@ const LifeServiceUI = (() => {
       return;
     }
 
-    // 非记账终端模块，隐藏底部双 Tab 导航
+    // 记账与运动健康以外的终端模块不显示底部主导航
     const footerEl = sheetEl.querySelector('.life-sheet-footer');
-    if (footerEl) footerEl.hidden = true;
-    sheetBodyEl.classList.remove('has-flat-footer');
+    if (moduleKey !== 'fitness') {
+      if (footerEl) footerEl.hidden = true;
+      sheetBodyEl.classList.remove('has-flat-footer');
+    }
 
     if (moduleKey === 'fitness') {
-      const workoutListHtml = snap.fitness.records.length
-        ? snap.fitness.records.map((r) => `
-            <div class="life-log-item">
-              <div class="life-log-left">
-                <div class="life-log-main">
-                  <span class="life-log-tag">${esc(r.activity || '训练')}</span>
-                  <span>${Number(r.duration || 0)} 分钟</span>
-                </div>
-                <div class="life-log-sub">${esc(r.dateKey || '')} // 消耗 ${Number(r.calories || 0)} KCAL</div>
-              </div>
-              <div class="life-log-right">
-                <span class="life-log-val">${Number(r.duration || 0)} MIN</span>
-                <button type="button" class="life-log-del-btn" data-life-del="${esc(r.id)}">
-                  <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                </button>
-              </div>
-            </div>
-          `).join('')
-        : '<div class="life-empty-hint">NO WORKOUT LOGS // 暂无运动打卡记录</div>';
+      const fitnessData = snap.fitness || {};
+      const fitnessPlans = Array.isArray(fitnessData.plans) ? fitnessData.plans : [];
+      const currentPlan = fitnessPlanId ? fitnessPlans.find((p) => p.id === fitnessPlanId) : null;
+      if (fitnessPlanId && !currentPlan) resetFitnessViewState();
 
-      const weightListHtml = snap.weight.records.length
-        ? snap.weight.records.map((r) => `
-            <div class="life-log-item">
-              <div class="life-log-left">
-                <div class="life-log-main">
-                  <span class="life-log-tag">MASS</span>
-                  <span>${esc(r.note || '晨起空腹采样')}</span>
-                </div>
-                <div class="life-log-sub">${esc(r.dateKey || '')}</div>
-              </div>
-              <div class="life-log-right">
-                <span class="life-log-val">${Number(r.weight || 0).toFixed(1)} KG</span>
-                <button type="button" class="life-log-del-btn" data-life-del="${esc(r.id)}">
-                  <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                </button>
-              </div>
-            </div>
-          `).join('')
-        : '<div class="life-empty-hint">NO WEIGHT LOGS // 暂无体重采样记录</div>';
+      const renderFitnessTargets = (plan) => {
+        if (plan.isFreePlan) {
+          return '<div class="life-fitness-free-badge"><svg viewBox="0 0 24 24"><path d="M12 2 4 6v6c0 5 3.4 8.5 8 10 4.6-1.5 8-5 8-10V6l-8-4zm0 4 4 2v4c0 2.8-1.5 4.8-4 6-2.5-1.2-4-3.2-4-6V8l4-2z"/></svg><span>FREE MODE // 无目标自由计划</span></div>';
+        }
+        const minuteRow = plan.targetMinutes ? `
+          <div class="life-fitness-target-row">
+            <div class="life-fitness-target-meta"><span>累计运动时长</span><span>${formatDurationLabel(plan.totalMinutes)} / ${plan.targetMinutes} MIN</span></div>
+            <div class="life-fitness-progress" role="progressbar" aria-label="运动时长目标进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${plan.minutesProgress}"><span style="width:${plan.minutesProgress}%"></span></div>
+          </div>` : '';
+        const checkinRow = plan.targetCheckins ? `
+          <div class="life-fitness-target-row">
+            <div class="life-fitness-target-meta"><span>累计打卡次数</span><span>${plan.totalCheckins} / ${plan.targetCheckins} 次</span></div>
+            <div class="life-fitness-progress is-secondary" role="progressbar" aria-label="打卡次数目标进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${plan.checkinsProgress}"><span style="width:${plan.checkinsProgress}%"></span></div>
+          </div>` : '';
+        return `<div class="life-fitness-targets">${minuteRow}${checkinRow}</div>`;
+      };
 
-      sheetBodyEl.innerHTML = `
-        <div class="life-seg-group">
-          <button type="button" class="life-seg-btn ${fitnessTab === 'workout' ? 'active' : ''}" data-fitness-tab="workout">TRACK A // 运动打卡</button>
-          <button type="button" class="life-seg-btn ${fitnessTab === 'weight' ? 'active' : ''}" data-fitness-tab="weight">TRACK B // 体重管理</button>
-        </div>
-
-        ${fitnessTab === 'workout' ? `
-          <div class="life-form-pod">
-            <div class="life-form-pod-title"><span>WORKOUT CHECK-IN // 运动训练打卡</span><span>KINETIC</span></div>
-            <div class="life-form-grid">
-              <div class="life-field">
-                <label>ACTIVITY // 运动项目</label>
-                ${renderLifeSelectField({ id: 'lifeFitnessType', kind: 'fitness-type', value: '有氧慢跑' })}
-              </div>
-              <div class="life-field">
-                <label>DURATION (MIN) // 时长</label>
-                <input type="number" id="lifeFitnessDuration" class="life-input" value="30">
-              </div>
-              <div class="life-field">
-                <label>CALORIES (KCAL) // 热量</label>
-                <input type="number" id="lifeFitnessCalories" class="life-input" value="220">
-              </div>
-              <div class="life-field">
-                <label>DATE // 日期</label>
-                ${renderLifeDateField({ id: 'lifeFitnessDate', value: snap.todayKey, title: '选择训练打卡日期' })}
-              </div>
-            </div>
-            <button type="button" class="life-submit-btn" data-life-submit="fitness">
-              <span>LOG WORKOUT // 确认打卡</span>
-            </button>
+      const editingPlan = fitnessPlanEditId ? fitnessPlans.find((p) => p.id === fitnessPlanEditId) : null;
+      const planFormHtml = fitnessPlanFormOpen ? `
+        <div class="life-form-pod life-fitness-form-pod">
+          <div class="life-form-pod-title">
+            <span>${editingPlan ? 'EDIT PROGRAM // 编辑运动计划' : 'NEW PROGRAM // 新建运动计划'}</span>
+            <button type="button" class="life-mini-act-btn" data-fitness-plan-form-toggle="0">${editingPlan ? '取消编辑' : '收起'}</button>
           </div>
-          <div class="life-log-list">${workoutListHtml}</div>
-        ` : `
-          <div class="life-form-pod">
-            <div class="life-form-pod-title"><span>MASS SAMPLING // 体重记录与目标</span><span>MASS</span></div>
+          <div class="life-form-grid">
+            <div class="life-field full">
+              <label for="lifeFitnessPlanName">PROGRAM NAME // 计划名称</label>
+              <input type="text" id="lifeFitnessPlanName" class="life-input" maxlength="32" placeholder="例如：晨间唤醒 / 周末力量" value="${esc(editingPlan ? editingPlan.name : '')}">
+            </div>
+            <div class="life-field full">
+              <label for="lifeFitnessPlanDesc">BRIEF // 计划简介</label>
+              <textarea id="lifeFitnessPlanDesc" class="life-input life-fitness-plan-desc" maxlength="120" rows="2" placeholder="记录训练方向、频率或注意事项（选填）">${esc(editingPlan ? editingPlan.description : '')}</textarea>
+            </div>
+            <div class="life-field">
+              <label for="lifeFitnessPlanTargetMinutes">TARGET MIN // 目标时长</label>
+              <input type="number" id="lifeFitnessPlanTargetMinutes" class="life-input" min="1" step="1" placeholder="选填，分钟" value="${editingPlan && editingPlan.targetMinutes ? editingPlan.targetMinutes : ''}">
+            </div>
+            <div class="life-field">
+              <label for="lifeFitnessPlanTargetCheckins">TARGET COUNT // 目标打卡</label>
+              <input type="number" id="lifeFitnessPlanTargetCheckins" class="life-input" min="1" step="1" placeholder="选填，次数" value="${editingPlan && editingPlan.targetCheckins ? editingPlan.targetCheckins : ''}">
+            </div>
+          </div>
+          <p class="life-fitness-form-tip">两项目标均留空时，将创建无目标自由计划。</p>
+          <button type="button" class="life-submit-btn" data-life-submit="fitness-plan"><span>${editingPlan ? 'SAVE PROGRAM // 保存计划修改' : 'CREATE PROGRAM // 创建运动计划'}</span></button>
+        </div>` : `
+        <button type="button" class="life-fitness-add-trigger" data-fitness-plan-form-toggle="1">
+          <span class="life-fitness-add-icon"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></span>
+          <span><strong>新建运动计划</strong><small>可设置目标，也可自由积累运动记录</small></span>
+          <svg class="life-fitness-add-arrow" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6-1.4 1.4 4.6 4.6-4.6 4.6L9 18z"/></svg>
+        </button>`;
+
+      const planListHtml = fitnessPlans.length ? fitnessPlans.map((plan) => `
+        <article class="life-fitness-plan-card ${plan.isFreePlan ? 'is-free' : ''}">
+          <button type="button" class="life-fitness-plan-open" data-fitness-plan-open="${esc(plan.id)}" aria-label="查看运动计划 ${esc(plan.name)}">
+            <span class="life-fitness-plan-heading">
+              <span class="life-fitness-plan-index">${plan.isLegacyBucket ? 'ARCHIVE' : 'PROGRAM'}</span>
+              <svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6-1.4 1.4 4.6 4.6-4.6 4.6L9 18z"/></svg>
+            </span>
+            <strong class="life-fitness-plan-name">${esc(plan.name)}</strong>
+            <span class="life-fitness-plan-desc">${esc(plan.description || '随时记录运动内容，让每一次行动都有迹可循。')}</span>
+            <span class="life-fitness-plan-stats">
+              <span><strong>${formatDurationLabel(plan.totalMinutes)}</strong><small>累计分钟</small></span>
+              <span><strong>${plan.totalCheckins}</strong><small>打卡次数</small></span>
+            </span>
+            ${renderFitnessTargets(plan)}
+            <span class="life-fitness-plan-latest">${plan.latestRecord ? `最近打卡 // ${esc(formatFitnessRecordWhen(plan.latestRecord))}` : 'NO CHECK-INS // 等待第一次运动打卡'}</span>
+          </button>
+          <div class="life-fitness-plan-actions">
+            <button type="button" class="life-mini-act-btn" data-fitness-plan-edit="${esc(plan.id)}"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.46a1 1 0 0 0 0-1.41l-2.09-2.09a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.58-2.08z"/></svg><span>编辑计划</span></button>
+            <button type="button" class="life-mini-act-btn danger" data-fitness-plan-delete="${esc(plan.id)}"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg><span>删除</span></button>
+          </div>
+        </article>`).join('') : '<div class="life-empty-hint">NO PROGRAMS // 还没有运动计划，先创建一个计划或自由记录容器</div>';
+
+      const overviewHtml = `
+        <section class="life-fitness-overview" aria-label="运动总览">
+          <div class="is-primary">
+            <div class="life-fitness-metric-head"><span>01</span><i></i></div>
+            <strong>${formatDurationLabel(fitnessData.todayMinutes)}<small>分钟</small></strong>
+            <p>今日运动</p>
+          </div>
+          <div>
+            <div class="life-fitness-metric-head"><span>02</span><i></i></div>
+            <strong>${Number(fitnessData.weekSessions) || 0}<small>次</small></strong>
+            <p>近 7 天打卡</p>
+          </div>
+          <div>
+            <div class="life-fitness-metric-head"><span>03</span><i></i></div>
+            <strong>${fitnessPlans.length}<small>个</small></strong>
+            <p>并行计划</p>
+          </div>
+        </section>`;
+
+      let workoutViewHtml = '';
+      if (currentPlan) {
+        const editingCheckin = fitnessCheckinEditId
+          ? (currentPlan.records || []).find((r) => r.id === fitnessCheckinEditId)
+          : null;
+        const checkinDate = editingCheckin
+          ? (editingCheckin.dateKey || snap.todayKey)
+          : snap.todayKey;
+        const checkinTime = editingCheckin
+          ? (editingCheckin.timeStr || formatFitnessTimeHHMM(editingCheckin.occurredAt || editingCheckin.createdAt))
+          : formatFitnessTimeHHMM();
+        const checkinFormHtml = fitnessCheckinFormOpen ? `
+          <div class="life-form-pod life-fitness-form-pod">
+            <div class="life-form-pod-title">
+              <span>${editingCheckin ? 'EDIT CHECK-IN // 编辑运动打卡' : 'FREE CHECK-IN // 自由运动打卡'}</span>
+              <button type="button" class="life-mini-act-btn" data-fitness-checkin-form-toggle="0">${editingCheckin ? '取消编辑' : '收起'}</button>
+            </div>
             <div class="life-form-grid">
-              <div class="life-field">
-                <label>WEIGHT (KG) // 当前体重</label>
-                <input type="number" step="0.1" id="lifeWeightVal" class="life-input" placeholder="52.5">
-              </div>
-              <div class="life-field">
-                <label>TARGET (KG) // 目标体重</label>
-                <input type="number" step="0.1" id="lifeWeightTarget" class="life-input" value="${snap.weight.targetWeight}">
+              <div class="life-field full">
+                <label for="lifeFitnessActivity">ACTIVITY // 运动内容</label>
+                <input type="text" id="lifeFitnessActivity" class="life-input" maxlength="60" placeholder="例如：沿河慢跑、居家拉伸、力量训练" value="${esc(editingCheckin ? editingCheckin.activity : '')}">
               </div>
               <div class="life-field full">
-                <label>NOTE // 状态备注</label>
-                <input type="text" id="lifeWeightNote" class="life-input" placeholder="例如：晨起空腹 / 训练后">
+                <label for="lifeFitnessDuration">DURATION (MIN) // 运动时长</label>
+                <input type="number" id="lifeFitnessDuration" class="life-input" min="0.1" step="0.1" inputmode="decimal" placeholder="请输入大于 0 的分钟数" value="${editingCheckin ? esc(editingCheckin.duration) : '30'}">
+              </div>
+              <div class="life-field">
+                <label>DATE // 打卡日期</label>
+                ${renderLifeDateField({ id: 'lifeFitnessDate', value: checkinDate, title: '选择运动打卡日期' })}
+              </div>
+              <div class="life-field">
+                <label for="lifeFitnessTime">TIME // 打卡时间</label>
+                <input type="time" id="lifeFitnessTime" class="life-input" value="${esc(checkinTime)}">
               </div>
             </div>
-            <button type="button" class="life-submit-btn" data-life-submit="weight">
-              <span>SAVE WEIGHT // 记录体重</span>
+            <button type="button" class="life-submit-btn" data-life-submit="fitness-checkin"><span>${editingCheckin ? 'SAVE CHECK-IN // 保存打卡修改' : 'LOG WORKOUT // 确认运动打卡'}</span></button>
+          </div>` : `
+          <button type="button" class="life-fitness-add-trigger is-checkin" data-fitness-checkin-form-toggle="1">
+            <span class="life-fitness-add-icon"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></span>
+            <span><strong>记录一次自由运动</strong><small>自定义运动内容、时长与发生时间</small></span>
+            <svg class="life-fitness-add-arrow" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6-1.4 1.4 4.6 4.6-4.6 4.6L9 18z"/></svg>
+          </button>`;
+        const checkinListHtml = currentPlan.records && currentPlan.records.length ? currentPlan.records.map((rec) => `
+          <div class="life-log-item life-fitness-checkin-item ${fitnessCheckinEditId === rec.id ? 'is-editing' : ''}">
+            <div class="life-fitness-checkin-icon"><svg viewBox="0 0 24 24"><path d="M13.5 5.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM9.8 8.9 7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3A7.2 7.2 0 0 0 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6a2 2 0 0 0-1.7-1c-.3 0-.5.1-.8.1L6 8.3V13h2V9.6l1.8-.7z"/></svg></div>
+            <div class="life-log-left">
+              <div class="life-log-main">${esc(rec.activity || '自由运动')}</div>
+              <div class="life-log-sub">${esc(formatFitnessRecordWhen(rec))}</div>
+            </div>
+            <div class="life-fitness-checkin-value"><strong>${formatDurationLabel(rec.duration)}</strong><span>MIN</span></div>
+            <div class="life-fitness-checkin-actions">
+              <button type="button" class="life-log-del-btn" data-fitness-checkin-edit="${esc(rec.id)}" aria-label="编辑这条运动打卡"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.46a1 1 0 0 0 0-1.41l-2.09-2.09a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.58-2.08z"/></svg></button>
+              <button type="button" class="life-log-del-btn" data-fitness-checkin-delete="${esc(rec.id)}" aria-label="删除这条运动打卡"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
+            </div>
+          </div>`).join('') : '<div class="life-empty-hint">NO CHECK-INS // 这个计划还没有运动打卡</div>';
+        workoutViewHtml = `
+          <section class="life-fitness-detail-hero">
+            <div class="life-fitness-detail-kicker"><button type="button" data-fitness-detail-back aria-label="返回运动计划"><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6 1.4 1.4-4.6 4.6 4.6 4.6L15 18z"/></svg><span>全部计划</span></button><button type="button" class="life-mini-act-btn" data-fitness-plan-edit="${esc(currentPlan.id)}"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.46a1 1 0 0 0 0-1.41l-2.09-2.09a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.58-2.08z"/></svg><span>编辑计划</span></button></div>
+            <h2>${esc(currentPlan.name)}</h2>
+            <p>${esc(currentPlan.description || '无计划简介，自由记录每一次运动。')}</p>
+            <div class="life-fitness-detail-stats"><div><strong>${formatDurationLabel(currentPlan.totalMinutes)}</strong><span>累计分钟</span></div><div><strong>${currentPlan.totalCheckins}</strong><span>累计打卡</span></div></div>
+            ${renderFitnessTargets(currentPlan)}
+          </section>
+          ${fitnessPlanFormOpen && editingPlan && editingPlan.id === currentPlan.id ? planFormHtml : checkinFormHtml}
+          <div class="life-fitness-section-heading"><span>CHECK-IN STREAM</span><strong>计划打卡记录</strong><small>${currentPlan.totalCheckins} LOGS</small></div>
+          <div class="life-log-list life-fitness-checkin-list">${checkinListHtml}</div>`;
+      } else {
+        workoutViewHtml = `${overviewHtml}${planFormHtml}<div class="life-fitness-section-heading"><span>PARALLEL PROGRAMS</span><strong>运动计划</strong><small>${fitnessPlans.length} ACTIVE</small></div><div class="life-fitness-plan-list">${planListHtml}</div>`;
+      }
+
+      
+      const weightData = snap.weight || {};
+      const weightRecords = Array.isArray(weightData.records) ? weightData.records : [];
+      const weightValue = (value) => {
+        const n = Number(value);
+        return Number.isFinite(n) && n > 0 ? n.toFixed(1) : '--';
+      };
+      const formatWeightDelta = (value) => {
+        if (value === null || value === undefined || !Number.isFinite(Number(value))) return '--';
+        const n = Number(Number(value).toFixed(1));
+        return n > 0 ? `+${n.toFixed(1)}` : n.toFixed(1);
+      };
+      const editingWeightRecord = weightEditId ? weightRecords.find((r) => r.id === weightEditId) || null : null;
+      const weightTimeOf = (r) => (r.timeStr && /^\d{2}:\d{2}$/.test(r.timeStr)) ? r.timeStr : formatFitnessTimeHHMM(r.occurredAt || r.createdAt);
+      const weightListHtml = weightRecords.length
+        ? weightRecords.map((r, index) => {
+          const isEditing = r.id === weightEditId;
+          return `
+            <article class="life-weight-record${isEditing ? ' is-editing' : ''}" data-weight-edit="${esc(r.id)}" role="button" tabindex="0" aria-label="编辑 ${weightValue(r.weight)} kg 的体重记录" aria-pressed="${isEditing ? 'true' : 'false'}">
+              <div class="life-weight-record-index">${String(weightRecords.length - index).padStart(2, '0')}</div>
+              <div class="life-weight-record-main">
+                <div class="life-weight-record-value"><strong>${weightValue(r.weight)}</strong><span>kg</span></div>
+                <p class="${r.note ? '' : 'is-empty'}">${esc(r.note || '无备注')}</p>
+              </div>
+              <div class="life-weight-record-side">
+                <time datetime="${esc(formatFitnessRecordWhen(r))}">${esc(r.dateKey || '--')}<span>${esc(weightTimeOf(r))}</span></time>
+                <button type="button" class="life-log-del-btn" data-life-del="${esc(r.id)}" aria-label="删除这条体重记录" title="删除体重记录">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                </button>
+              </div>
+            </article>`;
+        }).join('')
+        : '<div class="life-weight-empty"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12a3 3 0 0 1 3 3v15H3V6a3 3 0 0 1 3-3zm6 3a5 5 0 0 0-4.6 3h9.2A5 5 0 0 0 12 6zm-1 5h2l1 3h-4l1-3z"/></svg><strong>还没有体重记录</strong><span>记下第一次称重，开始追踪变化</span></div>';
+
+      const dietData = snap.diet || {};
+      const dietRecords = Array.isArray(dietData.records) ? dietData.records : [];
+      const editingDietRecord = dietEditId ? dietRecords.find((record) => record.id === dietEditId) || null : null;
+      const todayDietRecords = Array.isArray(dietData.todayRecords) ? dietData.todayRecords : [];
+      const dietHistoryGroups = Array.isArray(dietData.historyGroups) ? dietData.historyGroups : [];
+      const filteredDietHistoryGroups = dietHistoryDate
+        ? dietHistoryGroups.filter((group) => group.dateKey === dietHistoryDate)
+        : dietHistoryGroups;
+      const dietHistoryCount = dietHistoryGroups.reduce((sum, group) => sum + group.count, 0);
+      const dietCategoryLabel = (key) => {
+        const category = DIET_CATEGORIES.find((item) => item.key === key);
+        return category ? category.label : '其他';
+      };
+      const renderDietRecord = (record, showFullDate = false) => {
+        const fullWhen = formatFitnessRecordWhen(record);
+        const timeOnly = record.timeStr || formatFitnessTimeHHMM(record.occurredAt || record.createdAt);
+        const isEditing = record.id === dietEditId;
+        return `
+          <article class="life-diet-record${isEditing ? ' is-editing' : ''}" data-diet-edit="${esc(record.id)}" role="button" tabindex="0" aria-label="编辑${esc(dietCategoryLabel(record.category))}饮食记录" aria-pressed="${isEditing ? 'true' : 'false'}">
+            <div class="life-diet-record-top">
+              <span class="life-diet-record-category">${esc(dietCategoryLabel(record.category))}</span>
+              <strong>${esc(record.content || '未填写内容')}</strong>
+              <button type="button" class="life-log-del-btn life-diet-record-delete" data-life-del="${esc(record.id)}" aria-label="删除这条饮食记录" title="删除饮食记录">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+              </button>
+            </div>
+            <p class="${record.note ? '' : 'is-empty'}">${esc(record.note || '无备注')}</p>
+            <time datetime="${esc(fullWhen)}">${esc(showFullDate ? fullWhen : `${record.dateKey || snap.todayKey} ${timeOnly}`)}</time>
+          </article>`;
+      };
+      const dietEmptyHtml = (title, detail) => `
+        <div class="life-diet-empty">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2v8a3 3 0 0 0 3 3v9h2v-9a3 3 0 0 0 3-3V2h-2v7h-1V2h-2v7H9V2H7zm10 0v20h2v-7h3V9a7 7 0 0 0-5-7z"/></svg>
+          <strong>${esc(title)}</strong><span>${esc(detail)}</span>
+        </div>`;
+      const todayDietListHtml = todayDietRecords.length
+        ? todayDietRecords.map((record) => renderDietRecord(record)).join('')
+        : dietEmptyHtml('今天还没有饮食记录', '选择餐次并记下第一笔，同分类可以记录多次');
+      const dietHistoryHtml = filteredDietHistoryGroups.length
+        ? filteredDietHistoryGroups.map((group) => `
+            <section class="life-diet-history-group">
+              <div class="life-diet-history-date"><time datetime="${esc(group.dateKey)}">${esc(group.dateKey)}</time><span>${group.count} 条</span></div>
+              <div class="life-diet-list">${group.records.map((record) => renderDietRecord(record, true)).join('')}</div>
+            </section>`).join('')
+        : dietEmptyHtml(dietHistoryDate ? '这一天没有往期记录' : '还没有往期饮食记录', dietHistoryDate ? '可清空筛选，查看其他日期' : '补记往日内容后，会按日期归档到这里');
+      const dietCategoryOptionsHtml = DIET_CATEGORIES.map((category) => `
+        <button type="button" class="life-diet-category ${dietCategory === category.key ? 'is-active' : ''}" data-diet-cat="${category.key}" aria-pressed="${dietCategory === category.key ? 'true' : 'false'}">${category.label}</button>`).join('');
+      const dietTodayViewHtml = `
+        <section class="life-diet-today" aria-labelledby="lifeDietTodayTitle">
+          <div class="life-diet-heading">
+            <div><span>DAILY NUTRITION LOG</span><h2 id="lifeDietTodayTitle">今日饮食</h2><small>${todayDietRecords.length} 条 · 按时间倒序</small></div>
+            <button type="button" class="life-diet-history-open" data-diet-history-open="1">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3a9 9 0 0 0-9 9H1l4 4 4-4H6a7 7 0 1 1 2 5.2l-1.4 1.4A9 9 0 1 0 13 3zm-1 5v5l4.2 2.5.8-1.3-3.5-2.1V8H12z"/></svg>
+              <span>往期记录</span><small>${dietHistoryCount}</small>
             </button>
           </div>
-          <div class="life-log-list">${weightListHtml}</div>
-        `}
-      `;
+          <div class="life-diet-entry${editingDietRecord ? ' is-editing' : ''}">
+            <div class="life-diet-entry-title"><span>${editingDietRecord ? 'EDIT ENTRY // 编辑饮食记录' : 'NEW ENTRY // 新增记录'}</span><small>${editingDietRecord ? '修改后保存，原记录将同步更新' : '同日同分类允许多条'}</small></div>
+            <div class="life-diet-categories" role="group" aria-label="饮食分类">${dietCategoryOptionsHtml}</div>
+            <div class="life-diet-fields">
+              <div class="life-field full"><label for="lifeDietContent">内容<span>必填</span></label><input type="text" maxlength="120" id="lifeDietContent" class="life-input" value="${editingDietRecord ? esc(editingDietRecord.content || '') : ''}" placeholder="例如：全麦三明治、无糖酸奶" required></div>
+              <div class="life-field full"><label for="lifeDietNote">备注<span>选填</span></label><input type="text" maxlength="160" id="lifeDietNote" class="life-input" value="${editingDietRecord ? esc(editingDietRecord.note || '') : ''}" placeholder="例如：份量、口味或用餐感受"></div>
+              <div class="life-field"><label>日期</label>${renderLifeDateField({ id: 'lifeDietDate', value: editingDietRecord ? (editingDietRecord.dateKey || snap.todayKey) : snap.todayKey, title: '选择饮食日期' })}</div>
+              <div class="life-field"><label for="lifeDietTime">时间</label><input type="time" id="lifeDietTime" class="life-input" value="${editingDietRecord ? esc(editingDietRecord.timeStr || formatFitnessTimeHHMM(editingDietRecord.occurredAt || editingDietRecord.createdAt)) : formatFitnessTimeHHMM()}"></div>
+            </div>
+            <div class="life-diet-edit-actions">
+              <button type="button" class="life-submit-btn life-diet-submit" data-life-submit="diet"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${editingDietRecord ? 'M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z' : 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z'}"/></svg><span>${editingDietRecord ? '保存修改' : '保存饮食记录'}</span></button>
+              ${editingDietRecord ? '<button type="button" class="life-diet-edit-cancel" data-diet-edit-cancel="1">取消编辑</button>' : ''}
+            </div>
+          </div>
+          <div class="life-diet-section-label"><span>TODAY // 今日记录</span><small>${todayDietRecords.length} LOGS</small></div>
+          <div class="life-diet-list">${todayDietListHtml}</div>
+        </section>`;
+      const dietHistoryViewHtml = `
+        <section class="life-diet-history" aria-labelledby="lifeDietHistoryTitle">
+          <div class="life-diet-heading">
+            <div><span>NUTRITION ARCHIVE</span><h2 id="lifeDietHistoryTitle">往期记录</h2><small>${dietHistoryGroups.length} 个日期 · ${dietHistoryCount} 条</small></div>
+            <button type="button" class="life-diet-history-open" data-diet-history-open="0"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6 1.4 1.4-4.6 4.6 4.6 4.6L15 18z"/></svg><span>返回今日</span></button>
+          </div>
+          <div class="life-diet-filter">
+            <div class="life-field"><label for="lifeDietHistoryDate">按日期筛选</label><input type="date" id="lifeDietHistoryDate" class="life-input" value="${esc(dietHistoryDate)}" max="${esc(snap.todayKey)}"></div>
+            <button type="button" class="life-diet-filter-clear" data-diet-history-clear="1" ${dietHistoryDate ? '' : 'disabled'}>清空筛选</button>
+          </div>
+          <div class="life-diet-history-groups">${dietHistoryHtml}</div>
+        </section>`;
+
+      const fitnessTabViews = {
+        workout: workoutViewHtml,
+        stats: fitnessTab === 'stats' ? hstatsViewHtml(snap) : '',
+        weight: `
+          <section class="life-weight-plan" aria-labelledby="lifeWeightPlanTitle">
+            <div class="life-weight-section-title">
+              <div><span>设定变化起点</span><h2 id="lifeWeightPlanTitle">体重管理计划</h2></div>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-7 3a4 4 0 0 1 4 4h-2a2 2 0 0 0-4 0H8a4 4 0 0 1 4-4zm-6 6h12v6H6v-6zm6 1a2 2 0 0 0-2 2h4a2 2 0 0 0-2-2z"/></svg>
+            </div>
+            <div class="life-weight-overview">
+              <div><span>初始体重</span><strong>${weightValue(weightData.initialWeight)}<small>kg</small></strong></div>
+              <div class="is-current"><span>当前体重</span><strong>${weightValue(weightData.latestWeight)}<small>kg</small></strong></div>
+              <div><span>目标体重</span><strong>${weightValue(weightData.targetWeight)}<small>kg</small></strong></div>
+            </div>
+            <div class="life-weight-deltas">
+              <div><span>较初始变化</span><strong>${formatWeightDelta(weightData.initialWeightDelta)}<small>kg</small></strong></div>
+              <div><span>距离目标</span><strong>${formatWeightDelta(weightData.targetWeightDelta)}<small>kg</small></strong></div>
+            </div>
+            <div class="life-weight-plan-form">
+              <div class="life-field">
+                <label for="lifeWeightInitial">初始体重（kg）<span>选填</span></label>
+                <input type="number" inputmode="decimal" min="0.1" step="0.1" id="lifeWeightInitial" class="life-input" value="${weightData.initialWeight === null || weightData.initialWeight === undefined ? '' : esc(weightData.initialWeight)}" placeholder="留空表示暂未设定">
+              </div>
+              <div class="life-field">
+                <label for="lifeWeightTarget">目标体重（kg）</label>
+                <input type="number" inputmode="decimal" min="0.1" step="0.1" id="lifeWeightTarget" class="life-input" value="${esc(weightData.targetWeight)}" placeholder="例如 52.0" required>
+              </div>
+            </div>
+            <button type="button" class="life-submit-btn life-weight-save-plan" data-life-submit="weight-plan">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z"/></svg>
+              <span>保存管理计划</span>
+            </button>
+          </section>
+          <section class="life-weight-daily" aria-labelledby="lifeWeightDailyTitle">
+            <div class="life-weight-section-title">
+              <div><span>允许同日多次称重</span><h2 id="lifeWeightDailyTitle">每日体重记录</h2></div>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 4h-1V2h-2v2H8V2H6v2H5a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3zm1 15a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-9h16v9zm0-11H4V7a1 1 0 0 1 1-1h1v2h2V6h8v2h2V6h1a1 1 0 0 1 1 1v1zM11 12h2v2h2v2h-2v2h-2v-2H9v-2h2v-2z"/></svg>
+            </div>
+            <div class="life-weight-daily-form${editingWeightRecord ? ' is-editing' : ''}">
+              <div class="life-field">
+                <label for="lifeWeightVal">${editingWeightRecord ? '体重（kg）' : '当前体重（kg）'}</label>
+                <input type="number" inputmode="decimal" min="0.1" step="0.1" id="lifeWeightVal" class="life-input" value="${editingWeightRecord ? esc(weightValue(editingWeightRecord.weight)) : ''}" placeholder="例如 52.5" required>
+              </div>
+              <div class="life-field life-weight-note-field">
+                <label for="lifeWeightNote">备注<span>选填</span></label>
+                <input type="text" maxlength="100" id="lifeWeightNote" class="life-input" value="${editingWeightRecord ? esc(editingWeightRecord.note || '') : ''}" placeholder="例如：晨起空腹或训练后">
+              </div>
+              <div class="life-field"><label>日期</label>${renderLifeDateField({ id: 'lifeWeightDate', value: editingWeightRecord ? (editingWeightRecord.dateKey || snap.todayKey) : snap.todayKey, title: '选择称重日期' })}</div>
+              <div class="life-field"><label for="lifeWeightTime">时间</label><input type="time" id="lifeWeightTime" class="life-input" value="${editingWeightRecord ? esc(weightTimeOf(editingWeightRecord)) : formatFitnessTimeHHMM()}"></div>
+            </div>
+            <div class="life-weight-edit-actions">
+              <button type="button" class="life-submit-btn life-weight-add-record" data-life-submit="weight">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="${editingWeightRecord ? 'M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z' : 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z'}"/></svg>
+                <span>${editingWeightRecord ? '保存修改' : '记录本次体重'}</span>
+              </button>
+              ${editingWeightRecord ? '<button type="button" class="life-weight-edit-cancel" data-weight-edit-cancel="1">取消编辑</button>' : ''}
+            </div>
+            <div class="life-weight-history-heading"><h3>历史记录</h3><span>${weightRecords.length} 条 · 按时间倒序</span></div>
+            <div class="life-weight-list">${weightListHtml}</div>
+          </section>`, 
+        diet: dietHistoryOpen ? dietHistoryViewHtml : dietTodayViewHtml
+      };
+      sheetBodyEl.innerHTML = fitnessTabViews[fitnessTab] || fitnessTabViews.workout;
+
+      let fitnessFooterEl = footerEl;
+      if (!fitnessFooterEl || !fitnessFooterEl.querySelector('[data-fitness-tab]')) {
+        if (fitnessFooterEl) {
+          fitnessFooterEl.remove();
+          footerCursorBody = null;
+        }
+        fitnessFooterEl = document.createElement('div');
+        fitnessFooterEl.className = 'life-sheet-footer is-fitness-footer';
+        fitnessFooterEl.setAttribute('role', 'tablist');
+        fitnessFooterEl.setAttribute('aria-label', '运动健康主导航');
+        fitnessFooterEl.innerHTML = `
+          <span class="life-footer-cursor" aria-hidden="true"></span>
+          <button type="button" class="life-footer-tab" data-fitness-tab="workout" role="tab" title="运动打卡" aria-label="运动打卡">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 5.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM9.8 8.9 7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3A7.2 7.2 0 0 0 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6a2 2 0 0 0-1.7-1c-.3 0-.5.1-.8.1L6 8.3V13h2V9.6l1.8-.7z"/></svg>
+            <span class="life-footer-tab-label">运动打卡</span>
+          </button>
+          <button type="button" class="life-footer-tab" data-fitness-tab="stats" role="tab" title="统计" aria-label="统计">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9h3v10H4zm6.5 0V4h3v15h-3zM17 19v-7h3v7h-3zM3 21v-2h18v2H3z"/></svg>
+            <span class="life-footer-tab-label">统计</span>
+          </button>
+          <button type="button" class="life-footer-tab" data-fitness-tab="weight" role="tab" title="体重管理" aria-label="体重管理">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12a3 3 0 0 1 3 3v15H3V6a3 3 0 0 1 3-3zm6 3a5 5 0 0 0-4.6 3h9.2A5 5 0 0 0 12 6zm-1 5h2l1 3h-4l1-3z"/></svg>
+            <span class="life-footer-tab-label">体重管理</span>
+          </button>
+          <button type="button" class="life-footer-tab" data-fitness-tab="diet" role="tab" title="饮食记录" aria-label="饮食记录">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2v8a3 3 0 0 0 3 3v9h2v-9a3 3 0 0 0 3-3V2h-2v7h-1V2h-2v7H9V2H7zm10 0v20h2v-7h3V9a7 7 0 0 0-5-7z"/></svg>
+            <span class="life-footer-tab-label">饮食记录</span>
+          </button>`;
+        sheetEl.appendChild(fitnessFooterEl);
+      }
+      fitnessFooterEl.querySelectorAll('[data-fitness-tab]').forEach((btn) => {
+        const isActive = btn.getAttribute('data-fitness-tab') === fitnessTab;
+        btn.classList.toggle('active', isActive);
+        btn.setAttribute('aria-selected', String(isActive));
+        btn.tabIndex = isActive ? 0 : -1;
+      });
+      fitnessFooterEl.hidden = false;
+      fitnessFooterEl.classList.toggle('is-kb-hidden', sheetKeyboardOpen);
+      sheetBodyEl.classList.add('has-flat-footer');
+
+      if (fitnessTab === 'stats' && window.LifeStats) {
+        drawHstatsCharts(snap);
+      }
+
       finishSheetMount();
       return;
     }
@@ -4200,39 +4883,185 @@ const LifeServiceUI = (() => {
       ));
       await LifeStore.saveConfig({ ledgerCategories: catsObj });
       if (window.RetroToast) RetroToast.show({ tag: 'SUB-BUDGET // OK', message: '各支出分类月度子预算已保存', type: 'success' });
-    } else if (kind === 'fitness') {
-      const actEl = document.getElementById('lifeFitnessType');
-      const durEl = document.getElementById('lifeFitnessDuration');
-      const calEl = document.getElementById('lifeFitnessCalories');
-      const dateEl = document.getElementById('lifeFitnessDate');
-      const duration = Math.max(1, Number(durEl && durEl.value) || 30);
-      const calories = Math.max(0, Number(calEl && calEl.value) || 0);
-
-      await LifeStore.addModuleRecord('fitness', {
-        activity: actEl ? actEl.value : '有氧训练',
-        duration,
-        calories,
-        dateKey: (dateEl && dateEl.value) || LifeStore.toDateKey()
-      });
-    } else if (kind === 'weight') {
-      const valEl = document.getElementById('lifeWeightVal');
-      const targetEl = document.getElementById('lifeWeightTarget');
-      const noteEl = document.getElementById('lifeWeightNote');
-
-      const targetW = Number(targetEl && targetEl.value);
-      if (Number.isFinite(targetW) && targetW > 0) {
-        await LifeStore.saveConfig({ targetWeight: targetW });
+    } else if (kind === 'fitness-plan') {
+      const nameEl = document.getElementById('lifeFitnessPlanName');
+      const descEl = document.getElementById('lifeFitnessPlanDesc');
+      const minutesEl = document.getElementById('lifeFitnessPlanTargetMinutes');
+      const checkinsEl = document.getElementById('lifeFitnessPlanTargetCheckins');
+      const name = nameEl ? nameEl.value.trim() : '';
+      if (!name) {
+        if (window.RetroToast) RetroToast.show({ tag: 'PROGRAM // 校验', message: '请输入运动计划名称', type: 'warning' });
+        return;
       }
+      const targetMinutes = minutesEl && minutesEl.value.trim() !== '' ? Number(minutesEl.value) : null;
+      const targetCheckins = checkinsEl && checkinsEl.value.trim() !== '' ? Number(checkinsEl.value) : null;
+      if ((targetMinutes !== null && (!Number.isFinite(targetMinutes) || targetMinutes <= 0))
+        || (targetCheckins !== null && (!Number.isFinite(targetCheckins) || targetCheckins <= 0))) {
+        if (window.RetroToast) RetroToast.show({ tag: 'PROGRAM // 校验', message: '运动目标需为大于 0 的数值，也可以留空', type: 'warning' });
+        return;
+      }
+      const savedPlan = await LifeStore.saveFitnessPlan({
+        id: fitnessPlanEditId || undefined,
+        name,
+        description: descEl ? descEl.value.trim() : '',
+        targetMinutes,
+        targetCheckins
+      });
+      if (!savedPlan) {
+        if (window.RetroToast) RetroToast.show({ tag: 'PROGRAM // 失败', message: '运动计划保存失败，请重试', type: 'warning' });
+        return;
+      }
+      fitnessPlanFormOpen = false;
+      fitnessPlanEditId = null;
+      if (window.RetroToast) {
+        RetroToast.show({ tag: 'PROGRAM // OK', message: `运动计划「${savedPlan.name}」已保存`, type: 'success' });
+      }
+    } else if (kind === 'fitness-checkin') {
+      if (!fitnessPlanId) {
+        if (window.RetroToast) RetroToast.show({ tag: 'CHECK-IN // 校验', message: '请先进入一个运动计划', type: 'warning' });
+        return;
+      }
+      const actEl = document.getElementById('lifeFitnessActivity');
+      const durEl = document.getElementById('lifeFitnessDuration');
+      const dateEl = document.getElementById('lifeFitnessDate');
+      const timeEl = document.getElementById('lifeFitnessTime');
+      const activity = actEl ? actEl.value.trim() : '';
+      const duration = Number(durEl && durEl.value);
+      if (!activity) {
+        if (window.RetroToast) RetroToast.show({ tag: 'CHECK-IN // 校验', message: '请填写本次运动内容', type: 'warning' });
+        return;
+      }
+      if (!Number.isFinite(duration) || duration <= 0) {
+        if (window.RetroToast) RetroToast.show({ tag: 'CHECK-IN // 校验', message: '运动时长需为大于 0 的分钟数', type: 'warning' });
+        return;
+      }
+      const dateKey = (dateEl && dateEl.value) || LifeStore.toDateKey();
+      const timeStr = (timeEl && timeEl.value) || formatFitnessTimeHHMM();
+      const occurredAt = combineFitnessDateTime(dateKey, timeStr);
+      const payload = {
+        planId: fitnessPlanId,
+        activity,
+        duration: Math.round(duration * 10) / 10,
+        dateKey,
+        timeStr,
+        occurredAt
+      };
+      if (fitnessCheckinEditId) {
+        const updated = await LifeStore.updateFitnessRecord(fitnessCheckinEditId, payload);
+        if (!updated) {
+          if (window.RetroToast) RetroToast.show({ tag: 'CHECK-IN // 失败', message: '这条打卡已不存在，请刷新后重试', type: 'warning' });
+          fitnessCheckinFormOpen = false;
+          fitnessCheckinEditId = null;
+          return;
+        }
+      } else {
+        await LifeStore.addModuleRecord('fitness', payload);
+      }
+      fitnessCheckinFormOpen = false;
+      fitnessCheckinEditId = null;
+      if (window.RetroToast) RetroToast.show({ tag: 'CHECK-IN // OK', message: '运动打卡已保存', type: 'success' });
+    } else if (kind === 'weight-plan') {
+      const initialEl = document.getElementById('lifeWeightInitial');
+      const targetEl = document.getElementById('lifeWeightTarget');
+      const initialRaw = initialEl ? initialEl.value.trim() : '';
+      const targetRaw = targetEl ? targetEl.value.trim() : '';
+      const initialW = initialRaw === '' ? null : Number(initialRaw);
+      const targetW = Number(targetRaw);
 
-      const w = Number(valEl && valEl.value);
-      if (!Number.isFinite(w) || w <= 0) {
-        if (window.RetroToast) RetroToast.show({ tag: 'MASS // 校验', message: '请输入有效体重数值', type: 'warning' });
+      if (initialW !== null && (!Number.isFinite(initialW) || initialW <= 0)) {
+        if (window.RetroToast) RetroToast.show({ tag: '体重计划', message: '初始体重需大于 0，也可以留空', type: 'warning' });
+        return;
+      }
+      if (targetRaw === '' || !Number.isFinite(targetW) || targetW <= 0) {
+        if (window.RetroToast) RetroToast.show({ tag: '体重计划', message: '请输入大于 0 的目标体重', type: 'warning' });
         return;
       }
 
-      await LifeStore.addModuleRecord('weight', {
+      await LifeStore.saveConfig({
+        initialWeight: initialW === null ? null : Number(initialW.toFixed(1)),
+        targetWeight: Number(targetW.toFixed(1))
+      });
+      if (window.RetroToast) RetroToast.show({ tag: '体重计划', message: '体重管理计划已保存', type: 'success' });
+    } else if (kind === 'weight') {
+      const valEl = document.getElementById('lifeWeightVal');
+      const noteEl = document.getElementById('lifeWeightNote');
+      const rawWeight = valEl ? valEl.value.trim() : '';
+      const w = Number(rawWeight);
+
+      if (rawWeight === '' || !Number.isFinite(w) || w <= 0) {
+        if (window.RetroToast) RetroToast.show({ tag: '体重记录', message: '请输入大于 0 的当前体重', type: 'warning' });
+        return;
+      }
+
+      const dateEl = document.getElementById('lifeWeightDate');
+      const timeEl = document.getElementById('lifeWeightTime');
+      const dateKey = dateEl && dateEl.value ? dateEl.value : LifeStore.toDateKey();
+      const timeStr = timeEl && /^\d{2}:\d{2}$/.test(timeEl.value) ? timeEl.value : formatFitnessTimeHHMM();
+      const payload = {
         weight: Number(w.toFixed(1)),
-        note: noteEl ? noteEl.value.trim() : ''
+        note: noteEl ? noteEl.value.trim() : '',
+        dateKey,
+        timeStr,
+        occurredAt: combineFitnessDateTime(dateKey, timeStr)
+      };
+      if (weightEditId) {
+        const updated = await LifeStore.updateModuleRecord('weight', weightEditId, payload);
+        weightEditId = null;
+        if (!updated) {
+          latestSnap = await LifeStore.getFullSnapshot();
+          renderModuleSheetBody('fitness');
+          if (window.RetroToast) RetroToast.show({ tag: '体重记录', message: '这条记录已不存在，请重新选择', type: 'warning' });
+          return;
+        }
+        if (window.RetroToast) RetroToast.show({ tag: '体重记录', message: '体重记录已更新', type: 'success' });
+      } else {
+        await LifeStore.addModuleRecord('weight', payload);
+        if (window.RetroToast) RetroToast.show({ tag: '体重记录', message: '本次体重已记录', type: 'success' });
+      }
+    } else if (kind === 'diet') {
+      const contentEl = document.getElementById('lifeDietContent');
+      const noteEl = document.getElementById('lifeDietNote');
+      const dateEl = document.getElementById('lifeDietDate');
+      const timeEl = document.getElementById('lifeDietTime');
+      const content = contentEl ? contentEl.value.trim() : '';
+      const dateKey = dateEl && dateEl.value ? dateEl.value : LifeStore.toDateKey();
+      const timeStr = timeEl && /^\d{2}:\d{2}$/.test(timeEl.value) ? timeEl.value : formatFitnessTimeHHMM();
+      if (!content) {
+        if (window.RetroToast) RetroToast.show({ tag: '饮食记录', message: '请填写饮食内容', type: 'warning' });
+        if (contentEl) contentEl.focus();
+        return;
+      }
+      const payload = {
+        category: dietCategory,
+        content,
+        note: noteEl ? noteEl.value.trim() : '',
+        dateKey,
+        timeStr,
+        occurredAt: combineFitnessDateTime(dateKey, timeStr)
+      };
+      const isEditing = Boolean(dietEditId);
+      if (isEditing) {
+        const updated = await LifeStore.updateModuleRecord('diet', dietEditId, payload);
+        if (!updated) {
+          dietEditId = null;
+          dietCategory = 'breakfast';
+          latestSnap = await LifeStore.getFullSnapshot();
+          renderModuleSheetBody('fitness');
+          if (window.RetroToast) RetroToast.show({ tag: '饮食记录', message: '这条记录已不存在，请重新选择', type: 'warning' });
+          return;
+        }
+      } else {
+        await LifeStore.addModuleRecord('diet', payload);
+      }
+      dietEditId = null;
+      dietCategory = 'breakfast';
+      const isPastEntry = dateKey !== LifeStore.toDateKey();
+      if (window.RetroToast) RetroToast.show({
+        tag: '饮食记录',
+        message: isPastEntry
+          ? (isEditing ? `修改已保存，记录已归档至 ${dateKey}` : `已补记至 ${dateKey}，可在往期记录查看`)
+          : (isEditing ? '饮食记录修改已保存' : '今日饮食已记录'),
+        type: 'success'
       });
     } else if (kind === 'period') {
       const startEl = document.getElementById('lifePeriodStart');
@@ -4537,6 +5366,7 @@ const LifeServiceUI = (() => {
 
     latestSnap = await LifeStore.getFullSnapshot();
     renderModuleSheetBody(activeModule);
+    if (isFitnessPlanSubView()) syncSheetHeaderTitle();
     renderDashboard();
   }
 
@@ -4648,6 +5478,10 @@ const LifeServiceUI = (() => {
     }
     if (sheetBackBtn) {
       sheetBackBtn.addEventListener('click', () => {
+        if (isFitnessPlanSubView()) {
+          exitFitnessPlanDetail(false);
+          return;
+        }
         if (isLedgerAssetSubView()) {
           exitLedgerAssetSubView(false);
           syncSheetHeaderTitle();
@@ -4704,7 +5538,31 @@ const LifeServiceUI = (() => {
         }
       });
 
+      sheetBodyEl.addEventListener('change', (e) => {
+        const historyDateInput = e.target.closest('#lifeDietHistoryDate');
+        if (historyDateInput) {
+          dietHistoryDate = historyDateInput.value || '';
+          renderModuleSheetBody('fitness');
+        }
+      });
+
       sheetEl.addEventListener('click', (e) => {
+        const fitTabBtn = e.target.closest('[data-fitness-tab]');
+        if (fitTabBtn) {
+          const nextTab = fitTabBtn.getAttribute('data-fitness-tab') || 'workout';
+          if (!['workout', 'stats', 'weight', 'diet'].includes(nextTab) || nextTab === fitnessTab) return;
+          const wasPlanDetail = isFitnessPlanSubView();
+          fitnessTab = nextTab;
+          resetFitnessViewState();
+          syncSheetHeaderTitle();
+          renderModuleSheetBody('fitness');
+          if (wasPlanDetail && nextTab !== 'workout' && (window.location.hash || '').startsWith('#life-fitness-plan-')) {
+            pendingProgrammaticBack = true;
+            try { history.back(); } catch (_) { /* ignore */ }
+          }
+          return;
+        }
+
         const primaryTabBtn = e.target.closest('[data-ledger-primary]');
         if (primaryTabBtn) {
           const nextPrimary = primaryTabBtn.getAttribute('data-ledger-primary') || 'flow';
@@ -5413,11 +6271,242 @@ const LifeServiceUI = (() => {
           return;
         }
 
-        const fitTabBtn = e.target.closest('[data-fitness-tab]');
-        if (fitTabBtn) {
-          const prev = captureSegIndices();
-          fitnessTab = fitTabBtn.getAttribute('data-fitness-tab') || 'workout';
-          renderModuleSheetBody('fitness', prev);
+        const fitnessPlanFormToggle = e.target.closest('[data-fitness-plan-form-toggle]');
+        if (fitnessPlanFormToggle) {
+          fitnessPlanFormOpen = fitnessPlanFormToggle.getAttribute('data-fitness-plan-form-toggle') === '1';
+          fitnessPlanEditId = null;
+          fitnessCheckinFormOpen = false;
+          fitnessCheckinEditId = null;
+          renderModuleSheetBody('fitness');
+          if (fitnessPlanFormOpen) sheetBodyEl.scrollTo({ top: 0, behavior: 'smooth' });
+          return;
+        }
+
+        const fitnessPlanOpenBtn = e.target.closest('[data-fitness-plan-open]');
+        if (fitnessPlanOpenBtn) {
+          enterFitnessPlanDetail(fitnessPlanOpenBtn.getAttribute('data-fitness-plan-open'));
+          return;
+        }
+
+        const fitnessDetailBackBtn = e.target.closest('[data-fitness-detail-back]');
+        if (fitnessDetailBackBtn) {
+          exitFitnessPlanDetail(false);
+          return;
+        }
+
+        const fitnessPlanEditBtn = e.target.closest('[data-fitness-plan-edit]');
+        if (fitnessPlanEditBtn) {
+          const planId = fitnessPlanEditBtn.getAttribute('data-fitness-plan-edit');
+          const plan = (latestSnap && latestSnap.fitness && latestSnap.fitness.plans || []).find((p) => p.id === planId);
+          if (plan) {
+            fitnessPlanFormOpen = true;
+            fitnessPlanEditId = plan.id;
+            fitnessCheckinFormOpen = false;
+            fitnessCheckinEditId = null;
+            renderModuleSheetBody('fitness');
+            sheetBodyEl.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+          return;
+        }
+
+        const fitnessPlanDeleteBtn = e.target.closest('[data-fitness-plan-delete]');
+        if (fitnessPlanDeleteBtn) {
+          const planId = fitnessPlanDeleteBtn.getAttribute('data-fitness-plan-delete');
+          const plan = (latestSnap && latestSnap.fitness && latestSnap.fitness.plans || []).find((p) => p.id === planId);
+          if (!plan) return;
+          if (window.RetroModal) {
+            const ok = await RetroModal.confirm({
+              message: `确认删除运动计划「${plan.name}」？`,
+              detail: `该计划下的 ${plan.totalCheckins || 0} 条运动打卡也会被永久移除，此操作不可撤销。`,
+              confirmText: '确认删除',
+              cancelText: '取消',
+              danger: true
+            });
+            if (!ok) return;
+          }
+          await LifeStore.deleteFitnessPlan(planId);
+          if (fitnessPlanEditId === planId) {
+            fitnessPlanFormOpen = false;
+            fitnessPlanEditId = null;
+          }
+          if (fitnessPlanId === planId) {
+            exitFitnessPlanDetail(false);
+          }
+          latestSnap = await LifeStore.getFullSnapshot();
+          renderModuleSheetBody('fitness');
+          syncSheetHeaderTitle();
+          renderDashboard();
+          if (window.RetroToast) RetroToast.show({ tag: 'PROGRAM // REMOVED', message: '运动计划及其打卡记录已删除', type: 'success' });
+          return;
+        }
+
+        const fitnessCheckinFormToggle = e.target.closest('[data-fitness-checkin-form-toggle]');
+        if (fitnessCheckinFormToggle) {
+          fitnessCheckinFormOpen = fitnessCheckinFormToggle.getAttribute('data-fitness-checkin-form-toggle') === '1';
+          fitnessCheckinEditId = null;
+          renderModuleSheetBody('fitness');
+          if (fitnessCheckinFormOpen) sheetBodyEl.scrollTo({ top: 0, behavior: 'smooth' });
+          return;
+        }
+
+        const fitnessCheckinEditBtn = e.target.closest('[data-fitness-checkin-edit]');
+        if (fitnessCheckinEditBtn) {
+          const recId = fitnessCheckinEditBtn.getAttribute('data-fitness-checkin-edit');
+          const currentPlan = (latestSnap && latestSnap.fitness && latestSnap.fitness.plans || []).find((p) => p.id === fitnessPlanId);
+          const rec = currentPlan && (currentPlan.records || []).find((r) => r.id === recId);
+          if (rec) {
+            fitnessPlanFormOpen = false;
+            fitnessPlanEditId = null;
+            fitnessCheckinFormOpen = true;
+            fitnessCheckinEditId = rec.id;
+            renderModuleSheetBody('fitness');
+            sheetBodyEl.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+          return;
+        }
+
+        const fitnessCheckinDeleteBtn = e.target.closest('[data-fitness-checkin-delete]');
+        if (fitnessCheckinDeleteBtn) {
+          const recId = fitnessCheckinDeleteBtn.getAttribute('data-fitness-checkin-delete');
+          if (window.RetroModal) {
+            const ok = await RetroModal.confirm({
+              message: '确认删除这条运动打卡？',
+              detail: '删除后，对应计划的累计时长、打卡次数与目标进度将同步更新。',
+              confirmText: '确认删除',
+              cancelText: '取消',
+              danger: true
+            });
+            if (!ok) return;
+          }
+          await LifeStore.deleteRecord(recId);
+          if (fitnessCheckinEditId === recId) {
+            fitnessCheckinFormOpen = false;
+            fitnessCheckinEditId = null;
+          }
+          latestSnap = await LifeStore.getFullSnapshot();
+          renderModuleSheetBody('fitness');
+          renderDashboard();
+          if (window.RetroToast) RetroToast.show({ tag: 'CHECK-IN // REMOVED', message: '运动打卡已删除', type: 'success' });
+          return;
+        }
+
+        const dietCatBtn = e.target.closest('[data-diet-cat]');
+        if (dietCatBtn) {
+          dietCategory = dietCatBtn.getAttribute('data-diet-cat') || 'breakfast';
+          renderModuleSheetBody('fitness');
+          return;
+        }
+
+        const dietHistoryToggleBtn = e.target.closest('[data-diet-history-open]');
+        if (dietHistoryToggleBtn) {
+          const openState = dietHistoryToggleBtn.getAttribute('data-diet-history-open');
+          dietHistoryOpen = openState === '1';
+          dietEditId = null;
+          if (!dietHistoryOpen) {
+            dietHistoryDate = '';
+          }
+          renderModuleSheetBody('fitness');
+          return;
+        }
+
+        const dietHistoryClearBtn = e.target.closest('[data-diet-history-clear]');
+        if (dietHistoryClearBtn) {
+          dietHistoryDate = '';
+          renderModuleSheetBody('fitness');
+          return;
+        }
+
+        const dietEditCard = e.target.closest('[data-diet-edit]');
+        if (dietEditCard && !e.target.closest('[data-life-del]')) {
+          const recId = dietEditCard.getAttribute('data-diet-edit');
+          const rec = (latestSnap && latestSnap.diet && latestSnap.diet.records || []).find((r) => r.id === recId);
+          if (rec) {
+            dietEditId = rec.id;
+            dietCategory = rec.category || 'breakfast';
+            dietHistoryOpen = false;
+            renderModuleSheetBody('fitness');
+            sheetBodyEl.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+          return;
+        }
+
+        const dietEditCancelBtn = e.target.closest('[data-diet-edit-cancel]');
+        if (dietEditCancelBtn) {
+          dietEditId = null;
+          dietCategory = 'breakfast';
+          renderModuleSheetBody('fitness');
+          return;
+        }
+
+        const weightEditCard = e.target.closest('[data-weight-edit]');
+        if (weightEditCard && !e.target.closest('[data-life-del]')) {
+          const recId = weightEditCard.getAttribute('data-weight-edit');
+          const rec = (latestSnap && latestSnap.weight && latestSnap.weight.records || []).find((r) => r.id === recId);
+          if (rec) {
+            weightEditId = rec.id;
+            renderModuleSheetBody('fitness');
+            const formEl = sheetBodyEl.querySelector('.life-weight-daily');
+            if (formEl) sheetBodyEl.scrollTo({ top: Math.max(0, formEl.offsetTop - 12), behavior: 'smooth' });
+          }
+          return;
+        }
+
+        const weightEditCancelBtn = e.target.closest('[data-weight-edit-cancel]');
+        if (weightEditCancelBtn) {
+          weightEditId = null;
+          renderModuleSheetBody('fitness');
+          return;
+        }
+
+        const hstatsDomainBtn = e.target.closest('[data-hstats-domain]');
+        if (hstatsDomainBtn) {
+          const next = hstatsDomainBtn.getAttribute('data-hstats-domain');
+          if (['fitness', 'diet', 'weight'].includes(next) && next !== statsDomain) {
+            statsDomain = next;
+            statsFocusKey = '';
+            renderModuleSheetBody('fitness');
+          }
+          return;
+        }
+
+        const hstatsDimBtn = e.target.closest('[data-hstats-dim]');
+        if (hstatsDimBtn) {
+          const next = hstatsDimBtn.getAttribute('data-hstats-dim');
+          if (['week', 'month', 'year'].includes(next) && next !== statsDim) {
+            statsDim = next;
+            statsOffset = 0;
+            statsFocusKey = '';
+            renderModuleSheetBody('fitness');
+          }
+          return;
+        }
+
+        const hstatsStepBtn = e.target.closest('[data-hstats-step]');
+        if (hstatsStepBtn) {
+          if (hstatsStepBtn.disabled) return;
+          const delta = Number(hstatsStepBtn.getAttribute('data-hstats-step')) || 0;
+          const nextOffset = Math.min(0, statsOffset + delta); // 不能翻到未来
+          if (nextOffset !== statsOffset) {
+            statsOffset = nextOffset;
+            statsFocusKey = '';
+            renderModuleSheetBody('fitness');
+          }
+          return;
+        }
+
+        const hstatsResetBtn = e.target.closest('[data-hstats-reset]');
+        if (hstatsResetBtn) {
+          statsOffset = 0;
+          statsFocusKey = '';
+          renderModuleSheetBody('fitness');
+          return;
+        }
+
+        const hstatsFocusEl = e.target.closest('[data-hstats-focus]');
+        if (hstatsFocusEl) {
+          const key = hstatsFocusEl.getAttribute('data-hstats-focus') || '';
+          statsFocusKey = statsFocusKey === key ? '' : key;
+          renderHstatsFocusInfo();
           return;
         }
 
@@ -5452,6 +6541,11 @@ const LifeServiceUI = (() => {
             if (!ok) return;
           }
           if (ledgerEditRecordId === recId) ledgerEditRecordId = null;
+          if (dietEditId === recId) {
+            dietEditId = null;
+            dietCategory = 'breakfast';
+          }
+          if (weightEditId === recId) weightEditId = null;
           await LifeStore.deleteRecord(recId);
           latestSnap = await LifeStore.getFullSnapshot();
           renderModuleSheetBody(activeModule);
@@ -5580,6 +6674,15 @@ const LifeServiceUI = (() => {
           return;
         }
       });
+
+      sheetBodyEl.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        if (e.target.closest('[data-life-del]')) return;
+        const editCard = e.target.closest('[data-diet-edit], [data-weight-edit]');
+        if (!editCard) return;
+        e.preventDefault();
+        editCard.click();
+      });
     }
   }
 
@@ -5590,6 +6693,16 @@ const LifeServiceUI = (() => {
     }
     if (!isOpen) return;
     if (activeModule) {
+      if (activeModule === 'fitness' && fitnessTab === 'diet' && dietHistoryOpen) {
+        dietHistoryOpen = false;
+        dietHistoryDate = '';
+        renderModuleSheetBody('fitness');
+        return;
+      }
+      if (isFitnessPlanSubView()) {
+        exitFitnessPlanDetail(true);
+        return;
+      }
       if (isLedgerAssetSubView()) {
         exitLedgerAssetSubView(true);
         syncSheetHeaderTitle();

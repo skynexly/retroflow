@@ -22,6 +22,7 @@ const LifeStore = (() => {
     ledger: 'life:ledger',
     fitness: 'life:fitness',
     weight: 'life:weight',
+    diet: 'life:diet',
     period: 'life:period',
     meds: 'life:meds_log',
     sleep: 'life:sleep',
@@ -100,6 +101,7 @@ const LifeStore = (() => {
     monthlyBudget: 3000,
     currencySymbol: '¥',
     weekStartsOnMonday: true,
+    initialWeight: null,
     targetWeight: 52.0,
     dailyCalorieGoal: 400,
     sleepGoalHours: 8.0,
@@ -116,7 +118,9 @@ const LifeStore = (() => {
       { id: 'med_default_3', name: '镁剂缓释片', dose: '1 片', slot: 'NIGHT // 睡前', active: true }
     ],
     // 订阅协议常驻清单（支持 recurring 周期续费 / onetime 一次性限时 / lifetime 买断摊销）
-    subscriptions: []
+    subscriptions: [],
+    // 运动计划清单（支持定量目标时长/打卡次数，或无目标自由计划）
+    fitnessPlans: []
   };
 
   let configCache = null;
@@ -225,6 +229,26 @@ const LifeStore = (() => {
     };
   }
 
+  function normalizeFitnessPlan(p, idx) {
+    const now = Date.now();
+    const hasMin = p && p.targetMinutes !== '' && p.targetMinutes !== null && p.targetMinutes !== undefined;
+    const hasCnt = p && p.targetCheckins !== '' && p.targetCheckins !== null && p.targetCheckins !== undefined;
+    const rawMin = hasMin ? Number(p.targetMinutes) : NaN;
+    const rawCnt = hasCnt ? Number(p.targetCheckins) : NaN;
+    const createdAt = Number(p && p.createdAt) > 0 ? Number(p.createdAt) : now;
+    const updatedAt = Number(p && p.updatedAt) > 0 ? Number(p.updatedAt) : createdAt;
+    return {
+      id: String((p && p.id) || `fplan_${now}_${idx}`),
+      name: String((p && p.name) || '未命名计划').trim().slice(0, 32),
+      description: String((p && p.description) || '').trim().slice(0, 120),
+      targetMinutes: Number.isFinite(rawMin) && rawMin > 0 ? Math.round(rawMin) : null,
+      targetCheckins: Number.isFinite(rawCnt) && rawCnt > 0 ? Math.max(1, Math.round(rawCnt)) : null,
+      isLegacyBucket: Boolean(p && p.isLegacyBucket),
+      createdAt,
+      updatedAt
+    };
+  }
+
   function normalizeConfig(raw) {
     const base = cloneDefaultConfig();
     if (!raw || typeof raw !== 'object') return base;
@@ -242,6 +266,11 @@ const LifeStore = (() => {
 
     const tw = Number(raw.targetWeight);
     if (Number.isFinite(tw) && tw > 0) base.targetWeight = Number(tw.toFixed(1));
+
+    if (raw.initialWeight !== null && raw.initialWeight !== undefined && String(raw.initialWeight).trim() !== '') {
+      const iw = Number(raw.initialWeight);
+      if (Number.isFinite(iw) && iw > 0) base.initialWeight = Number(iw.toFixed(1));
+    }
 
     const cal = Number(raw.dailyCalorieGoal);
     if (Number.isFinite(cal) && cal > 0) base.dailyCalorieGoal = Math.round(cal);
@@ -364,6 +393,12 @@ const LifeStore = (() => {
         });
     }
 
+    if (Array.isArray(raw.fitnessPlans)) {
+      base.fitnessPlans = raw.fitnessPlans
+        .filter((p) => p && typeof p === 'object' && String(p.name || '').trim())
+        .map((p, idx) => normalizeFitnessPlan(p, idx));
+    }
+
     return base;
   }
 
@@ -471,6 +506,19 @@ const LifeStore = (() => {
         const db = String(b.dateKey || '');
         if (da !== db) return db.localeCompare(da);
       }
+      if (moduleKey === 'diet') {
+        const da = String(a.dateKey || '');
+        const db = String(b.dateKey || '');
+        if (da !== db) return db.localeCompare(da);
+        const ta = Number(a.occurredAt) || Number(a.createdAt) || 0;
+        const tb = Number(b.occurredAt) || Number(b.createdAt) || 0;
+        if (ta !== tb) return tb - ta;
+      }
+      if (moduleKey === 'fitness' || moduleKey === 'weight') {
+        const ta = Number(a.occurredAt) || Number(a.createdAt) || 0;
+        const tb = Number(b.occurredAt) || Number(b.createdAt) || 0;
+        if (ta !== tb) return tb - ta;
+      }
       return (b.createdAt || 0) - (a.createdAt || 0);
     });
   }
@@ -495,6 +543,23 @@ const LifeStore = (() => {
     return record;
   }
 
+  /** 编辑更新一条已有板块记录（保留原 id、归属与创建时间） */
+  async function updateModuleRecord(moduleKey, recordId, patch) {
+    if (!recordId) return null;
+    const list = await listModuleRecords(moduleKey);
+    const target = list.find((r) => r.id === recordId);
+    if (!target) return null;
+    const updated = Object.assign({}, target, patch || {}, {
+      id: target.id,
+      kind: `life:${moduleKey}`,
+      forkId: target.forkId || MODULE_FORK[moduleKey] || `${RECORD_PREFIX}${moduleKey}`,
+      createdAt: target.createdAt,
+      updatedAt: Date.now()
+    });
+    await Storage.putRecord(updated);
+    return updated;
+  }
+
   /** 编辑更新一条已有记账流水（保留原 id 与 createdAt，联动重算全盘余额） */
   async function updateLedgerRecord(recordId, patch) {
     if (!recordId) return null;
@@ -515,6 +580,111 @@ const LifeStore = (() => {
   async function deleteRecord(recordId) {
     if (!recordId || !window.Storage || typeof Storage.removeRecord !== 'function') return false;
     return await Storage.removeRecord(recordId);
+  }
+
+  /** 新增或编辑保存运动计划 */
+  async function saveFitnessPlan(payload) {
+    if (!initialized) await loadConfig();
+    const name = String((payload && payload.name) || '').trim().slice(0, 32);
+    if (!name) return null;
+    const now = Date.now();
+    const plans = Array.isArray(configCache.fitnessPlans) ? configCache.fitnessPlans.slice() : [];
+    const editId = payload && payload.id ? String(payload.id) : '';
+    const idx = editId ? plans.findIndex((p) => p.id === editId) : -1;
+
+    const normalized = normalizeFitnessPlan({
+      id: idx >= 0 ? plans[idx].id : `fplan_${now}_${Math.random().toString(36).slice(2, 6)}`,
+      name,
+      description: payload && payload.description !== undefined ? payload.description : (idx >= 0 ? plans[idx].description : ''),
+      targetMinutes: payload ? payload.targetMinutes : null,
+      targetCheckins: payload ? payload.targetCheckins : null,
+      isLegacyBucket: idx >= 0 ? Boolean(plans[idx].isLegacyBucket) : false,
+      createdAt: idx >= 0 ? plans[idx].createdAt : now,
+      updatedAt: now
+    }, idx >= 0 ? idx : plans.length);
+
+    if (idx >= 0) {
+      plans[idx] = normalized;
+    } else {
+      plans.unshift(normalized);
+    }
+    await saveConfig({ fitnessPlans: plans });
+    return normalized;
+  }
+
+  /** 删除运动计划并级联清理其名下所有打卡记录 */
+  async function deleteFitnessPlan(planId) {
+    if (!planId) return null;
+    if (!initialized) await loadConfig();
+    const plans = Array.isArray(configCache.fitnessPlans) ? configCache.fitnessPlans : [];
+    const nextPlans = plans.filter((p) => p.id !== planId);
+    await saveConfig({ fitnessPlans: nextPlans });
+
+    const records = await listModuleRecords('fitness');
+    const matched = records.filter((r) => r.planId === planId);
+    if (matched.length > 0) {
+      await Promise.all(matched.map((r) => deleteRecord(r.id)));
+    }
+    return { deletedPlanId: planId, deletedCheckins: matched.length };
+  }
+
+  /** 编辑更新一条运动打卡记录（保留原 id / planId / createdAt） */
+  async function updateFitnessRecord(recordId, patch) {
+    if (!recordId || !window.Storage || typeof Storage.putRecord !== 'function') return null;
+    const list = await listModuleRecords('fitness');
+    const target = list.find((r) => r.id === recordId);
+    if (!target) return null;
+    const updated = Object.assign({}, target, patch || {}, {
+      id: target.id,
+      planId: target.planId,
+      kind: 'life:fitness',
+      forkId: MODULE_FORK.fitness,
+      createdAt: target.createdAt || Date.now(),
+      updatedAt: Date.now()
+    });
+    await Storage.putRecord(updated);
+    return updated;
+  }
+
+  /** 兼容迁移无 planId 的旧版运动记录至「历史运动记录」自由计划 */
+  async function ensureLegacyFitnessMigration(fitnessRecords) {
+    if (!Array.isArray(fitnessRecords) || !fitnessRecords.length) return;
+    const orphans = fitnessRecords.filter((r) => r && !r.planId);
+    if (!orphans.length) return;
+
+    const plans = Array.isArray(configCache.fitnessPlans) ? configCache.fitnessPlans.slice() : [];
+    let legacyPlan = plans.find((p) => p.id === 'fplan_legacy' || p.isLegacyBucket);
+    if (!legacyPlan) {
+      const earliestTs = orphans.reduce((minTs, r) => {
+        const ts = Number(r.createdAt) > 0 ? Number(r.createdAt) : Date.now();
+        return ts < minTs ? ts : minTs;
+      }, Date.now());
+      legacyPlan = normalizeFitnessPlan({
+        id: 'fplan_legacy',
+        name: '历史运动记录',
+        description: '旧版运动打卡自动归档计划',
+        targetMinutes: null,
+        targetCheckins: null,
+        isLegacyBucket: true,
+        createdAt: earliestTs,
+        updatedAt: Date.now()
+      }, plans.length);
+      plans.push(legacyPlan);
+      await saveConfig({ fitnessPlans: plans });
+    }
+
+    if (window.Storage && typeof Storage.putRecord === 'function') {
+      for (let i = 0; i < orphans.length; i++) {
+        const rec = orphans[i];
+        const fallbackTs = Number(rec.createdAt) > 0
+          ? Number(rec.createdAt)
+          : parseDateKeyLocal(rec.dateKey || toDateKey()).getTime() + 9 * 3600000;
+        rec.planId = legacyPlan.id;
+        if (!rec.occurredAt) rec.occurredAt = fallbackTs;
+        if (!rec.dateKey) rec.dateKey = toDateKey(rec.occurredAt);
+        await Storage.putRecord(rec);
+      }
+    }
   }
 
   /**
@@ -1275,10 +1445,11 @@ const LifeStore = (() => {
     if (!initialized) await loadConfig();
     await syncAutoRenewSubscriptions();
 
-    const [ledger, fitness, weight, period, medsLog, sleep, memo] = await Promise.all([
+    const [ledger, fitness, weight, diet, period, medsLog, sleep, memo] = await Promise.all([
       listModuleRecords('ledger'),
       listModuleRecords('fitness'),
       listModuleRecords('weight'),
+      listModuleRecords('diet'),
       listModuleRecords('period'),
       listModuleRecords('meds'),
       listModuleRecords('sleep'),
@@ -1291,17 +1462,50 @@ const LifeStore = (() => {
     // 1. 记账多账户、净资产、分类子预算与流水分析
     const ledgerAnalytics = computeLedgerAnalytics(ledger, configCache, now);
 
-    // 2. 运动与体重汇总
+    // 2. 运动计划、打卡与体重汇总（自动兼容迁移无 planId 的历史记录）
+    await ensureLegacyFitnessMigration(fitness);
     let todayMinutes = 0;
-    let todayCalories = 0;
+    let totalFitnessMinutes = 0;
     let weekSessions = 0;
     const sevenDaysAgo = Date.now() - 7 * 86400000;
+    const planBucketMap = new Map();
+
     fitness.forEach((item) => {
-      if (item.dateKey === todayKey) {
-        todayMinutes += Number(item.duration) || 0;
-        todayCalories += Number(item.calories) || 0;
+      const dur = Math.max(0, Number(item.duration) || 0);
+      const occTs = Number(item.occurredAt) || Number(item.createdAt) || 0;
+      const itemDateKey = item.dateKey || (occTs > 0 ? toDateKey(occTs) : '');
+      totalFitnessMinutes += dur;
+      if (itemDateKey === todayKey) {
+        todayMinutes += dur;
       }
-      if ((item.createdAt || 0) >= sevenDaysAgo) weekSessions += 1;
+      if (occTs >= sevenDaysAgo) weekSessions += 1;
+      if (item.planId) {
+        if (!planBucketMap.has(item.planId)) planBucketMap.set(item.planId, []);
+        planBucketMap.get(item.planId).push(item);
+      }
+    });
+
+    const fitnessPlans = (configCache.fitnessPlans || []).map((plan) => {
+      const planRecords = (planBucketMap.get(plan.id) || []).slice().sort((a, b) => {
+        const ta = Number(a.occurredAt) || Number(a.createdAt) || 0;
+        const tb = Number(b.occurredAt) || Number(b.createdAt) || 0;
+        return tb - ta;
+      });
+      const totalMinutes = planRecords.reduce((acc, r) => acc + (Math.max(0, Number(r.duration) || 0)), 0);
+      const totalCheckins = planRecords.length;
+      const targetMinutes = plan.targetMinutes && plan.targetMinutes > 0 ? plan.targetMinutes : null;
+      const targetCheckins = plan.targetCheckins && plan.targetCheckins > 0 ? plan.targetCheckins : null;
+      const minutesProgress = targetMinutes ? Math.min(100, Math.round((totalMinutes / targetMinutes) * 100)) : null;
+      const checkinsProgress = targetCheckins ? Math.min(100, Math.round((totalCheckins / targetCheckins) * 100)) : null;
+      return Object.assign({}, plan, {
+        totalMinutes,
+        totalCheckins,
+        minutesProgress,
+        checkinsProgress,
+        isFreePlan: !targetMinutes && !targetCheckins,
+        latestRecord: planRecords[0] || null,
+        records: planRecords
+      });
     });
 
     const latestWeight = weight.length ? Number(weight[0].weight) : null;
@@ -1309,6 +1513,14 @@ const LifeStore = (() => {
     const weightDelta = (latestWeight !== null && prevWeight !== null)
       ? Number((latestWeight - prevWeight).toFixed(1))
       : 0;
+    const initialWeight = configCache.initialWeight;
+    const targetWeight = configCache.targetWeight;
+    const initialWeightDelta = (latestWeight !== null && initialWeight !== null)
+      ? Number((latestWeight - initialWeight).toFixed(1))
+      : null;
+    const targetWeightDelta = latestWeight !== null
+      ? Number((latestWeight - targetWeight).toFixed(1))
+      : null;
 
     // 3. 经期周期推算
     const cycleLen = configCache.periodCycleDays || 28;
@@ -1470,6 +1682,19 @@ const LifeStore = (() => {
     if (memoTodos.length > 0 && pendingTodos.length === 0) readinessScore += 4;
     readinessScore = Math.min(99, Math.max(18, readinessScore));
 
+    const dietTodayRecords = diet.filter((record) => String(record.dateKey || '') === todayKey);
+    const dietHistoryBucket = new Map();
+    diet.forEach((record) => {
+      const dateKey = String(record.dateKey || '');
+      if (!dateKey || dateKey === todayKey) return;
+      if (!dietHistoryBucket.has(dateKey)) dietHistoryBucket.set(dateKey, []);
+      dietHistoryBucket.get(dateKey).push(record);
+    });
+    const dietHistoryGroups = Array.from(dietHistoryBucket.entries())
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([dateKey, records]) => ({ dateKey, records, count: records.length }));
+    const dietHistoryDates = dietHistoryGroups.map((group) => group.dateKey);
+
     return {
       config: configCache,
       todayKey,
@@ -1478,16 +1703,30 @@ const LifeStore = (() => {
         records: ledger
       }, ledgerAnalytics),
       fitness: {
+        plans: fitnessPlans,
+        planCount: fitnessPlans.length,
         records: fitness,
+        totalMinutes: totalFitnessMinutes,
+        totalCheckins: fitness.length,
         todayMinutes,
-        todayCalories,
         weekSessions
       },
       weight: {
         records: weight,
         latestWeight,
         weightDelta,
-        targetWeight: configCache.targetWeight
+        initialWeight,
+        initialWeightDelta,
+        targetWeight,
+        targetWeightDelta
+      },
+      diet: {
+        records: diet,
+        todayRecords: dietTodayRecords,
+        todayCount: dietTodayRecords.length,
+        historyGroups: dietHistoryGroups,
+        historyDates: dietHistoryDates,
+        totalCount: diet.length
       },
       period: {
         records: period,
@@ -1586,7 +1825,11 @@ const LifeStore = (() => {
     computeLedgerPeriodReport,
     listModuleRecords,
     addModuleRecord,
+    updateModuleRecord,
     updateLedgerRecord,
+    updateFitnessRecord,
+    saveFitnessPlan,
+    deleteFitnessPlan,
     deleteRecord,
     calibrateAccountBalance,
     settleReimbursement,

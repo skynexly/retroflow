@@ -2961,6 +2961,18 @@
       }
     }
 
+    // 运动健康注入：运动打卡、体重、饮食，机制与记账相同，按录入时刻交错进时间线。
+    if (isHealthContextEnabled()) {
+      try {
+        const healthEvents = await collectHealthContextEvents(records, allRecords, stopBeforeRecordId);
+        for (const ev of healthEvents) {
+          history.push({ role: 'system', content: '', _createdAt: ev.at, _healthLine: ev });
+        }
+      } catch (err) {
+        console.warn('[System Chat] 运动健康记录注入失败：', err);
+      }
+    }
+
     // 统一按 createdAt 升序排序时间线。
     history.sort((a, b) => {
       const ta = (typeof a._createdAt === 'number') ? a._createdAt : 0;
@@ -2968,26 +2980,34 @@
       return ta - tb;
     });
 
-    // 相邻的记账条目（中间没有聊天消息或副本摘要隔开）合并成一条，省 token 也不刷屏。
-    if (history.some((item) => item._ledgerLine)) {
+    // 相邻的同类条目（中间没有别的消息隔开）合并成一条，省 token 也不刷屏。
+    // 记账和运动健康各自成组，不混在一起。
+    const contextGroupOf = (item) => {
+      if (item._ledgerLine) return { key: 'ledger', line: item._ledgerLine };
+      if (item._healthLine) return { key: 'health', line: item._healthLine };
+      return null;
+    };
+    if (history.some((item) => contextGroupOf(item))) {
       const merged = [];
       for (const item of history) {
-        if (item._ledgerLine) {
+        const group = contextGroupOf(item);
+        if (group) {
           const prev = merged[merged.length - 1];
-          if (prev && prev._ledgerLines) {
-            prev._ledgerLines.push(item._ledgerLine);
+          if (prev && prev._groupKey === group.key) {
+            prev._groupLines.push(group.line);
           } else {
-            merged.push({ role: 'system', content: '', _ledgerLines: [item._ledgerLine] });
+            merged.push({ role: 'system', content: '', _groupKey: group.key, _groupLines: [group.line] });
           }
           continue;
         }
         merged.push(item);
       }
-      const ledgerEnvoyName = (window.Store && Store.envoy && Store.envoy.identity && Store.envoy.identity.name)
+      const contextEnvoyName = (window.Store && Store.envoy && Store.envoy.identity && Store.envoy.identity.name)
         ? String(Store.envoy.identity.name).trim()
         : '执行员';
       for (const item of merged) {
-        if (item._ledgerLines) item.content = buildLedgerContextBlock(item._ledgerLines, ledgerEnvoyName, includeTime);
+        if (item._groupKey === 'ledger') item.content = buildLedgerContextBlock(item._groupLines, contextEnvoyName, includeTime);
+        else if (item._groupKey === 'health') item.content = buildHealthContextBlock(item._groupLines, contextEnvoyName, includeTime);
       }
       history.splice(0, history.length, ...merged);
     }
@@ -2996,7 +3016,9 @@
     for (const item of history) {
       delete item._createdAt;
       delete item._ledgerLine;
-      delete item._ledgerLines;
+      delete item._healthLine;
+      delete item._groupKey;
+      delete item._groupLines;
     }
 
     // —— 尾部常驻块（不参与时间排序，恒定贴在时间线之后）——
@@ -3163,6 +3185,145 @@
       .map((ev) => `- ${showClock ? `${formatLedgerClock(ev.at)} ` : ''}${ev.text}`)
       .join('\n');
     return `${header}\n执行员「${envoyName}」在生活服务里记了 ${lines.length} 笔账：\n${body}`;
+  }
+
+  /* ---------------- 运动健康上下文注入 ---------------- */
+
+  // 与记账分开计数：单次装配最多注入的运动 / 体重 / 饮食条数（取最新的这些条）
+  const HEALTH_CONTEXT_MAX_EVENTS = 80;
+  const HEALTH_TEXT_MAX_CHARS = 60;
+  const HEALTH_DIET_LABELS = { breakfast: '早餐', lunch: '午餐', dinner: '晚餐', drink: '饮品', snack: '零食' };
+
+  /**
+   * 运动健康同步开关（预留口子）：读对话设置 healthContext，缺省视为开启。
+   * 和 ledgerContext 一样，设置页暂时没有对应控件。
+   */
+  function isHealthContextEnabled() {
+    const settings = window.SystemChatSettings && typeof SystemChatSettings.getSettings === 'function'
+      ? SystemChatSettings.getSettings()
+      : null;
+    return !settings || settings.healthContext !== false;
+  }
+
+  /**
+   * 把运动打卡、体重、饮食整理成时间线事件 { at, text }。
+   * at 是操作时间（记录在应用里录入的时刻 createdAt），决定在时间线上的位置；
+   * 行内另带用户填写的发生时间（运动 / 称重 / 用餐时间），补记往日也不会被当成刚发生。
+   * 时间窗与记账一致：下限是当前对话最早一条记录（对话为空取最近 7 天），回溯重写时上限截到锚点。
+   */
+  async function collectHealthContextEvents(records, allRecords, stopBeforeRecordId) {
+    if (!window.LifeStore || typeof LifeStore.listModuleRecords !== 'function') return [];
+    const [fitness, weight, diet] = await Promise.all([
+      LifeStore.listModuleRecords('fitness'),
+      LifeStore.listModuleRecords('weight'),
+      LifeStore.listModuleRecords('diet')
+    ]);
+    const asList = (v) => (Array.isArray(v) ? v.filter(Boolean) : []);
+    const fitnessList = asList(fitness);
+    const weightList = asList(weight);
+    const dietList = asList(diet);
+    if (!fitnessList.length && !weightList.length && !dietList.length) return [];
+
+    const firstRec = (records || []).find((r) => r && Number(r.createdAt) > 0);
+    const lowerBound = firstRec
+      ? Number(firstRec.createdAt)
+      : Date.now() - LEDGER_CONTEXT_EMPTY_CHAT_DAYS * 86400000;
+    let upperBound = Infinity;
+    if (stopBeforeRecordId) {
+      const anchor = (allRecords || []).find((r) => r && String(r.id || '') === stopBeforeRecordId);
+      if (anchor && Number(anchor.createdAt) > 0) upperBound = Number(anchor.createdAt);
+    }
+    const inWindow = (ts) => ts >= lowerBound && ts < upperBound;
+
+    const cfg = (typeof LifeStore.getConfig === 'function' && LifeStore.getConfig()) || {};
+    const planMap = new Map((cfg.fitnessPlans || []).map((p) => [p.id, String(p.name || '').trim()]));
+    const clean = (s) => {
+      const t = String(s || '').replace(/\s+/g, ' ').trim();
+      return t.length > HEALTH_TEXT_MAX_CHARS ? `${t.slice(0, HEALTH_TEXT_MAX_CHARS)}…` : t;
+    };
+    const pad = (n) => String(n).padStart(2, '0');
+    const occurredTs = (r) => Number(r.occurredAt) || Number(r.createdAt) || 0;
+    // 用户填写的发生时间：优先 dateKey + timeStr；和操作时间不在同一年才带年份
+    const filledTime = (r, at) => {
+      const ts = occurredTs(r);
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(r.dateKey || ''));
+      const year = m ? m[1] : (ts ? String(new Date(ts).getFullYear()) : '');
+      const md = m ? `${m[2]}-${m[3]}` : (ts ? `${pad(new Date(ts).getMonth() + 1)}-${pad(new Date(ts).getDate())}` : '');
+      if (!md) return '';
+      const clock = /^\d{2}:\d{2}$/.test(String(r.timeStr || ''))
+        ? r.timeStr
+        : (ts ? formatLedgerClock(ts) : '');
+      const sameYear = year === String(new Date(at).getFullYear());
+      return `${sameYear ? '' : `${year}-`}${md}${clock ? ` ${clock}` : ''}`;
+    };
+    const formatKg = (v) => Number(v).toFixed(1);
+
+    const events = [];
+
+    for (const r of fitnessList) {
+      const at = Number(r.createdAt) || 0;
+      if (!at || !inWindow(at)) continue;
+      const minutes = Number(r.duration);
+      const parts = [];
+      const when = filledTime(r, at);
+      if (when) parts.push(`运动时间 ${when}`);
+      const plan = planMap.get(r.planId);
+      if (plan) parts.push(`计划：${clean(plan)}`);
+      const head = `运动 ${clean(r.activity) || '自由运动'}${Number.isFinite(minutes) && minutes > 0 ? ` ${Math.round(minutes * 10) / 10} 分钟` : ''}`;
+      events.push({ at, text: `${head}${parts.length ? ` · ${parts.join(' · ')}` : ''}` });
+    }
+
+    // 「较上次」按称重时间排序，取这条之前最近的一次，补记往日也能算对
+    const weighed = weightList
+      .filter((r) => Number.isFinite(Number(r.weight)) && Number(r.weight) > 0)
+      .slice()
+      .sort((a, b) => occurredTs(a) - occurredTs(b) || (Number(a.createdAt) || 0) - (Number(b.createdAt) || 0));
+    weighed.forEach((r, i) => {
+      const at = Number(r.createdAt) || 0;
+      if (!at || !inWindow(at)) return;
+      const w = Number(r.weight);
+      const parts = [];
+      const when = filledTime(r, at);
+      if (when) parts.push(`称重时间 ${when}`);
+      if (i > 0) {
+        const diff = Math.round((w - Number(weighed[i - 1].weight)) * 10) / 10;
+        parts.push(diff === 0 ? '与上次持平' : `较上次 ${diff > 0 ? '+' : ''}${diff.toFixed(1)} kg`);
+      }
+      const note = clean(r.note);
+      if (note) parts.push(`备注：${note}`);
+      events.push({ at, text: `体重 ${formatKg(w)} kg · ${parts.join(' · ')}`.replace(/ · $/, '') });
+    });
+
+    for (const r of dietList) {
+      const at = Number(r.createdAt) || 0;
+      if (!at || !inWindow(at)) continue;
+      const content = clean(r.content);
+      if (!content) continue;
+      const parts = [];
+      const when = filledTime(r, at);
+      if (when) parts.push(`用餐时间 ${when}`);
+      const note = clean(r.note);
+      if (note) parts.push(`备注：${note}`);
+      const label = HEALTH_DIET_LABELS[r.category] || '饮食';
+      events.push({ at, text: `${label} ${content}${parts.length ? ` · ${parts.join(' · ')}` : ''}` });
+    }
+
+    events.sort((a, b) => a.at - b.at);
+    return events.length > HEALTH_CONTEXT_MAX_EVENTS
+      ? events.slice(events.length - HEALTH_CONTEXT_MAX_EVENTS)
+      : events;
+  }
+
+  /** 把一组相邻的运动健康事件拼成一条上下文消息；标题和行首时间是操作时间 */
+  function buildHealthContextBlock(lines, envoyName, includeTime) {
+    const first = lines[0];
+    const headTime = includeTime ? formatRealityDateTime(first.at) : '';
+    const header = headTime ? `[运动健康 · ${headTime}]` : '[运动健康]';
+    const showClock = includeTime && lines.length > 1;
+    const body = lines
+      .map((ev) => `- ${showClock ? `${formatLedgerClock(ev.at)} ` : ''}${ev.text}`)
+      .join('\n');
+    return `${header}\n执行员「${envoyName}」在生活服务里记了 ${lines.length} 条运动健康记录：\n${body}`;
   }
 
   /**
