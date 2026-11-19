@@ -854,9 +854,14 @@ const content = document.createElement('div');
     }
     mediaStack.appendChild(figure);
     if (msg.imageRef.state && msg.imageRef.state !== 'active') {
+      // 上次会话中断残留的 pending 按失败处理，否则 RELAY 键会被永久锁住
+      const visionState = (msg.imageRef.state === 'pending' && !onlineVisionInFlight.has(String(msg.recordId || '')))
+        ? 'failed' : msg.imageRef.state;
+      if (row.dataset.mediaState !== 'released') row.dataset.mediaState = visionState;
+      if (row.dataset.mediaState === 'released') row.dataset.assetGone = '1';
       const visionStatus = document.createElement('div');
-      visionStatus.className = `chat-vision-status is-${msg.imageRef.state}`;
-      visionStatus.textContent = msg.imageRef.state === 'pending' ? '正在识别影像……' : msg.imageRef.state === 'failed' ? '影像识别失败' : '影像记忆已归档';
+      paintOnlineVisionStatus(visionStatus, visionState, row.dataset.assetGone === '1');
+      bindOnlineVisionRetry(visionStatus, row);
       mediaStack.appendChild(visionStatus);
     }
     row.append(avatarCol, mediaStack);
@@ -3697,6 +3702,133 @@ const records = await OnlineChatStore.listMessages(session.accountId, session.co
       relayBtn.setAttribute('aria-label', state.pending ? '等待影像识别完成' : 'RELAY');
     }
   }
+
+  /* ================= 识图：统一执行入口 / 失败重试 ================= */
+  // 本页会话内正在识图的记录 id。页面重开后为空：存储里残留的 pending 视为中断，按可重试失败渲染
+  const onlineVisionInFlight = new Set();
+  const ONLINE_VISION_RETRY_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>';
+  /** 状态条绘制：失败且原图还在 → 可点重试；原图已释放 → 只给文字 */
+  function paintOnlineVisionStatus(el, state, assetGone) {
+    if (!el) return;
+    const retryable = state === 'failed' && !assetGone;
+    el.className = `chat-vision-status is-${state}${retryable ? ' is-retryable' : ''}`;
+    if (retryable) {
+      el.setAttribute('role', 'button');
+      el.tabIndex = 0;
+      el.setAttribute('aria-label', '影像识别失败，点击重试');
+      el.innerHTML = `${ONLINE_VISION_RETRY_SVG}<span>识别失败，点击重试</span>`;
+      return;
+    }
+    el.removeAttribute('role');
+    el.removeAttribute('tabindex');
+    el.removeAttribute('aria-label');
+    el.textContent = state === 'pending'
+      ? '正在识别影像……'
+      : state === 'failed' ? '原图已释放，无法重试' : '影像记忆已归档';
+  }
+  function findOnlineVisionRow(recordId) {
+    if (!messagesWrap) return null;
+    const id = String(recordId || '');
+    return Array.from(messagesWrap.querySelectorAll('.chat-msg-row[data-media-state]'))
+      .find((r) => String(r.dataset.recordId || '') === id) || null;
+  }
+  function setOnlineVisionRowState(recordId, state, opts) {
+    const row = findOnlineVisionRow(recordId);
+    if (row) {
+      const o = opts || {};
+      if (o.retryable === false) row.dataset.assetGone = '1';
+      if (state === 'done') row.dataset.visionDescription = String(o.visionDescription || '');
+      if (row.dataset.mediaState !== 'released') row.dataset.mediaState = state;
+      paintOnlineVisionStatus(row.querySelector('.chat-vision-status'), state, row.dataset.assetGone === '1');
+    }
+    syncVisionGate();
+  }
+  /** 回写只改 imageRef，其余字段（quote / createdAt / messageGroupId 等）从原记录原样带回 */
+  function saveOnlineImageVision(baseRec, state, description) {
+    return OnlineChatStore.putMessage({
+      accountId: baseRec.accountId, contactId: baseRec.contactId, recordId: baseRec.id,
+      role: baseRec.role, type: baseRec.messageType, content: baseRec.content,
+      quote: baseRec.quote, messageGroupId: baseRec.messageGroupId, fileRefs: baseRec.fileRefs,
+      isVerifyMsg: baseRec.isVerifyMsg, createdAt: baseRec.createdAt,
+      imageRef: { ...(baseRec.imageRef || {}), state, visionDescription: state === 'done' ? String(description || '') : '' }
+    });
+  }
+  /** 对一条已落库的图片记录识图并回写；首发与重试共用 */
+  async function runOnlineImageVision(baseRec, blob, text) {
+    const id = String(baseRec && baseRec.id || '');
+    if (!id) return { ok: false, error: new Error('图片记录缺少 id') };
+    onlineVisionInFlight.add(id);
+    setOnlineVisionRowState(id, 'pending');
+    try {
+      const description = await recognizeOnlineImage(blob, text);
+      await saveOnlineImageVision(baseRec, 'done', description);
+      setOnlineVisionRowState(id, 'done', { visionDescription: description });
+      return { ok: true };
+    } catch (err) {
+      await saveOnlineImageVision(baseRec, 'failed', '').catch(() => null);
+      return { ok: false, error: err };
+    } finally {
+      onlineVisionInFlight.delete(id);
+      // failed 态在移出在途登记后再绘制，保证门闸与状态条一致
+      const row = findOnlineVisionRow(id);
+      if (row && row.dataset.mediaState === 'pending') setOnlineVisionRowState(id, 'failed');
+      else syncVisionGate();
+    }
+  }
+  /** 失败图片重试：取记录 → 从图库取原图 → 找同组随图文字 → 重新识图 */
+  async function retryOnlineImageVision(recordId) {
+    const id = String(recordId || '');
+    if (!id || onlineVisionInFlight.has(id)) return { ok: false, skipped: true };
+    const warn = (message) => toast('重试失败', message);
+    const accountId = currentAccountId;
+    const contactId = currentContactId;
+    // 先占位，防止取记录 / 取原图的异步间隙里被连点出第二个请求
+    onlineVisionInFlight.add(id);
+    let records = [];
+    let blob = null;
+    let record = null;
+    try {
+      records = await OnlineChatStore.listMessages(accountId, contactId).catch(() => []);
+      record = (records || []).find((r) => r && String(r.id) === id) || null;
+      const galleryId = record && record.imageRef && record.imageRef.galleryId;
+      blob = galleryId && window.GalleryStore && typeof GalleryStore.getBlob === 'function'
+        ? await GalleryStore.getBlob(galleryId).catch(() => null)
+        : null;
+    } finally {
+      onlineVisionInFlight.delete(id);
+    }
+    if (!record || !record.imageRef) {
+      warn('找不到这条图片记录，可能已被删除');
+      return { ok: false };
+    }
+    if (!blob) {
+      setOnlineVisionRowState(id, 'failed', { retryable: false });
+      warn('原图已从图库释放，无法重新识别');
+      return { ok: false };
+    }
+    const groupId = record.messageGroupId;
+    const textRec = groupId
+      ? (records || []).find((r) => r && r.messageGroupId === groupId && r.role === 'envoy'
+        && r.messageType !== 'image' && String(r.content || '').trim())
+      : null;
+    const result = await runOnlineImageVision(record, blob, textRec ? String(textRec.content).trim() : '');
+    if (!result.ok) warn((result.error && result.error.message) || '视觉识别失败');
+    return result;
+  }
+  /** 状态条点击：多选态让给行勾选，其余吞掉事件避免触发灯箱 / 长按 */
+  function bindOnlineVisionRetry(el, row) {
+    if (!el) return;
+    const trigger = (e) => {
+      if (isBatchMode || !el.classList.contains('is-retryable')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      void retryOnlineImageVision(row.dataset.recordId);
+    };
+    el.addEventListener('click', trigger);
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') trigger(e);
+    });
+  }
   async function confirmFailedVision() {
     const state = getVisionState();
     if (state.pending) return false;
@@ -3817,10 +3949,8 @@ if (sendBtn) {
       let rec = null;
       let fileRec = null;
       const imageRecs = [];
-      const imageUis = [];
       const galleryEntries = [];
       const visionTasks = [];
-      const visionSession = { accountId: currentAccountId, contactId: currentContactId, charId: currentCharId };
       const currentQuote = getCurrentQuote();
       let quoteAttached = false;
       const takeQuote = () => {
@@ -3850,7 +3980,9 @@ if (sendBtn) {
             });
             if (!imgRec) throw new Error('图片消息落库失败');
             imageRecs.push(imgRec);
-            visionTasks.push({ blob, text, recordId: imgRec.id, createdAt: imgRec.createdAt, groupId, index: i, imageRef });
+            // 上屏前先登记在途，否则 appendImageMessage 会把 pending 当成中断残留画成失败
+            onlineVisionInFlight.add(String(imgRec.id));
+            visionTasks.push({ blob, text, record: imgRec });
           }
         }
         if (pendingFiles.length) {
@@ -3862,6 +3994,7 @@ if (sendBtn) {
           if (!rec) throw new Error('文字消息落库失败');
         }
       } catch (err) {
+        imageRecs.forEach((r) => onlineVisionInFlight.delete(String(r.id)));
         if (galleryEntries.length && window.GalleryStore) {
           await GalleryStore.remove(galleryEntries.map((g) => g.id), { silentChatRelease: true }).catch(() => {});
         }
@@ -3870,8 +4003,7 @@ if (sendBtn) {
       }
       if (imageRecs.length) {
         for (const imgRec of imageRecs) {
-          const row = await appendMessage({ role: 'envoy', type: 'image', content: '', imageRef: imgRec.imageRef, quote: imgRec.quote, createdAt: imgRec.createdAt, recordId: imgRec.id, messageGroupId: imgRec.messageGroupId, animate: true, stickBottom: true });
-          imageUis.push({ row });
+          await appendMessage({ role: 'envoy', type: 'image', content: '', imageRef: imgRec.imageRef, quote: imgRec.quote, createdAt: imgRec.createdAt, recordId: imgRec.id, messageGroupId: imgRec.messageGroupId, animate: true, stickBottom: true });
         }
       }
       if (fileRec) await appendMessage({ role: 'envoy', type: fileRec.messageType, content: fileRec.content, quote: fileRec.quote, fileRefs: fileRec.fileRefs, createdAt: fileRec.createdAt, recordId: fileRec.id, messageGroupId: fileRec.messageGroupId, animate: true, stickBottom: true });
@@ -3887,31 +4019,9 @@ if (sendBtn) {
       syncVisionGate();
 
       if (visionTasks.length) {
+        // 统一走 runOnlineImageVision：回写保留 quote / createdAt，失败态带可点重试
         visionTasks.forEach((vt) => {
-          void (async () => {
-            const ui = imageUis[vt.index];
-            try {
-              const description = await recognizeOnlineImage(vt.blob, vt.text);
-              const imageRef = { ...vt.imageRef, state: 'done', visionDescription: description };
-              await OnlineChatStore.putMessage({ accountId: visionSession.accountId, contactId: visionSession.contactId, recordId: vt.recordId, role: 'envoy', type: 'image', content: '', imageRef, messageGroupId: vt.groupId, createdAt: vt.createdAt });
-              if (ui && ui.row) {
-                ui.row.dataset.visionDescription = description;
-                ui.row.dataset.mediaState = 'done';
-                const status = ui.row.querySelector('.chat-vision-status');
-                if (status) { status.className = 'chat-vision-status is-done'; status.textContent = '影像记忆已归档'; }
-              }
-            } catch (_) {
-              const imageRef = { ...vt.imageRef, state: 'failed', visionDescription: '' };
-              await OnlineChatStore.putMessage({ accountId: visionSession.accountId, contactId: visionSession.contactId, recordId: vt.recordId, role: 'envoy', type: 'image', content: '', imageRef, messageGroupId: vt.groupId, createdAt: vt.createdAt });
-              if (ui && ui.row) {
-                ui.row.dataset.mediaState = 'failed';
-                const status = ui.row.querySelector('.chat-vision-status');
-                if (status) { status.className = 'chat-vision-status is-failed'; status.textContent = '影像识别失败'; }
-              }
-            } finally {
-              syncVisionGate();
-            }
-          })();
+          void runOnlineImageVision(vt.record, vt.blob, vt.text);
         });
       }
     });

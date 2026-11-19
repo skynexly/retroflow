@@ -16725,6 +16725,26 @@ button.api-node-badge:active {
 .chat-vision-status.is-done::before { background: currentColor; border: 0; animation: none; }
 .chat-vision-status.is-failed { color: var(--danger-color, #c46b6b); }
 .chat-vision-status.is-failed::before { border: 1px solid currentColor; animation: none; }
+/* 识别失败可重试：空心圆点换成刷新图标；热区用内边距外扩，负外边距抵消，不挤动排版 */
+.chat-vision-status.is-retryable {
+  cursor: pointer;
+  min-height: 28px;
+  margin: 0 -8px -6px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color .15s ease, opacity .15s ease;
+}
+.chat-vision-status.is-retryable::before { display: none; }
+.chat-vision-status.is-retryable svg {
+  flex: 0 0 auto;
+  width: 11px;
+  height: 11px;
+  fill: currentColor;
+}
+.chat-vision-status.is-retryable:hover { background-color: rgba(196, 107, 107, .08); }
+.chat-vision-status.is-retryable:active { opacity: .6; }
+.chat-vision-status.is-retryable:focus-visible { outline: 1px solid currentColor; outline-offset: -1px; }
 @keyframes chatVisionSpin { to { transform: rotate(360deg); } }
 
 /* 图片全屏灯箱 */
@@ -39546,6 +39566,23 @@ button.fork-run-mission-action-card:active,
 .chat-msg-row.is-vision-failed .fork-asst-vision-tag-text {
   color: var(--decor-color);
 }
+/* 失败可重试：小胶囊变按钮，刷新图标跟随重点色 */
+.fork-asst-vision-tag.is-retryable {
+  cursor: pointer;
+  min-height: 24px;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color .15s ease, opacity .15s ease;
+}
+.fork-asst-vision-tag.is-retryable svg {
+  flex: 0 0 auto;
+  width: 11px;
+  height: 11px;
+  fill: var(--decor-color);
+}
+.fork-asst-vision-tag.is-retryable .fork-asst-vision-tag-text { color: var(--decor-color); }
+.fork-asst-vision-tag.is-retryable:hover { background-color: rgba(255, 255, 255, 0.1); }
+.fork-asst-vision-tag.is-retryable:active { opacity: .6; }
+.fork-asst-vision-tag.is-retryable:focus-visible { outline: 1px solid var(--decor-color); outline-offset: 1px; }
 
 .fork-asst-textarea {
   width: 100%;

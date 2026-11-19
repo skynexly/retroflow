@@ -757,30 +757,6 @@
     return record;
   }
 
-  /** 识图完成后回写记录：只更新 imageRef.state / visionDescription，原始 createdAt 和 envSnapshot 完整保留 */
-  async function updateImageChatMessageVision(media, messageGroupId, recordId, originalCreatedAt, envSnapshot) {
-    const active = getCurrentAssistant();
-    const record = {
-      id: recordId,
-      kind: SYSTEM_CHAT_RECORD_KIND,
-      forkId: SYSTEM_CHAT_FORK_ID,
-      assistantId: active && active.id ? active.id : null,
-      assistantName: active && active.name ? active.name : null,
-      role: 'user',
-      senderName: getCurrentUserName(),
-      content: '',
-      quote: null,
-      messageType: 'image',
-      messageGroupId,
-      imageRef: { ...media },
-      // 严格使用原始 createdAt，不用 Date.now()，确保多张并发识图不打乱时间线顺序
-      createdAt: originalCreatedAt
-    };
-    if (envSnapshot) record.envSnapshot = envSnapshot;
-    await Storage.putRecord(record);
-    return record;
-  }
-
   async function persistFileChatMessage(fileRefs, messageGroupId, recordId, createdAt, extra) {
     const active = getCurrentAssistant();
     const record = {
@@ -1414,9 +1390,13 @@
         owner: 'user'
       });
       if (media.type === 'image' && media.state && media.state !== 'active') {
+        // 上次会话中断残留的 pending 按失败处理，否则发送键会被永久锁住
+        const visionState = effectiveVisionState(media.state, recordId);
+        const assetGone = !media.assetKey || row.dataset.mediaState === 'released';
+        if (row.dataset.mediaState !== 'released') row.dataset.mediaState = visionState;
         const visionStatus = document.createElement('div');
-        visionStatus.className = `chat-vision-status is-${media.state}`;
-        visionStatus.textContent = media.state === 'pending' ? '正在识别影像……' : media.state === 'failed' ? '影像识别失败' : '影像记忆已归档';
+        paintVisionStatus(visionStatus, visionState, { retryable: !assetGone });
+        bindVisionRetry(visionStatus, row);
         userImageFigure.appendChild(visionStatus);
       }
       if (!text) content.hidden = true;
@@ -2721,6 +2701,29 @@
     return prefix + stripped;
   }
 
+  // 用户图片的识图结果在上下文里保留全文的轮数，超出后只保留摘要
+  const VISION_KEEP_TURNS = 5;
+  const VISION_SUMMARY_CHARS = 100;
+  /**
+   * 组装用户图片的上下文文本。
+   * released 为真且描述超过摘要长度时，只保留前 VISION_SUMMARY_CHARS 个字符并标注已释放；
+   * 按码点切分，emoji 等代理对字符不会被切坏。图片 ID 始终保留。
+   */
+  function buildVisionContextText(galleryId, description, released) {
+    const desc = String(description || '').trim();
+    const idLine = galleryId ? `图片 ID：${galleryId}` : '';
+    const chars = Array.from(desc);
+    if (!released || chars.length <= VISION_SUMMARY_CHARS) {
+      return ['[用户发送的图片]', idLine, `图片内容：${desc}`].filter(Boolean).join('\n');
+    }
+    const summary = chars.slice(0, VISION_SUMMARY_CHARS).join('').replace(/\s+/g, ' ').trim();
+    return [
+      '[用户发送的图片]',
+      idLine,
+      `图片内容（摘要）：${summary}…`,
+      '（图片详情已释放，仅保留摘要）'
+    ].filter(Boolean).join('\n');
+  }
   function stripThinkingFromContext(rawText) {
     if (typeof rawText !== 'string' || !rawText) return '';
     return rawText
@@ -2804,6 +2807,30 @@
       }
     }
 
+    // 识图结果保留轮数：超出的早期用户图片只留图片 ID 与前若干字摘要。
+    // 轮的边界以助手回复为准：两次助手回复之间连发的多张图同属一轮，
+    // 否则连发几张图就会把额度提前吃光。当前轮（含尚未回复的待回复轮）记为第 1 轮。
+    const staleVisionIds = new Set();
+    {
+      let turnIndex = 1;
+      let sawUserThisTurn = false;
+      for (let i = records.length - 1; i >= 0; i -= 1) {
+        const rec = records[i];
+        if (!isChatMsg(rec)) continue;
+        if (rec.role === 'assistant') {
+          // 已经见过本轮的用户消息，再遇到助手回复就说明跨入了更早一轮
+          if (sawUserThisTurn) {
+            turnIndex += 1;
+            sawUserThisTurn = false;
+          }
+          continue;
+        }
+        sawUserThisTurn = true;
+        if (turnIndex > VISION_KEEP_TURNS && rec.imageRef && rec.imageRef.visionDescription) {
+          staleVisionIds.add(String(rec.id || ''));
+        }
+      }
+    }
     // 环境感知：按对话轮计额度，每轮只标该轮最后一条用户消息。
     //
     // 轮的边界以助手回复为准，而非「每条用户消息算一轮」：执行员一次连发五条
@@ -2918,11 +2945,11 @@
       const text = stripThinkingFromContext(rawText);
       const quote = serializeQuoteFromRecord(rec.quote);
       const vision = role === 'user' && media && media.visionDescription
-        ? [
-            '[用户发送的图片]',
-            media.galleryId ? `图片 ID：${media.galleryId}` : '',
-            `图片内容：${stripThinkingFromContext(media.visionDescription)}`
-          ].filter(Boolean).join('\n')
+        ? buildVisionContextText(
+            media.galleryId,
+            stripThinkingFromContext(media.visionDescription),
+            staleVisionIds.has(String(rec.id || ''))
+          )
         : '';
       // 文件：仅最新一条用户文件消息注入全文（阅后即焚），更早的仅保留占位摘要。
       let fileBlock = '';
@@ -4901,16 +4928,164 @@ ${parts.join('\n\n———\n\n')}`;
     }
   }
 
-  function setVisionRowState(row, state, text) {
+  function setVisionRowState(row, state, text, opts) {
     if (!row) return;
-    row.dataset.mediaState = state;
+    // 原图已被图库释放的行保持 released 口径，不被失败态覆盖回 failed
+    if (!(state === 'failed' && row.dataset.mediaState === 'released')) row.dataset.mediaState = state;
     const el = row.querySelector('.chat-vision-status');
-    if (el) {
-      el.className = `chat-vision-status is-${state}`;
-      el.textContent = text || (state === 'pending' ? '正在识别影像……' : state === 'done' ? '影像记忆已归档' : '影像识别失败');
-    }
+    if (el) paintVisionStatus(el, state, { ...(opts || {}), text });
     syncVisionGate();
   }
+
+  /* ================= 识图：统一执行入口 / 失败重试 ================= */
+  // 本页会话内正在识图的记录 id。页面重开后这里是空的：
+  // 存储里残留的 pending 一律视为中断，渲染成可重试的失败态（否则发送键会被永久锁住）。
+  // 助手页与 DECK 舱共用同一份流水，也共用这一份登记。
+  const visionInFlight = new Set();
+  const VISION_RETRY_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>';
+  function isImageVisionInFlight(recordId) {
+    return visionInFlight.has(String(recordId || ''));
+  }
+  /** 历史渲染时的识图状态口径：没有在跑的 pending 是上次会话中断留下的，按失败处理 */
+  function effectiveVisionState(state, recordId) {
+    if (state === 'pending' && !isImageVisionInFlight(recordId)) return 'failed';
+    return state;
+  }
+  /**
+   * 绘制识图状态条。失败态默认可点重试（带刷新图标、可聚焦）；
+   * opts.retryable === false 时只显示文字（原图已释放等不可重试的情况）。
+   */
+  function paintVisionStatus(el, state, opts) {
+    if (!el) return;
+    const o = opts || {};
+    const retryable = state === 'failed' && o.retryable !== false;
+    el.className = `chat-vision-status is-${state}${retryable ? ' is-retryable' : ''}`;
+    if (retryable) {
+      el.setAttribute('role', 'button');
+      el.tabIndex = 0;
+      el.setAttribute('aria-label', '影像识别失败，点击重试');
+      el.innerHTML = `${VISION_RETRY_SVG}<span>识别失败，点击重试</span>`;
+      return;
+    }
+    el.removeAttribute('role');
+    el.removeAttribute('tabindex');
+    el.removeAttribute('aria-label');
+    el.textContent = o.text || (state === 'pending'
+      ? '正在识别影像……'
+      : state === 'failed' ? '原图已释放，无法重试' : '影像记忆已归档');
+  }
+  function emitVisionState(detail) {
+    window.dispatchEvent(new CustomEvent('retroflow:system-vision-state', { detail }));
+  }
+  /** 只回写 imageRef，记录其余字段（createdAt / envSnapshot / quote / assistantId）原样保留 */
+  async function saveImageVisionState(baseRecord, state, description) {
+    const record = {
+      ...baseRecord,
+      imageRef: {
+        ...(baseRecord.imageRef || {}),
+        state,
+        visionDescription: state === 'done' ? String(description || '') : ''
+      }
+    };
+    await Storage.putRecord(record);
+    return record;
+  }
+  /**
+   * 对一条已落库的图片记录执行识图并回写，助手页首发、DECK 首发、两端重试共用。
+   * 状态通过 retroflow:system-vision-state 广播，各页按 recordId 更新自己的行。
+   * @returns {Promise<{ok:boolean, record?:object, error?:Error}>}
+   */
+  async function runImageVision(baseRecord, blob, userText) {
+    const recordId = String(baseRecord && baseRecord.id || '');
+    if (!recordId) return { ok: false, error: new Error('图片记录缺少 id') };
+    visionInFlight.add(recordId);
+    emitVisionState({ recordId, state: 'pending' });
+    try {
+      const description = await recognizeImage(blob, userText);
+      const record = await saveImageVisionState(baseRecord, 'done', description);
+      emitVisionState({ recordId, state: 'done', visionDescription: description, record });
+      return { ok: true, record };
+    } catch (err) {
+      const record = await saveImageVisionState(baseRecord, 'failed', '').catch(() => null);
+      emitVisionState({ recordId, state: 'failed', record });
+      return { ok: false, error: err };
+    } finally {
+      visionInFlight.delete(recordId);
+    }
+  }
+  /** 失败图片重试：从存储取记录 → 从图库取原图 → 找同组随图文字 → 重新识图 */
+  async function retryImageVision(recordId) {
+    const id = String(recordId || '');
+    if (!id || isImageVisionInFlight(id)) return { ok: false, skipped: true };
+    const warn = (message) => {
+      if (window.RetroToast && typeof RetroToast.show === 'function') {
+        RetroToast.show({ tag: 'VISION // 重试失败', message, type: 'warning' });
+      }
+    };
+    // 先占位，防止取记录 / 取原图的异步间隙里被连点出第二个请求
+    visionInFlight.add(id);
+    let records = [];
+    try {
+      records = await Storage.getRecordsByFork(SYSTEM_CHAT_FORK_ID).catch(() => []);
+    } finally {
+      visionInFlight.delete(id);
+    }
+    const record = (records || []).find((r) => r && String(r.id) === id);
+    if (!record || !record.imageRef) {
+      warn('找不到这条图片记录，可能已被删除');
+      return { ok: false };
+    }
+    const galleryId = record.imageRef.galleryId;
+    let blob = null;
+    visionInFlight.add(id);
+    try {
+      blob = galleryId && window.GalleryStore && typeof GalleryStore.getBlob === 'function'
+        ? await GalleryStore.getBlob(galleryId).catch(() => null)
+        : null;
+    } finally {
+      visionInFlight.delete(id);
+    }
+    if (!blob) {
+      emitVisionState({ recordId: id, state: 'failed', retryable: false });
+      warn('原图已从图库释放，无法重新识别');
+      return { ok: false };
+    }
+    const groupId = record.messageGroupId;
+    const textRec = groupId
+      ? (records || []).find((r) => r && r.messageGroupId === groupId && r.role === 'user'
+        && r.messageType !== 'image' && String(r.content || '').trim())
+      : null;
+    const result = await runImageVision(record, blob, textRec ? String(textRec.content).trim() : '');
+    if (!result.ok) warn(getApiErrorText(result.error));
+    return result;
+  }
+  function findVisionRow(recordId) {
+    if (!messagesWrap) return null;
+    const id = String(recordId || '');
+    return Array.from(messagesWrap.querySelectorAll('.chat-msg-row[data-media-state]'))
+      .find((r) => String(r.dataset.recordId || '') === id) || null;
+  }
+  /** 状态条点击：多选态让给行勾选，其余吞掉事件避免触发灯箱 */
+  function bindVisionRetry(el, row) {
+    if (!el) return;
+    const trigger = (e) => {
+      if (isBatchMode || !el.classList.contains('is-retryable')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      void retryImageVision(row && row.dataset.recordId);
+    };
+    el.addEventListener('click', trigger);
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') trigger(e);
+    });
+  }
+  window.addEventListener('retroflow:system-vision-state', (event) => {
+    const d = (event && event.detail) || {};
+    const row = findVisionRow(d.recordId);
+    if (!row) return;
+    if (d.state === 'done') row.dataset.visionDescription = String(d.visionDescription || '');
+    setVisionRowState(row, d.state, '', { retryable: d.retryable });
+  });
 
   async function confirmFailedVision() {
     const state = getVisionState();
@@ -4983,8 +5158,8 @@ ${parts.join('\n\n———\n\n')}`;
           if (!imgRec) throw new Error('图片消息落库失败');
           imageRecords.push(imgRec);
 
-          // 保存原始 createdAt 和 envSnapshot，识图回写时用原值，不让并发识图打乱顺序
-          visionTasks.push({ blob, text, recordId: imgRec.id, mediaIndex: i, originalCreatedAt: imgRec.createdAt, envSnapshot: imgRec.envSnapshot || null });
+          // 识图回写由 runImageVision 基于 imgRec 只改 imageRef，原始 createdAt / envSnapshot 原样保留
+          visionTasks.push({ blob, text, mediaIndex: i });
         }
         record = text ? await persistChatMessage('user', text, quote, '', Date.now() + imageBlobs.length, null, messageGroupId, envExtra) : null;
       } else if (filesToSend.length) {
@@ -5008,13 +5183,13 @@ ${parts.join('\n\n———\n\n')}`;
       if (sendBtn) sendBtn.disabled = false;
     }
 
-    const imageUis = [];
     if (imageRecords.length) {
+      // 先登记在途，再上屏：渲染层据此区分「正在识别」与「上次中断残留的 pending」
+      imageRecords.forEach((r) => visionInFlight.add(String(r.id)));
       for (let i = 0; i < imageRecords.length; i++) {
         const imgRec = imageRecords[i];
         const med = mediaList[i];
-        const ui = await appendMessage('user', '', formatRecordTime(imgRec.createdAt), null, imgRec.id, imgRec.senderName, '', imgRec.createdAt, med, messageGroupId, imgRec.envSnapshot ? { envSnapshot: imgRec.envSnapshot } : null);
-        imageUis.push(ui);
+        await appendMessage('user', '', formatRecordTime(imgRec.createdAt), null, imgRec.id, imgRec.senderName, '', imgRec.createdAt, med, messageGroupId, imgRec.envSnapshot ? { envSnapshot: imgRec.envSnapshot } : null);
       }
     }
     if (fileRecord) {
@@ -5031,22 +5206,9 @@ ${parts.join('\n\n———\n\n')}`;
     if (fileRecord && window.RetroToast) RetroToast.show({ tag: 'DOC // 载荷就绪', message: `已附带 ${fileRecord.fileRefs.length} 份文件，等待助手推演`, type: 'success' });
     if (visionTasks.length) {
       visionTasks.forEach((vt) => {
-        void (async () => {
-          const ui = imageUis[vt.mediaIndex];
-          let med = mediaList[vt.mediaIndex];
-          try {
-            const description = await recognizeImage(vt.blob, vt.text);
-            med = { ...med, state: 'done', visionDescription: description };
-            // 用原始 createdAt 回写，避免并发识图完成顺序不同导致时间戳乱序
-            await updateImageChatMessageVision(med, messageGroupId, vt.recordId, vt.originalCreatedAt, vt.envSnapshot);
-            if (ui && ui.row) ui.row.dataset.visionDescription = description;
-            setVisionRowState(ui && ui.row, 'done');
-          } catch (_) {
-            med = { ...med, state: 'failed', visionDescription: '' };
-            await updateImageChatMessageVision(med, messageGroupId, vt.recordId, vt.originalCreatedAt, vt.envSnapshot).catch(() => {});
-            setVisionRowState(ui && ui.row, 'failed');
-          }
-        })();
+        // 统一入口：回写只改 imageRef，原始 createdAt / envSnapshot 原样保留，并发识图不打乱时间线
+        const baseRecord = imageRecords[vt.mediaIndex];
+        void runImageVision(baseRecord, vt.blob, vt.text);
       });
     }
   }
@@ -6120,6 +6282,12 @@ ${parts.join('\n\n———\n\n')}`;
     //   · recognizeImage —— 视觉模型识别出 visionDescription（vision 插槽，未配回退主模型）
     //   · persistImageChatMessage —— image 记录落库口径（state / visionDescription / assetKey）
     recognizeImage,
-    persistImageChatMessage
+    persistImageChatMessage,
+    // 识图执行 / 失败重试：DECK 首发与重试必须走同一入口，否则在途登记、
+    // 回写口径（只改 imageRef，保留原 createdAt）和状态广播会分叉
+    runImageVision,
+    retryImageVision,
+    isImageVisionInFlight,
+    effectiveVisionState
   };
 })();

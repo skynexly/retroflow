@@ -27,6 +27,65 @@ window.OnlineChatStore = (() => {
     return v == null ? '' : String(v).trim();
   }
 
+  // 用户图片的识图结果在上下文里保留全文的轮数，超出后只保留摘要（与助手页一致）
+  const VISION_KEEP_TURNS = 5;
+  const VISION_SUMMARY_CHARS = 100;
+  /**
+   * 组装用户图片的上下文文本。
+   * released 为真且描述超过摘要长度时，只保留前 VISION_SUMMARY_CHARS 个字符并标注已释放；
+   * 按码点切分，emoji 等代理对字符不会被切坏。图片 ID 始终保留。
+   */
+  function buildVisionContextText(galleryId, description, released) {
+    const desc = trimStr(description);
+    const id = trimStr(galleryId);
+    const idLine = id ? `图片 ID：${id}` : '';
+    const chars = Array.from(desc);
+    if (!released || chars.length <= VISION_SUMMARY_CHARS) {
+      return ['[用户发送的图片]', idLine, `图片内容：${desc}`].filter(Boolean).join('\n');
+    }
+    const summary = chars.slice(0, VISION_SUMMARY_CHARS).join('').replace(/\s+/g, ' ').trim();
+    return [
+      '[用户发送的图片]',
+      idLine,
+      `图片内容（摘要）：${summary}…`,
+      '（图片详情已释放，仅保留摘要）'
+    ].filter(Boolean).join('\n');
+  }
+  /**
+   * 找出超出保留轮数的用户图片记录。
+   *
+   * 轮的切法与 ContextBudget.splitIntoTurns 相同：对方回过话之后用户再开口才算新一轮，
+   * 撤回通知不影响轮边界。最新一轮记为第 1 轮。
+   * 必须基于全量记录计算：预算裁剪后的子集轮数更少，会让同一张图在不同调用里判定不一致。
+   *
+   * @param {Array} records 全量记录（正序）
+   * @returns {Set<Object>} 需要截断的图片记录
+   */
+  function findStaleVisionRecords(records) {
+    const list = asArray(records).filter(Boolean);
+    const stale = new Set();
+    let turnIndex = 1;
+    // 倒序扫描时，本轮是否已经见过对方发言之前的用户消息
+    let sawEnvoyThisTurn = false;
+    for (let i = list.length - 1; i >= 0; i -= 1) {
+      const r = list[i];
+      if (r.role === 'system' || r.messageType === 'notice') continue;
+      if (r.role === 'char') {
+        // 倒序下：见过本轮用户消息后又遇到对方发言，说明跨入了更早一轮
+        if (sawEnvoyThisTurn) {
+          turnIndex += 1;
+          sawEnvoyThisTurn = false;
+        }
+        continue;
+      }
+      sawEnvoyThisTurn = true;
+      if (turnIndex > VISION_KEEP_TURNS && r.messageType === 'image'
+        && r.imageRef && trimStr(r.imageRef.visionDescription)) {
+        stale.add(r);
+      }
+    }
+    return stale;
+  }
   function makeRecordId() {
     return `ochat_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   }
@@ -302,7 +361,9 @@ window.OnlineChatStore = (() => {
       }
     }
     if (!isChar && r.messageType === 'image' && r.imageRef && trimStr(r.imageRef.visionDescription)) {
-      line = `[用户发送的图片]\n图片内容：${trimStr(r.imageRef.visionDescription)}${line ? `\n${line}` : ''}`;
+      const released = !!(ctx.staleVisionRecords && ctx.staleVisionRecords.has(r));
+      const visionText = buildVisionContextText(r.imageRef.galleryId, r.imageRef.visionDescription, released);
+      line = `${visionText}${line ? `\n${line}` : ''}`;
     }
 
     // 对方侧带回格式标记，让模型看清自己上一轮的输出格式。
@@ -382,6 +443,8 @@ window.OnlineChatStore = (() => {
       allRecords: asArray(allRecords).length ? allRecords : list,
       skipFileInline: !!(renderOpts && renderOpts.skipFileInline)
     };
+    // 识图截断按全量记录数轮，裁剪后的子集也能得到一致的判定
+    ctx.staleVisionRecords = findStaleVisionRecords(ctx.allRecords);
 
     const out = [];
     for (const r of sliced) {
@@ -425,7 +488,8 @@ window.OnlineChatStore = (() => {
       latestFileRecord: [...list].reverse().find((r) => r && r.role === 'envoy' && r.messageType === 'file' && Array.isArray(r.fileRefs) && r.fileRefs.length),
       inlineLimit: 60000,
       fileScope: opts.scope || { type: 'system', id: 'system' },
-      allRecords: list
+      allRecords: list,
+      staleVisionRecords: findStaleVisionRecords(list)
     };
 
     // 先整体渲染一遍。文件内联要读 IndexedDB，重复渲染既慢也可能不一致。

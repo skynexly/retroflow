@@ -1557,14 +1557,20 @@ window.ForkDeckAsst = (() => {
         owner: 'user'
       });
 
-      // 识图状态条：仅非 active 态显示，与助手页同文案
+      // 识图状态条：仅非 active 态显示，与助手页同文案；失败态可点重试。
+      // 上次会话中断残留的 pending 按失败处理（与助手页同一判定）。
+      // 挂在 figure 外：fillGenImage 载图后会清空 figure，挂里面会被一并抹掉。
+      let visionStatus = null;
       if (media.type === 'image' && media.state && media.state !== 'active') {
-        const visionStatus = document.createElement('div');
-        visionStatus.className = `chat-vision-status is-${media.state}`;
-        visionStatus.textContent = media.state === 'pending'
-          ? '正在识别影像……'
-          : media.state === 'failed' ? '影像识别失败' : '影像记忆已归档';
-        figure.appendChild(visionStatus);
+        const SCv = window.SystemChatUI || {};
+        const visionState = typeof SCv.effectiveVisionState === 'function'
+          ? SCv.effectiveVisionState(media.state, record.id)
+          : media.state;
+        visionStatus = document.createElement('div');
+        handle.row.dataset.mediaState = visionState;
+        if (!media.assetKey) handle.row.dataset.assetGone = '1';
+        paintDeckVisionStatus(visionStatus, visionState, !media.assetKey);
+        bindDeckVisionRetry(visionStatus, handle.row);
       }
 
       if (!hasText) handle.content.hidden = true;
@@ -1575,8 +1581,9 @@ window.ForkDeckAsst = (() => {
       stack.className = 'chat-user-media-stack';
       const keepBubble = hasText || handle.bubble.querySelector('.chat-file-card');
       handle.row.removeChild(handle.bubble);
-      if (keepBubble) stack.append(figure, handle.bubble);
-      else stack.appendChild(figure);
+      stack.appendChild(figure);
+      if (visionStatus) stack.appendChild(visionStatus);
+      if (keepBubble) stack.appendChild(handle.bubble);
       handle.row.appendChild(stack);
 
       // 图也要能长按（删除 / 回溯）。纯图行没有气泡可长按，否则整条就按不动了。
@@ -2233,7 +2240,7 @@ window.ForkDeckAsst = (() => {
     const SC = window.SystemChatUI;
     if (!pendingImages.length) return false;
     if (!window.GalleryStore || typeof GalleryStore.record !== 'function'
-      || typeof SC.persistImageChatMessage !== 'function') {
+      || typeof SC.persistImageChatMessage !== 'function' || typeof SC.runImageVision !== 'function') {
       if (window.RetroToast) {
         RetroToast.show({ tag: 'VISION // 不可用', message: '图库或落库模块尚未就绪', type: 'warning' });
       }
@@ -2285,7 +2292,7 @@ window.ForkDeckAsst = (() => {
 
       // 上屏图行（复用历史渲染的用户图样式）
       const row = appendUserImageRow(media, imgRec.id, messageGroupId, imgRec.createdAt);
-      visionTasks.push({ blob, text, recordId: imgRec.id, media, row });
+      visionTasks.push({ blob, text, record: imgRec, row });
     }
 
     // 带图时的随图文字作为独立 user 记录跟在图后面（与助手页一致）
@@ -2305,24 +2312,10 @@ window.ForkDeckAsst = (() => {
     }
     scrollToBottom();
 
-    // 异步识图：发完才跑，不阻塞发送手感（口径与助手页 visionTasks 一致）
+    // 异步识图：发完才跑，不阻塞发送手感。走助手页同一入口 runImageVision：
+    // 回写只改 imageRef，保留原始 createdAt / envSnapshot；状态经广播回到本舱行上
     visionTasks.forEach((vt) => {
-      void (async () => {
-        try {
-          const description = await SC.recognizeImage(vt.blob, vt.text);
-          const med = { ...vt.media, state: 'done', visionDescription: description };
-          await SC.persistImageChatMessage(med, messageGroupId, vt.recordId, Date.now());
-          const idx = historyAllRecords.findIndex((r) => r && String(r.id) === String(vt.recordId));
-          if (idx >= 0) historyAllRecords[idx] = { ...historyAllRecords[idx], imageRef: med };
-          // 识图结果缓存到行 dataset，供长按「查看描述」只读读取
-          if (vt.row && vt.row.dataset) vt.row.dataset.visionDescription = String(description || '');
-          setDeckVisionRowState(vt.row, 'done');
-        } catch (_) {
-          const med = { ...vt.media, state: 'failed', visionDescription: '' };
-          await SC.persistImageChatMessage(med, messageGroupId, vt.recordId, Date.now()).catch(() => {});
-          setDeckVisionRowState(vt.row, 'failed');
-        }
-      })();
+      void SC.runImageVision(vt.record, vt.blob, vt.text);
     });
     return true;
   }
@@ -2331,6 +2324,7 @@ window.ForkDeckAsst = (() => {
   function appendUserImageRow(media, recordId, messageGroupId, createdAt) {
     const row = document.createElement('div');
     row.className = 'chat-msg-row user is-vision-pending';
+    row.dataset.mediaState = 'pending';
     if (recordId) row.dataset.recordId = recordId;
     if (messageGroupId) row.dataset.messageGroupId = messageGroupId;
     if (createdAt) row.dataset.createdAt = String(createdAt);
@@ -2354,6 +2348,8 @@ window.ForkDeckAsst = (() => {
     stack.className = 'chat-user-media-stack';
     stack.append(figure, visionTag);
     row.appendChild(stack);
+    // 失败后小胶囊变成重试按钮；识别中点了不响应（is-retryable 未挂）
+    bindDeckVisionRetry(visionTag, row);
 
     bindLongPress(figure, () => {
       const icons = (window.SystemChatUI && SystemChatUI.HUD_ICONS) || {};
@@ -2372,20 +2368,94 @@ window.ForkDeckAsst = (() => {
     return row;
   }
 
-  /** 识图状态行标记：成功撤掉识别中态并移除状态条，失败换成失败文案 */
-  function setDeckVisionRowState(row, state) {
+  /** 识图状态行标记：成功撤掉识别中态并移除状态条，失败换成可点重试的按钮 */
+  function setDeckVisionRowState(row, state, opts) {
     if (!row) return;
-    row.classList.remove('is-vision-pending');
+    const o = opts || {};
+    if (o.retryable === false) row.dataset.assetGone = '1';
+    const assetGone = row.dataset.assetGone === '1';
+    row.dataset.mediaState = state;
+    row.classList.toggle('is-vision-pending', state === 'pending');
+    row.classList.toggle('is-vision-failed', state === 'failed');
+    // 新发图行：小胶囊
     const tag = row.querySelector('.fork-asst-vision-tag');
-    if (state === 'failed') {
-      row.classList.add('is-vision-failed');
-      if (tag) {
-        tag.innerHTML = '<span class="fork-asst-vision-tag-text">VISION // 识别失败</span>';
+    if (tag) {
+      if (state === 'done') {
+        tag.remove();
+      } else if (state === 'pending') {
+        setDeckTagRetryable(tag, false);
+        tag.innerHTML = '<span class="chat-gen-spinner" aria-hidden="true"></span><span class="fork-asst-vision-tag-text">VISION // 识别中</span>';
+      } else if (assetGone) {
+        setDeckTagRetryable(tag, false);
+        tag.innerHTML = '<span class="fork-asst-vision-tag-text">VISION // 原图已释放</span>';
+      } else {
+        setDeckTagRetryable(tag, true);
+        tag.innerHTML = `${DECK_VISION_RETRY_SVG}<span class="fork-asst-vision-tag-text">VISION // 识别失败 · 点击重试</span>`;
       }
-    } else if (tag) {
-      tag.remove();
+    }
+    // 历史图行：与助手页同款状态条
+    const status = row.querySelector('.chat-vision-status');
+    if (status) paintDeckVisionStatus(status, state, assetGone);
+  }
+  const DECK_VISION_RETRY_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>';
+  function setDeckTagRetryable(el, on) {
+    el.classList.toggle('is-retryable', on);
+    if (on) {
+      el.setAttribute('role', 'button');
+      el.tabIndex = 0;
+      el.setAttribute('aria-label', '影像识别失败，点击重试');
+    } else {
+      el.removeAttribute('role');
+      el.removeAttribute('tabindex');
+      el.removeAttribute('aria-label');
     }
   }
+  /** 历史行状态条绘制，文案与助手页 paintVisionStatus 一致 */
+  function paintDeckVisionStatus(el, state, assetGone) {
+    if (!el) return;
+    const retryable = state === 'failed' && !assetGone;
+    el.className = `chat-vision-status is-${state}`;
+    setDeckTagRetryable(el, retryable);
+    if (retryable) {
+      el.innerHTML = `${DECK_VISION_RETRY_SVG}<span>识别失败，点击重试</span>`;
+      return;
+    }
+    el.textContent = state === 'pending'
+      ? '正在识别影像……'
+      : state === 'failed' ? '原图已释放，无法重试' : '影像记忆已归档';
+  }
+  /** 点状态条重试：多选态让给行勾选；其余吞掉事件，避免触发灯箱 */
+  function bindDeckVisionRetry(el, row) {
+    if (!el) return;
+    const trigger = (e) => {
+      if (isBatchMode || !el.classList.contains('is-retryable')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const SC = window.SystemChatUI;
+      if (SC && typeof SC.retryImageVision === 'function') void SC.retryImageVision(row.dataset.recordId);
+    };
+    el.addEventListener('click', trigger);
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') trigger(e);
+    });
+  }
+  // 识图状态广播（助手页 runImageVision / retryImageVision 发出）：同步本舱行与记录缓存
+  window.addEventListener('retroflow:system-vision-state', (event) => {
+    const d = (event && event.detail) || {};
+    const id = String(d.recordId || '');
+    if (!id) return;
+    if (d.record) {
+      const idx = historyAllRecords.findIndex((r) => r && String(r.id) === id);
+      if (idx >= 0) historyAllRecords[idx] = d.record;
+    }
+    if (!messagesEl) return;
+    const row = Array.from(messagesEl.querySelectorAll('.chat-msg-row'))
+      .find((r) => String(r.dataset.recordId || '') === id);
+    if (!row) return;
+    // 识图结果缓存到行 dataset，供长按「查看描述」只读读取
+    if (d.state === 'done') row.dataset.visionDescription = String(d.visionDescription || '');
+    setDeckVisionRowState(row, d.state, { retryable: d.retryable });
+  });
 
   /**
    * 发送：只把用户消息上屏 + 落库，不请求模型。
