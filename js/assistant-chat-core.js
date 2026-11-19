@@ -172,6 +172,14 @@ window.AssistantChatCore = (() => {
     const captureAction = (payload) => {
       let text = String(payload || '').trim();
       text = text.replace(/^```[a-z]*\s*/i, '').replace(/\s*```$/i, '').trim();
+      // 先按原文解析。合法 JSON 不做纠偏，否则正文里的中文引号会被换成英文引号，把字符串截断
+      try {
+        const raw = JSON.parse(text);
+        if (raw && typeof raw === 'object') {
+          actions.push(raw);
+          return true;
+        }
+      } catch (_) { /* 原文不合法，继续走下面的纠偏 */ }
       // 中文引号与尾随逗号纠偏，尽量抢救成合法 JSON
       const normalized = text
         .replace(/[“”]/g, '"')

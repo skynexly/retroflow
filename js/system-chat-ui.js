@@ -757,6 +757,30 @@
     return record;
   }
 
+  /** 识图完成后回写记录：只更新 imageRef.state / visionDescription，原始 createdAt 和 envSnapshot 完整保留 */
+  async function updateImageChatMessageVision(media, messageGroupId, recordId, originalCreatedAt, envSnapshot) {
+    const active = getCurrentAssistant();
+    const record = {
+      id: recordId,
+      kind: SYSTEM_CHAT_RECORD_KIND,
+      forkId: SYSTEM_CHAT_FORK_ID,
+      assistantId: active && active.id ? active.id : null,
+      assistantName: active && active.name ? active.name : null,
+      role: 'user',
+      senderName: getCurrentUserName(),
+      content: '',
+      quote: null,
+      messageType: 'image',
+      messageGroupId,
+      imageRef: { ...media },
+      // 严格使用原始 createdAt，不用 Date.now()，确保多张并发识图不打乱时间线顺序
+      createdAt: originalCreatedAt
+    };
+    if (envSnapshot) record.envSnapshot = envSnapshot;
+    await Storage.putRecord(record);
+    return record;
+  }
+
   async function persistFileChatMessage(fileRefs, messageGroupId, recordId, createdAt, extra) {
     const active = getCurrentAssistant();
     const record = {
@@ -1469,7 +1493,8 @@
       bindBubbleLongPress(
         userImageFigure,
         'user',
-        String(media && media.visionDescription || '').trim() || '[用户发送的图片]',
+        // 惰性求值：识图结果异步填入 row.dataset.visionDescription，长按时才读取，确保拿到最新值
+        () => String(row.dataset.visionDescription || '').trim() || '[用户发送的图片]',
         row
       );
     }
@@ -2144,6 +2169,7 @@
   }
 
   // 绑定气泡长按逻辑
+  // text 可以是字符串（静态），也可以是 () => string（惰性求值，用于识图结果等异步填入的场景）
   function bindBubbleLongPress(bubble, role, text, row) {
     let pressTimer = null;
     let startX = 0;
@@ -2157,7 +2183,8 @@
 
       clearTimeout(pressTimer);
       pressTimer = setTimeout(() => {
-        openContextHud(bubble, role, text, row, { x: startX, y: startY });
+        const resolvedText = typeof text === 'function' ? text() : text;
+        openContextHud(bubble, role, resolvedText, row, { x: startX, y: startY });
       }, 450);
     }
 
@@ -2564,7 +2591,11 @@
         };
         if (quoteDraftBar && quoteDraftTag && quoteDraftSnippet) {
           quoteDraftTag.textContent = currentQuotePayload.senderName;
-          quoteDraftSnippet.textContent = currentQuotePayload.text.replace(/\s+/g, ' ');
+          // 图片行的 text 是识图结果（可能很长且是英文），引用卡只展示简短标签，完整内容通过 quote.text 传给助手
+          const isImageRow = Boolean(row && row.dataset.assetKey);
+          quoteDraftSnippet.textContent = isImageRow
+            ? '[图片]'
+            : currentQuotePayload.text.replace(/\s+/g, ' ');
           quoteDraftBar.hidden = false;
         }
         if (textarea) {
@@ -3488,6 +3519,14 @@ ${parts.join('\n\n———\n\n')}`;
       let text = String(payload || '').trim();
       // 去掉可能残留的代码块围栏
       text = text.replace(/^```[a-z]*\s*/i, '').replace(/\s*```$/i, '').trim();
+      // 先按原文解析。合法 JSON 不做纠偏，否则单引号替换和引号修复会把正常内容改坏
+      try {
+        const raw = JSON.parse(text);
+        if (raw && typeof raw === 'object') {
+          actions.push(raw);
+          return true;
+        }
+      } catch (_) { /* 原文不合法，继续走下面的纠偏 */ }
       // 常见的中文引号 / 尾随逗号纠偏，尽量抢救成合法 JSON
       let normalized = text
         .replace(/[""]/g, '"')
@@ -4944,7 +4983,8 @@ ${parts.join('\n\n———\n\n')}`;
           if (!imgRec) throw new Error('图片消息落库失败');
           imageRecords.push(imgRec);
 
-          visionTasks.push({ blob, text, recordId: imgRec.id, mediaIndex: i });
+          // 保存原始 createdAt 和 envSnapshot，识图回写时用原值，不让并发识图打乱顺序
+          visionTasks.push({ blob, text, recordId: imgRec.id, mediaIndex: i, originalCreatedAt: imgRec.createdAt, envSnapshot: imgRec.envSnapshot || null });
         }
         record = text ? await persistChatMessage('user', text, quote, '', Date.now() + imageBlobs.length, null, messageGroupId, envExtra) : null;
       } else if (filesToSend.length) {
@@ -4997,12 +5037,13 @@ ${parts.join('\n\n———\n\n')}`;
           try {
             const description = await recognizeImage(vt.blob, vt.text);
             med = { ...med, state: 'done', visionDescription: description };
-            await persistImageChatMessage(med, messageGroupId, vt.recordId, Date.now());
+            // 用原始 createdAt 回写，避免并发识图完成顺序不同导致时间戳乱序
+            await updateImageChatMessageVision(med, messageGroupId, vt.recordId, vt.originalCreatedAt, vt.envSnapshot);
             if (ui && ui.row) ui.row.dataset.visionDescription = description;
             setVisionRowState(ui && ui.row, 'done');
           } catch (_) {
             med = { ...med, state: 'failed', visionDescription: '' };
-            await persistImageChatMessage(med, messageGroupId, vt.recordId, Date.now()).catch(() => {});
+            await updateImageChatMessageVision(med, messageGroupId, vt.recordId, vt.originalCreatedAt, vt.envSnapshot).catch(() => {});
             setVisionRowState(ui && ui.row, 'failed');
           }
         })();

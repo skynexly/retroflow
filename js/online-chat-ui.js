@@ -874,7 +874,10 @@ const content = document.createElement('div');
       avatarCircle.appendChild(img);
       if (img.complete) refollow();
     }).catch(() => {});
-    bindBubbleLongPress(figure, msg.role, msg.imageRef.visionDescription || '[图片]', row);
+    bindBubbleLongPress(figure, msg.role, () => {
+      // 动态读取最新识图结果：识图完成后会写入 row.dataset.visionDescription
+      return String(row.dataset.visionDescription || '').trim() || '[图片]';
+    }, row);
     if (isRestoringHistory) {
       // 历史回放期间不产生可见滚动，收尾由 settleChatBottom(true) 统一定位
       if (bodyEl) bodyEl.scrollTop = bodyEl.scrollHeight;
@@ -1204,7 +1207,9 @@ const content = document.createElement('div');
 
       clearTimeout(pressTimer);
       pressTimer = setTimeout(() => {
-        openContextHud(bubble, role, text, row, { x: startX, y: startY });
+        // 支持惰性求值：text 可以是函数，长按时才动态获取最新内容
+        const resolvedText = typeof text === 'function' ? text() : text;
+        openContextHud(bubble, role, resolvedText, row, { x: startX, y: startY });
       }, 450);
     }
 
@@ -1526,50 +1531,64 @@ const content = document.createElement('div');
 
       case 'edit':
         if (window.TextEditorModal && typeof TextEditorModal.open === 'function') {
-          // 编辑时取气泡当前显示的文本
-          const contentEl = bubble.querySelector('.chat-bubble-content');
-          const currentText = contentEl ? contentEl.textContent : text;
+          // 判断是否为图片消息：图片行的 bubble 是 figure，没有 .chat-bubble-content
+          const isImageBubble = row && row.dataset.assetKey;
           
-          TextEditorModal.open({
-            title: '编辑消息',
-            tag: 'MESSAGE // 修改记忆',
-            value: currentText,
-            maxLength: 8000
-          }).then(async (updated) => {
-            if (updated !== null && updated !== undefined && updated.trim()) {
-              const newText = updated.trim();
+          if (isImageBubble) {
+            // 图片消息：只读查看识图描述
+            const description = String(row.dataset.visionDescription || '').trim() || '[图片]';
+            TextEditorModal.open({
+              title: '查看描述',
+              tag: 'IMAGE // VISION',
+              value: description,
+              readOnly: true
+            });
+          } else {
+            // 普通文本消息：可编辑
+            const contentEl = bubble.querySelector('.chat-bubble-content');
+            const currentText = contentEl ? contentEl.textContent : text;
+            
+            TextEditorModal.open({
+              title: '编辑消息',
+              tag: 'MESSAGE // 修改记忆',
+              value: currentText,
+              maxLength: 8000
+            }).then(async (updated) => {
+              if (updated !== null && updated !== undefined && updated.trim()) {
+                const newText = updated.trim();
 
-              // 先查出原记录，用 putMessage 覆盖持久化
-              if (row && row.dataset.recordId && window.OnlineChatStore) {
-                try {
-                  const records = await OnlineChatStore.listMessages(currentAccountId, currentContactId);
-                  const original = records.find(r => r && r.id === row.dataset.recordId);
-                  if (!original) throw new Error('找不到待编辑的消息记录');
-                  
-                  const saved = await OnlineChatStore.putMessage({
-                    ...original,
-                    recordId: original.id,
-                    content: newText
-                  });
-                  if (!saved) throw new Error('消息保存失败');
+                // 先查出原记录，用 putMessage 覆盖持久化
+                if (row && row.dataset.recordId && window.OnlineChatStore) {
+                  try {
+                    const records = await OnlineChatStore.listMessages(currentAccountId, currentContactId);
+                    const original = records.find(r => r && r.id === row.dataset.recordId);
+                    if (!original) throw new Error('找不到待编辑的消息记录');
+                    
+                    const saved = await OnlineChatStore.putMessage({
+                      ...original,
+                      recordId: original.id,
+                      content: newText
+                    });
+                    if (!saved) throw new Error('消息保存失败');
 
-                  // 如果是最后一条消息，同步更新列表摘要
-                  if (records[records.length - 1]?.id === original.id) {
-                    await OnlineChatStore.syncSession(currentAccountId, currentContactId, saved, {});
+                    // 如果是最后一条消息，同步更新列表摘要
+                    if (records[records.length - 1]?.id === original.id) {
+                      await OnlineChatStore.syncSession(currentAccountId, currentContactId, saved, {});
+                    }
+                  } catch (err) {
+                    if (window.RetroToast) {
+                      RetroToast.show({ tag: 'MEMORY // WRITE FAILED', message: '消息修改未能写入上下文记录。', type: 'warning' });
+                    }
+                    return;
                   }
-                } catch (err) {
-                  if (window.RetroToast) {
-                    RetroToast.show({ tag: 'MEMORY // WRITE FAILED', message: '消息修改未能写入上下文记录。', type: 'warning' });
-                  }
-                  return;
                 }
-              }
 
-              // 更新画面
-              if (bubble) bubble.dataset.rawText = newText;
-              if (contentEl) contentEl.textContent = newText;
-            }
-          });
+                // 更新画面
+                if (bubble) bubble.dataset.rawText = newText;
+                if (contentEl) contentEl.textContent = newText;
+              }
+            });
+          }
         }
         break;
 

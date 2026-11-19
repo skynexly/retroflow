@@ -1879,9 +1879,7 @@ const LifeServiceUI = (() => {
     if (!sheetTitleEl || !activeModule) return;
     const backBtnEl = document.getElementById('lifeSheetBackBtn');
     if (isFitnessPlanSubView()) {
-      const plan = (latestSnap && latestSnap.fitness && latestSnap.fitness.plans || [])
-        .find((p) => p.id === fitnessPlanId);
-      sheetTitleEl.textContent = `02 KINETIC // ${plan ? plan.name : '运动计划'}`;
+      sheetTitleEl.textContent = '02 KINETIC';
       if (backBtnEl) backBtnEl.setAttribute('aria-label', '返回运动计划');
       return;
     }
@@ -3963,7 +3961,7 @@ const LifeServiceUI = (() => {
 
       const renderFitnessTargets = (plan) => {
         if (plan.isFreePlan) {
-          return '<div class="life-fitness-free-badge"><svg viewBox="0 0 24 24"><path d="M12 2 4 6v6c0 5 3.4 8.5 8 10 4.6-1.5 8-5 8-10V6l-8-4zm0 4 4 2v4c0 2.8-1.5 4.8-4 6-2.5-1.2-4-3.2-4-6V8l4-2z"/></svg><span>FREE MODE // 无目标自由计划</span></div>';
+          return '<div class="life-fitness-free-badge"><svg viewBox="0 0 24 24"><path d="M12 2 4 6v6c0 5 3.4 8.5 8 10 4.6-1.5 8-5 8-10V6l-8-4zm0 4 4 2v4c0 2.8-1.5 4.8-4 6-2.5-1.2-4-3.2-4-6V8l4-2z"/></svg><span>FREE MODE · 无目标自由计划</span></div>';
         }
         const minuteRow = plan.targetMinutes ? `
           <div class="life-fitness-target-row">
@@ -3982,29 +3980,29 @@ const LifeServiceUI = (() => {
       const planFormHtml = fitnessPlanFormOpen ? `
         <div class="life-form-pod life-fitness-form-pod">
           <div class="life-form-pod-title">
-            <span>${editingPlan ? 'EDIT PROGRAM // 编辑运动计划' : 'NEW PROGRAM // 新建运动计划'}</span>
+            <span>${editingPlan ? 'EDIT PROGRAM · 编辑运动计划' : 'NEW PROGRAM · 新建运动计划'}</span>
             <button type="button" class="life-mini-act-btn" data-fitness-plan-form-toggle="0">${editingPlan ? '取消编辑' : '收起'}</button>
           </div>
           <div class="life-form-grid">
             <div class="life-field full">
-              <label for="lifeFitnessPlanName">PROGRAM NAME // 计划名称</label>
+              <label for="lifeFitnessPlanName">PROGRAM NAME · 计划名称</label>
               <input type="text" id="lifeFitnessPlanName" class="life-input" maxlength="32" placeholder="例如：晨间唤醒 / 周末力量" value="${esc(editingPlan ? editingPlan.name : '')}">
             </div>
             <div class="life-field full">
-              <label for="lifeFitnessPlanDesc">BRIEF // 计划简介</label>
+              <label for="lifeFitnessPlanDesc">BRIEF · 计划简介</label>
               <textarea id="lifeFitnessPlanDesc" class="life-input life-fitness-plan-desc" maxlength="120" rows="2" placeholder="记录训练方向、频率或注意事项（选填）">${esc(editingPlan ? editingPlan.description : '')}</textarea>
             </div>
             <div class="life-field">
-              <label for="lifeFitnessPlanTargetMinutes">TARGET MIN // 目标时长</label>
+              <label for="lifeFitnessPlanTargetMinutes">TARGET MIN · 目标时长</label>
               <input type="number" id="lifeFitnessPlanTargetMinutes" class="life-input" min="1" step="1" placeholder="选填，分钟" value="${editingPlan && editingPlan.targetMinutes ? editingPlan.targetMinutes : ''}">
             </div>
             <div class="life-field">
-              <label for="lifeFitnessPlanTargetCheckins">TARGET COUNT // 目标打卡</label>
+              <label for="lifeFitnessPlanTargetCheckins">TARGET COUNT · 目标打卡</label>
               <input type="number" id="lifeFitnessPlanTargetCheckins" class="life-input" min="1" step="1" placeholder="选填，次数" value="${editingPlan && editingPlan.targetCheckins ? editingPlan.targetCheckins : ''}">
             </div>
           </div>
           <p class="life-fitness-form-tip">两项目标均留空时，将创建无目标自由计划。</p>
-          <button type="button" class="life-submit-btn" data-life-submit="fitness-plan"><span>${editingPlan ? 'SAVE PROGRAM // 保存计划修改' : 'CREATE PROGRAM // 创建运动计划'}</span></button>
+          <button type="button" class="life-submit-btn" data-life-submit="fitness-plan"><span>${editingPlan ? 'SAVE PROGRAM · 保存计划修改' : 'CREATE PROGRAM · 创建运动计划'}</span></button>
         </div>` : `
         <button type="button" class="life-fitness-add-trigger" data-fitness-plan-form-toggle="1">
           <span class="life-fitness-add-icon"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></span>
@@ -4026,13 +4024,13 @@ const LifeServiceUI = (() => {
               <span><strong>${plan.totalCheckins}</strong><small>打卡次数</small></span>
             </span>
             ${renderFitnessTargets(plan)}
-            <span class="life-fitness-plan-latest">${plan.latestRecord ? `最近打卡 // ${esc(formatFitnessRecordWhen(plan.latestRecord))}` : 'NO CHECK-INS // 等待第一次运动打卡'}</span>
+            <span class="life-fitness-plan-latest">${plan.latestRecord ? `最近打卡 · ${esc(formatFitnessRecordWhen(plan.latestRecord))}` : 'NO CHECK-INS · 等待第一次运动打卡'}</span>
           </button>
           <div class="life-fitness-plan-actions">
             <button type="button" class="life-mini-act-btn" data-fitness-plan-edit="${esc(plan.id)}"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.46a1 1 0 0 0 0-1.41l-2.09-2.09a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.58-2.08z"/></svg><span>编辑计划</span></button>
             <button type="button" class="life-mini-act-btn danger" data-fitness-plan-delete="${esc(plan.id)}"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg><span>删除</span></button>
           </div>
-        </article>`).join('') : '<div class="life-empty-hint">NO PROGRAMS // 还没有运动计划，先创建一个计划或自由记录容器</div>';
+        </article>`).join('') : '<div class="life-empty-hint">NO PROGRAMS · 还没有运动计划，先创建一个计划或自由记录容器</div>';
 
       const overviewHtml = `
         <section class="life-fitness-overview" aria-label="运动总览">
@@ -4067,28 +4065,28 @@ const LifeServiceUI = (() => {
         const checkinFormHtml = fitnessCheckinFormOpen ? `
           <div class="life-form-pod life-fitness-form-pod">
             <div class="life-form-pod-title">
-              <span>${editingCheckin ? 'EDIT CHECK-IN // 编辑运动打卡' : 'FREE CHECK-IN // 自由运动打卡'}</span>
+              <span>${editingCheckin ? 'EDIT CHECK-IN · 编辑运动打卡' : 'FREE CHECK-IN · 自由运动打卡'}</span>
               <button type="button" class="life-mini-act-btn" data-fitness-checkin-form-toggle="0">${editingCheckin ? '取消编辑' : '收起'}</button>
             </div>
             <div class="life-form-grid">
               <div class="life-field full">
-                <label for="lifeFitnessActivity">ACTIVITY // 运动内容</label>
+                <label for="lifeFitnessActivity">ACTIVITY · 运动内容</label>
                 <input type="text" id="lifeFitnessActivity" class="life-input" maxlength="60" placeholder="例如：沿河慢跑、居家拉伸、力量训练" value="${esc(editingCheckin ? editingCheckin.activity : '')}">
               </div>
               <div class="life-field full">
-                <label for="lifeFitnessDuration">DURATION (MIN) // 运动时长</label>
+                <label for="lifeFitnessDuration">DURATION (MIN) · 运动时长</label>
                 <input type="number" id="lifeFitnessDuration" class="life-input" min="0.1" step="0.1" inputmode="decimal" placeholder="请输入大于 0 的分钟数" value="${editingCheckin ? esc(editingCheckin.duration) : '30'}">
               </div>
               <div class="life-field">
-                <label>DATE // 打卡日期</label>
+                <label>DATE · 打卡日期</label>
                 ${renderLifeDateField({ id: 'lifeFitnessDate', value: checkinDate, title: '选择运动打卡日期' })}
               </div>
               <div class="life-field">
-                <label for="lifeFitnessTime">TIME // 打卡时间</label>
+                <label for="lifeFitnessTime">TIME · 打卡时间</label>
                 <input type="time" id="lifeFitnessTime" class="life-input" value="${esc(checkinTime)}">
               </div>
             </div>
-            <button type="button" class="life-submit-btn" data-life-submit="fitness-checkin"><span>${editingCheckin ? 'SAVE CHECK-IN // 保存打卡修改' : 'LOG WORKOUT // 确认运动打卡'}</span></button>
+            <button type="button" class="life-submit-btn" data-life-submit="fitness-checkin"><span>${editingCheckin ? 'SAVE CHECK-IN · 保存打卡修改' : 'LOG WORKOUT · 确认运动打卡'}</span></button>
           </div>` : `
           <button type="button" class="life-fitness-add-trigger is-checkin" data-fitness-checkin-form-toggle="1">
             <span class="life-fitness-add-icon"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></span>
@@ -4107,7 +4105,7 @@ const LifeServiceUI = (() => {
               <button type="button" class="life-log-del-btn" data-fitness-checkin-edit="${esc(rec.id)}" aria-label="编辑这条运动打卡"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.46a1 1 0 0 0 0-1.41l-2.09-2.09a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.58-2.08z"/></svg></button>
               <button type="button" class="life-log-del-btn" data-fitness-checkin-delete="${esc(rec.id)}" aria-label="删除这条运动打卡"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
             </div>
-          </div>`).join('') : '<div class="life-empty-hint">NO CHECK-INS // 这个计划还没有运动打卡</div>';
+          </div>`).join('') : '<div class="life-empty-hint">NO CHECK-INS · 这个计划还没有运动打卡</div>';
         workoutViewHtml = `
           <section class="life-fitness-detail-hero">
             <div class="life-fitness-detail-kicker"><button type="button" data-fitness-detail-back aria-label="返回运动计划"><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6 1.4 1.4-4.6 4.6 4.6 4.6L15 18z"/></svg><span>全部计划</span></button><button type="button" class="life-mini-act-btn" data-fitness-plan-edit="${esc(currentPlan.id)}"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.46a1 1 0 0 0 0-1.41l-2.09-2.09a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.58-2.08z"/></svg><span>编辑计划</span></button></div>
@@ -4214,7 +4212,7 @@ const LifeServiceUI = (() => {
             </button>
           </div>
           <div class="life-diet-entry${editingDietRecord ? ' is-editing' : ''}">
-            <div class="life-diet-entry-title"><span>${editingDietRecord ? 'EDIT ENTRY // 编辑饮食记录' : 'NEW ENTRY // 新增记录'}</span><small>${editingDietRecord ? '修改后保存，原记录将同步更新' : '同日同分类允许多条'}</small></div>
+            <div class="life-diet-entry-title"><span>${editingDietRecord ? 'EDIT ENTRY · 编辑饮食记录' : 'NEW ENTRY · 新增记录'}</span><small>${editingDietRecord ? '修改后保存，原记录将同步更新' : '同日同分类允许多条'}</small></div>
             <div class="life-diet-categories" role="group" aria-label="饮食分类">${dietCategoryOptionsHtml}</div>
             <div class="life-diet-fields">
               <div class="life-field full"><label for="lifeDietContent">内容<span>必填</span></label><input type="text" maxlength="120" id="lifeDietContent" class="life-input" value="${editingDietRecord ? esc(editingDietRecord.content || '') : ''}" placeholder="例如：全麦三明治、无糖酸奶" required></div>
@@ -4227,7 +4225,7 @@ const LifeServiceUI = (() => {
               ${editingDietRecord ? '<button type="button" class="life-diet-edit-cancel" data-diet-edit-cancel="1">取消编辑</button>' : ''}
             </div>
           </div>
-          <div class="life-diet-section-label"><span>TODAY // 今日记录</span><small>${todayDietRecords.length} LOGS</small></div>
+          <div class="life-diet-section-label"><span>TODAY · 今日记录</span><small>${todayDietRecords.length} LOGS</small></div>
           <div class="life-diet-list">${todayDietListHtml}</div>
         </section>`;
       const dietHistoryViewHtml = `
@@ -4356,53 +4354,179 @@ const LifeServiceUI = (() => {
     }
 
     if (moduleKey === 'period') {
-      const listHtml = snap.period.records.length
-        ? snap.period.records.map((r) => `
-            <div class="life-log-item">
-              <div class="life-log-left">
-                <div class="life-log-main">
-                  <span class="life-log-tag">CYCLE</span>
-                  <span>起始日 ${esc(r.startDate)}</span>
-                </div>
-                <div class="life-log-sub">流量：${esc(r.flow || '正常')} // 痛感：${esc(r.pain || '轻微')}</div>
-              </div>
-              <div class="life-log-right">
-                <span class="life-log-val">${Number(r.days || snap.period.durLen)} DAYS</span>
-                <button type="button" class="life-log-del-btn" data-life-del="${esc(r.id)}">
-                  <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                </button>
-              </div>
-            </div>
-          `).join('')
-        : '<div class="life-empty-hint">NO CYCLE DATA // 录入最近一次经期起始日即可开启智能相位推算</div>';
-
-      sheetBodyEl.innerHTML = `
+      const pd = snap.period || {};
+      const state = pd.state || {};
+      const records = pd.records || [];
+      const logs = pd.logs || [];
+      
+      const activePeriod = state.activePeriod || null;
+      const isInPeriod = state.status === 'active';
+      const currentDay = state.currentDay || 0;
+      const cycleDay = state.dayInCycle || 0;
+      const daysUntilNext = state.daysUntilNext || '--';
+      
+      // 配置参数区
+      const configHtml = `
         <div class="life-form-pod">
-          <div class="life-form-pod-title"><span>LOG CYCLE // 经期登记与周期参数</span><span>BIORHYTHM</span></div>
+          <div class="life-form-pod-title"><span>CYCLE CONFIG // 周期默认参数</span><span>BIORHYTHM</span></div>
           <div class="life-form-grid">
             <div class="life-field">
-              <label>START DATE // 经期首日</label>
-              ${renderLifeDateField({ id: 'lifePeriodStart', value: snap.todayKey, title: '选择经期首日' })}
+              <label>DURATION // 默认持续天数</label>
+              <input type="number" id="lifePeriodDefaultDuration" class="life-input" min="2" max="15" value="${snap.config.periodDurationDays || 5}">
             </div>
             <div class="life-field">
-              <label>DURATION // 持续天数</label>
-              <input type="number" id="lifePeriodDays" class="life-input" value="${snap.period.durLen}">
-            </div>
-            <div class="life-field">
-              <label>CYCLE LENGTH // 周期设置(天)</label>
-              <input type="number" id="lifePeriodCycleCfg" class="life-input" value="${snap.period.cycleLen}">
-            </div>
-            <div class="life-field">
-              <label>SYMPTOM // 体感状态</label>
-              ${renderLifeSelectField({ id: 'lifePeriodPain', kind: 'period-pain', value: '平稳无感' })}
+              <label>CYCLE // 默认周期长度(天)</label>
+              <input type="number" id="lifePeriodDefaultCycle" class="life-input" min="15" max="60" value="${snap.config.periodCycleDays || 28}">
             </div>
           </div>
-          <button type="button" class="life-submit-btn" data-life-submit="period">
-            <span>CALIBRATE CYCLE // 保存经期记录</span>
+          <button type="button" class="life-submit-btn" data-life-submit="period-config">
+            <span>SAVE CONFIG // 保存默认参数</span>
           </button>
-        </div>
-
-        <div class="life-log-list">${listHtml}</div>
+        </div>`;
+      
+      // 当前状态卡片
+      let statusHtml = '';
+      if (isInPeriod && activePeriod) {
+        const startDate = activePeriod.startDate || '';
+        const targetEndDate = activePeriod.targetEndDate || '';
+        const predictedEndDate = activePeriod.predictedEndDate || '';
+        const isExtended = activePeriod.actualEndDate && activePeriod.actualEndDate !== predictedEndDate;
+        
+        statusHtml = `
+          <div class="life-period-status-card is-active">
+            <div class="life-period-status-header">
+              <span class="life-period-status-badge">MENSTRUAL // 经期行进中</span>
+              <span class="life-period-status-day">DAY ${currentDay}</span>
+            </div>
+            <div class="life-period-status-body">
+              <div class="life-period-status-row">
+                <span class="life-period-status-label">起始日期</span>
+                <span class="life-period-status-value">${esc(startDate)}</span>
+              </div>
+              <div class="life-period-status-row">
+                <span class="life-period-status-label">${isExtended ? '调整结束' : '预计结束'}</span>
+                <span class="life-period-status-value">${esc(targetEndDate)}</span>
+              </div>
+            </div>
+            <div class="life-period-status-actions">
+              <button type="button" class="life-mini-act-btn" data-period-extend="${esc(activePeriod.id)}">
+                <span>延长一天</span>
+              </button>
+              <button type="button" class="life-mini-act-btn primary" data-period-end="${esc(activePeriod.id)}">
+                <span>确认结束</span>
+              </button>
+            </div>
+          </div>`;
+      } else {
+        const nextStartDate = state.nextStartDate || '--';
+        const phaseZh = state.phaseZh || '待校准';
+        
+        statusHtml = `
+          <div class="life-period-status-card">
+            <div class="life-period-status-header">
+              <span class="life-period-status-badge">${esc(phaseZh)}</span>
+              <span class="life-period-status-day">CYCLE DAY ${cycleDay || '--'}</span>
+            </div>
+            <div class="life-period-status-body">
+              <div class="life-period-status-row">
+                <span class="life-period-status-label">预计下次开始</span>
+                <span class="life-period-status-value">${esc(nextStartDate)}</span>
+              </div>
+              <div class="life-period-status-row">
+                <span class="life-period-status-label">距离下次经期</span>
+                <span class="life-period-status-value">${daysUntilNext} 天</span>
+              </div>
+            </div>
+            <div class="life-period-status-actions">
+              <button type="button" class="life-submit-btn" data-period-start="1">
+                <span>RECORD START // 记录本次经期首日</span>
+              </button>
+            </div>
+          </div>`;
+      }
+      
+      // 每日体感记录区（仅在经期中显示）
+      let dailyLogHtml = '';
+      if (isInPeriod && activePeriod) {
+        const startDate = activePeriod.startDate || '';
+        const endDate = activePeriod.targetEndDate || '';
+        const logMap = new Map((logs || []).map((l) => [l.dateKey, l.note || '']));
+        
+        // 生成从开始到结束的所有日期
+        const daysList = [];
+        if (startDate && endDate) {
+          const start = new Date(startDate + 'T00:00:00');
+          const end = new Date(endDate + 'T00:00:00');
+          const diffDays = Math.round((end - start) / 86400000);
+          for (let i = 0; i <= diffDays; i++) {
+            const d = new Date(start);
+            d.setDate(d.getDate() + i);
+            const dateKey = d.toISOString().slice(0, 10);
+            const dayNum = i + 1;
+            const note = logMap.get(dateKey) || '';
+            const isToday = dateKey === snap.todayKey;
+            daysList.push({ dateKey, dayNum, note, isToday });
+          }
+        }
+        
+        dailyLogHtml = `
+          <div class="life-form-pod">
+            <div class="life-form-pod-title"><span>DAILY LOG // 每日体感记录</span><span>DAY BY DAY</span></div>
+            <div class="life-period-daily-list">
+              ${daysList.map((day) => `
+                <div class="life-period-daily-item ${day.isToday ? 'is-today' : ''}" data-period-log-day="${esc(day.dateKey)}">
+                  <div class="life-period-daily-head">
+                    <span class="life-period-daily-label">DAY ${day.dayNum}</span>
+                    <span class="life-period-daily-date">${esc(day.dateKey)}</span>
+                  </div>
+                  <textarea class="life-period-daily-textarea" placeholder="记录当天体感、情绪或备注..." maxlength="2000" data-log-date="${esc(day.dateKey)}">${esc(day.note)}</textarea>
+                  <button type="button" class="life-mini-act-btn" data-period-log-save="${esc(day.dateKey)}">
+                    <span>保存</span>
+                  </button>
+                </div>`).join('')}
+            </div>
+          </div>`;
+      }
+      
+      // 历史记录列表
+      const historyHtml = records.length
+        ? `
+          <div class="life-form-pod">
+            <div class="life-form-pod-title"><span>HISTORY // 历史经期记录</span><span>ARCHIVE</span></div>
+            <div class="life-log-list">
+              ${records.map((r) => {
+                const startDate = r.startDate || '';
+                const endDate = r.actualEndDate || r.predictedEndDate || '';
+                const duration = r.effectiveDurationDays || r.durationDays || 5;
+                const isActive = r.status === 'active';
+                
+                return `
+                  <div class="life-log-item ${isActive ? 'is-editing' : ''}">
+                    <div class="life-log-left">
+                      <div class="life-log-main">
+                        <span class="life-log-tag">${isActive ? 'ACTIVE' : 'ENDED'}</span>
+                        <span>${esc(startDate)} ~ ${esc(endDate)}</span>
+                      </div>
+                      <div class="life-log-sub">持续 ${duration} 天 · 周期 ${r.cycleDays || 28} 天</div>
+                    </div>
+                    <div class="life-log-right">
+                      <span class="life-log-val">${duration} DAYS</span>
+                      ${!isActive ? `
+                        <button type="button" class="life-log-del-btn" data-life-del="${esc(r.id)}" aria-label="删除记录">
+                          <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                        </button>` : ''}
+                    </div>
+                  </div>`;
+              }).join('')}
+            </div>
+          </div>`
+        : '';
+      
+      sheetBodyEl.innerHTML = `
+        ${statusHtml}
+        ${configHtml}
+        ${dailyLogHtml}
+        ${historyHtml}
       `;
       finishSheetMount();
       return;
@@ -4890,14 +5014,14 @@ const LifeServiceUI = (() => {
       const checkinsEl = document.getElementById('lifeFitnessPlanTargetCheckins');
       const name = nameEl ? nameEl.value.trim() : '';
       if (!name) {
-        if (window.RetroToast) RetroToast.show({ tag: 'PROGRAM // 校验', message: '请输入运动计划名称', type: 'warning' });
+        if (window.RetroToast) RetroToast.show({ tag: 'PROGRAM · 校验', message: '请输入运动计划名称', type: 'warning' });
         return;
       }
       const targetMinutes = minutesEl && minutesEl.value.trim() !== '' ? Number(minutesEl.value) : null;
       const targetCheckins = checkinsEl && checkinsEl.value.trim() !== '' ? Number(checkinsEl.value) : null;
       if ((targetMinutes !== null && (!Number.isFinite(targetMinutes) || targetMinutes <= 0))
         || (targetCheckins !== null && (!Number.isFinite(targetCheckins) || targetCheckins <= 0))) {
-        if (window.RetroToast) RetroToast.show({ tag: 'PROGRAM // 校验', message: '运动目标需为大于 0 的数值，也可以留空', type: 'warning' });
+        if (window.RetroToast) RetroToast.show({ tag: 'PROGRAM · 校验', message: '运动目标需为大于 0 的数值，也可以留空', type: 'warning' });
         return;
       }
       const savedPlan = await LifeStore.saveFitnessPlan({
@@ -4908,17 +5032,17 @@ const LifeServiceUI = (() => {
         targetCheckins
       });
       if (!savedPlan) {
-        if (window.RetroToast) RetroToast.show({ tag: 'PROGRAM // 失败', message: '运动计划保存失败，请重试', type: 'warning' });
+        if (window.RetroToast) RetroToast.show({ tag: 'PROGRAM · 失败', message: '运动计划保存失败，请重试', type: 'warning' });
         return;
       }
       fitnessPlanFormOpen = false;
       fitnessPlanEditId = null;
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'PROGRAM // OK', message: `运动计划「${savedPlan.name}」已保存`, type: 'success' });
+        RetroToast.show({ tag: 'PROGRAM · OK', message: `运动计划「${savedPlan.name}」已保存`, type: 'success' });
       }
     } else if (kind === 'fitness-checkin') {
       if (!fitnessPlanId) {
-        if (window.RetroToast) RetroToast.show({ tag: 'CHECK-IN // 校验', message: '请先进入一个运动计划', type: 'warning' });
+        if (window.RetroToast) RetroToast.show({ tag: 'CHECK-IN · 校验', message: '请先进入一个运动计划', type: 'warning' });
         return;
       }
       const actEl = document.getElementById('lifeFitnessActivity');
@@ -4928,11 +5052,11 @@ const LifeServiceUI = (() => {
       const activity = actEl ? actEl.value.trim() : '';
       const duration = Number(durEl && durEl.value);
       if (!activity) {
-        if (window.RetroToast) RetroToast.show({ tag: 'CHECK-IN // 校验', message: '请填写本次运动内容', type: 'warning' });
+        if (window.RetroToast) RetroToast.show({ tag: 'CHECK-IN · 校验', message: '请填写本次运动内容', type: 'warning' });
         return;
       }
       if (!Number.isFinite(duration) || duration <= 0) {
-        if (window.RetroToast) RetroToast.show({ tag: 'CHECK-IN // 校验', message: '运动时长需为大于 0 的分钟数', type: 'warning' });
+        if (window.RetroToast) RetroToast.show({ tag: 'CHECK-IN · 校验', message: '运动时长需为大于 0 的分钟数', type: 'warning' });
         return;
       }
       const dateKey = (dateEl && dateEl.value) || LifeStore.toDateKey();
@@ -4949,7 +5073,7 @@ const LifeServiceUI = (() => {
       if (fitnessCheckinEditId) {
         const updated = await LifeStore.updateFitnessRecord(fitnessCheckinEditId, payload);
         if (!updated) {
-          if (window.RetroToast) RetroToast.show({ tag: 'CHECK-IN // 失败', message: '这条打卡已不存在，请刷新后重试', type: 'warning' });
+          if (window.RetroToast) RetroToast.show({ tag: 'CHECK-IN · 失败', message: '这条打卡已不存在，请刷新后重试', type: 'warning' });
           fitnessCheckinFormOpen = false;
           fitnessCheckinEditId = null;
           return;
@@ -4959,7 +5083,7 @@ const LifeServiceUI = (() => {
       }
       fitnessCheckinFormOpen = false;
       fitnessCheckinEditId = null;
-      if (window.RetroToast) RetroToast.show({ tag: 'CHECK-IN // OK', message: '运动打卡已保存', type: 'success' });
+      if (window.RetroToast) RetroToast.show({ tag: 'CHECK-IN · OK', message: '运动打卡已保存', type: 'success' });
     } else if (kind === 'weight-plan') {
       const initialEl = document.getElementById('lifeWeightInitial');
       const targetEl = document.getElementById('lifeWeightTarget');
@@ -5063,7 +5187,15 @@ const LifeServiceUI = (() => {
           : (isEditing ? '饮食记录修改已保存' : '今日饮食已记录'),
         type: 'success'
       });
+    } else if (kind === 'period-config') {
+      const durationEl = document.getElementById('lifePeriodDefaultDuration');
+      const cycleEl = document.getElementById('lifePeriodDefaultCycle');
+      const duration = Math.max(2, Math.min(15, Number(durationEl && durationEl.value) || 5));
+      const cycle = Math.max(15, Math.min(60, Number(cycleEl && cycleEl.value) || 28));
+      await LifeStore.saveConfig({ periodDurationDays: duration, periodCycleDays: cycle });
+      if (window.RetroToast) RetroToast.show({ tag: 'BIORHYTHM // 配置', message: '周期默认参数已保存', type: 'success' });
     } else if (kind === 'period') {
+      // 这个分支已废弃，保留以防万一
       const startEl = document.getElementById('lifePeriodStart');
       const daysEl = document.getElementById('lifePeriodDays');
       const cycleEl = document.getElementById('lifePeriodCycleCfg');
@@ -6336,7 +6468,7 @@ const LifeServiceUI = (() => {
           renderModuleSheetBody('fitness');
           syncSheetHeaderTitle();
           renderDashboard();
-          if (window.RetroToast) RetroToast.show({ tag: 'PROGRAM // REMOVED', message: '运动计划及其打卡记录已删除', type: 'success' });
+          if (window.RetroToast) RetroToast.show({ tag: 'PROGRAM · REMOVED', message: '运动计划及其打卡记录已删除', type: 'success' });
           return;
         }
 
@@ -6386,7 +6518,7 @@ const LifeServiceUI = (() => {
           latestSnap = await LifeStore.getFullSnapshot();
           renderModuleSheetBody('fitness');
           renderDashboard();
-          if (window.RetroToast) RetroToast.show({ tag: 'CHECK-IN // REMOVED', message: '运动打卡已删除', type: 'success' });
+          if (window.RetroToast) RetroToast.show({ tag: 'CHECK-IN · REMOVED', message: '运动打卡已删除', type: 'success' });
           return;
         }
 
@@ -6612,6 +6744,71 @@ const LifeServiceUI = (() => {
           latestSnap = await LifeStore.getFullSnapshot();
           renderModuleSheetBody('memo');
           renderDashboard();
+          return;
+        }
+
+        // 经期管理：记录首日
+        const periodStartBtn = e.target.closest('[data-period-start]');
+        if (periodStartBtn) {
+          try {
+            await LifeStore.startPeriod({ startDate: LifeStore.toDateKey() });
+            latestSnap = await LifeStore.getFullSnapshot();
+            renderModuleSheetBody('period');
+            renderDashboard();
+            if (window.RetroToast) RetroToast.show({ tag: 'BIORHYTHM // 记录', message: '已记录本次经期首日', type: 'success' });
+          } catch (err) {
+            if (window.RetroToast) RetroToast.show({ tag: 'BIORHYTHM // 错误', message: err.message || '记录失败', type: 'error' });
+          }
+          return;
+        }
+
+        // 经期管理：延长一天
+        const periodExtendBtn = e.target.closest('[data-period-extend]');
+        if (periodExtendBtn) {
+          const recordId = periodExtendBtn.getAttribute('data-period-extend');
+          try {
+            await LifeStore.extendPeriod(recordId, { days: 1 });
+            latestSnap = await LifeStore.getFullSnapshot();
+            renderModuleSheetBody('period');
+            if (window.RetroToast) RetroToast.show({ tag: 'BIORHYTHM // 延长', message: '已延长一天', type: 'success' });
+          } catch (err) {
+            if (window.RetroToast) RetroToast.show({ tag: 'BIORHYTHM // 错误', message: err.message || '延长失败', type: 'error' });
+          }
+          return;
+        }
+
+        // 经期管理：确认结束
+        const periodEndBtn = e.target.closest('[data-period-end]');
+        if (periodEndBtn) {
+          const recordId = periodEndBtn.getAttribute('data-period-end');
+          try {
+            await LifeStore.endPeriod(recordId, LifeStore.toDateKey());
+            latestSnap = await LifeStore.getFullSnapshot();
+            renderModuleSheetBody('period');
+            renderDashboard();
+            if (window.RetroToast) RetroToast.show({ tag: 'BIORHYTHM // 结束', message: '本次经期已确认结束', type: 'success' });
+          } catch (err) {
+            if (window.RetroToast) RetroToast.show({ tag: 'BIORHYTHM // 错误', message: err.message || '结束失败', type: 'error' });
+          }
+          return;
+        }
+
+        // 经期管理：保存每日体感
+        const periodLogSaveBtn = e.target.closest('[data-period-log-save]');
+        if (periodLogSaveBtn) {
+          const dateKey = periodLogSaveBtn.getAttribute('data-period-log-save');
+          const textarea = document.querySelector(`textarea[data-log-date="${dateKey}"]`);
+          const note = textarea ? textarea.value.trim() : '';
+          if (!note) {
+            if (window.RetroToast) RetroToast.show({ tag: 'BIORHYTHM // 提示', message: '请输入体感内容', type: 'warning' });
+            return;
+          }
+          try {
+            await LifeStore.savePeriodDailyLog({ dateKey, note });
+            if (window.RetroToast) RetroToast.show({ tag: 'BIORHYTHM // 保存', message: '每日体感已保存', type: 'success' });
+          } catch (err) {
+            if (window.RetroToast) RetroToast.show({ tag: 'BIORHYTHM // 错误', message: err.message || '保存失败', type: 'error' });
+          }
           return;
         }
 

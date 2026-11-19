@@ -24,6 +24,7 @@ const LifeStore = (() => {
     weight: 'life:weight',
     diet: 'life:diet',
     period: 'life:period',
+    periodLog: 'life:period_log',
     meds: 'life:meds_log',
     sleep: 'life:sleep',
     memo: 'life:memo'
@@ -170,6 +171,207 @@ const LifeStore = (() => {
     const refMid = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     const tgtMid = parseDateKeyLocal(targetDateKey).getTime();
     return Math.round((tgtMid - refMid) / 86400000);
+  }
+
+  /** 严格校验 YYYY-MM-DD，拒绝 2 月 30 日等会被 Date 自动进位的伪日期 */
+  function isValidDateKey(dateKeyStr) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateKeyStr || '').trim());
+    if (!m) return false;
+    const y = Number(m[1]);
+    const mo = Number(m[2]);
+    const d = Number(m[3]);
+    const dt = new Date(y, mo - 1, d);
+    return dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d;
+  }
+
+  /** 在合法日期键上推进 N 天（N 可为负数），始终使用本地零点避免时区漂移 */
+  function addDaysToDateKey(dateKeyStr, days) {
+    if (!isValidDateKey(dateKeyStr)) return '';
+    const d = parseDateKeyLocal(dateKeyStr);
+    d.setDate(d.getDate() + Math.round(Number(days) || 0));
+    return toDateKey(d.getTime());
+  }
+
+  function clampPeriodInteger(value, min, max, fallback) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return fallback;
+    return Math.max(min, Math.min(max, Math.round(n)));
+  }
+
+  /**
+   * 经期纯函数推算。持续天数包含首日：
+   * 预计结束 = 首日 + 持续天数 - 1；预计下次开始 = 首日 + 周期长度。
+   * actualEndDate 只代表人工确认/延长的目标，不会自动生成下一次经期。
+   */
+  function calcPeriodPrediction({ startDate, durationDays = 5, cycleDays = 28, actualEndDate = '' }) {
+    if (!isValidDateKey(startDate)) return null;
+    const duration = clampPeriodInteger(durationDays, 2, 15, 5);
+    const cycle = clampPeriodInteger(cycleDays, 15, 60, 28);
+    const predictedEndDate = addDaysToDateKey(startDate, duration - 1);
+    const nextStartDate = addDaysToDateKey(startDate, cycle);
+    const hasActualEnd = isValidDateKey(actualEndDate) && diffDaysFromRef(actualEndDate, parseDateKeyLocal(startDate)) >= 0;
+    const targetEndDate = hasActualEnd ? actualEndDate : predictedEndDate;
+    const effectiveDurationDays = Math.max(1, diffDaysFromRef(targetEndDate, parseDateKeyLocal(startDate)) + 1);
+    return {
+      startDate,
+      durationDays: duration,
+      cycleDays: cycle,
+      predictedEndDate,
+      nextStartDate,
+      actualEndDate: hasActualEnd ? actualEndDate : '',
+      targetEndDate,
+      effectiveDurationDays
+    };
+  }
+
+  function normalizePeriodRecord(record, fallbackConfig) {
+    const cfg = fallbackConfig || configCache || DEFAULT_CONFIG;
+    const startDate = isValidDateKey(record && record.startDate) ? record.startDate : (record && record.dateKey) || toDateKey(record && record.createdAt);
+    if (!isValidDateKey(startDate)) return null;
+    const durationDays = clampPeriodInteger(record && (record.durationDays || record.days), 2, 15, cfg.periodDurationDays || 5);
+    const cycleDays = clampPeriodInteger(record && record.cycleDays, 15, 60, cfg.periodCycleDays || 28);
+    // 兼容旧数据：无 status 的历史记录全部作为已结束，不冒充当前进行中周期。
+    const status = record && record.status === 'active' ? 'active' : 'ended';
+    const rawEnd = record && record.actualEndDate;
+    const actualEndDate = isValidDateKey(rawEnd) && diffDaysFromRef(rawEnd, parseDateKeyLocal(startDate)) >= 0 ? rawEnd : '';
+    const prediction = calcPeriodPrediction({ startDate, durationDays, cycleDays, actualEndDate });
+    return Object.assign({}, record, {
+      startDate,
+      dateKey: startDate,
+      durationDays,
+      days: durationDays,
+      cycleDays,
+      actualEndDate,
+      status,
+      predictedEndDate: prediction.predictedEndDate,
+      nextStartDate: prediction.nextStartDate,
+      targetEndDate: prediction.targetEndDate,
+      effectiveDurationDays: prediction.effectiveDurationDays
+    });
+  }
+
+  function buildPeriodState(records, todayKey) {
+    const list = (Array.isArray(records) ? records : []).map((r) => normalizePeriodRecord(r)).filter(Boolean);
+    const active = list.find((r) => r.status === 'active') || null;
+    const latest = active || list[0] || null;
+    const base = {
+      phaseCode: 'STANDBY', phaseZh: '待校准', dayInCycle: 0, daysUntilNext: '--', lastStartDate: '--',
+      status: 'none', activePeriod: null, currentPeriod: null, predictedEndDate: '', nextStartDate: '',
+      targetEndDate: '', currentDay: 0, awaitingEndConfirm: false
+    };
+    if (!latest) return base;
+    const startDate = latest.startDate;
+    const prediction = calcPeriodPrediction(latest);
+    const dayInCycle = Math.max(1, diffDaysFromRef(todayKey, parseDateKeyLocal(startDate)) + 1);
+    const daysUntilNext = Math.max(0, diffDaysFromRef(prediction.nextStartDate, parseDateKeyLocal(todayKey)));
+    if (latest.status === 'active') {
+      const awaitingEndConfirm = diffDaysFromRef(todayKey, parseDateKeyLocal(prediction.targetEndDate)) > 0;
+      return Object.assign(base, {
+        phaseCode: awaitingEndConfirm ? 'AWAIT_END' : 'MENSTRUAL',
+        phaseZh: awaitingEndConfirm ? '等待确认结束' : '经期行进中',
+        dayInCycle, daysUntilNext, lastStartDate: startDate, status: 'active', activePeriod: latest, currentPeriod: latest,
+        predictedEndDate: prediction.predictedEndDate, nextStartDate: prediction.nextStartDate,
+        targetEndDate: prediction.targetEndDate, currentDay: dayInCycle, awaitingEndConfirm
+      });
+    }
+    let phaseCode = 'FOLLICULAR';
+    let phaseZh = '周期间隔中';
+    const dayAfterCycle = dayInCycle - latest.cycleDays;
+    if (dayAfterCycle >= latest.cycleDays - 16 && dayAfterCycle <= latest.cycleDays - 12) {
+      phaseCode = 'OVULATION'; phaseZh = '排卵高敏窗';
+    } else if (dayAfterCycle > latest.cycleDays - 12 && dayAfterCycle <= latest.cycleDays) {
+      phaseCode = 'LUTEAL'; phaseZh = '黄体蓄能期';
+    }
+    return Object.assign(base, {
+      phaseCode, phaseZh, dayInCycle, daysUntilNext, lastStartDate: startDate, status: 'ended',
+      predictedEndDate: prediction.predictedEndDate, nextStartDate: prediction.nextStartDate,
+      targetEndDate: prediction.targetEndDate, currentDay: dayInCycle
+    });
+  }
+
+  /** 新周期锁定登记当时的持续天数与周期长度，未来配置变更不回溯历史 */
+  async function startPeriod(payload) {
+    if (!initialized) await loadConfig();
+    const input = payload || {};
+    const startDate = input.startDate || toDateKey();
+    if (!isValidDateKey(startDate)) throw new Error('请选择合法的经期首日');
+    const existing = await listModuleRecords('period');
+    const normalized = existing.map((r) => normalizePeriodRecord(r)).filter(Boolean);
+    if (normalized.some((r) => r.status === 'active')) throw new Error('当前已有进行中的经期，请先确认结束');
+    if (normalized.some((r) => r.startDate === startDate)) throw new Error('该首日已有经期记录，请编辑原记录');
+    const durationDays = clampPeriodInteger(input.durationDays, 2, 15, configCache.periodDurationDays || 5);
+    const cycleDays = clampPeriodInteger(input.cycleDays, 15, 60, configCache.periodCycleDays || 28);
+    return await addModuleRecord('period', {
+      startDate, dateKey: startDate, durationDays, days: durationDays, cycleDays,
+      status: 'active', actualEndDate: '', startedAt: Date.now(),
+      note: String(input.note || '').trim().slice(0, 500)
+    });
+  }
+
+  /** 延长当前经期只更新本次目标结束日，保持 active，等待人工确认 */
+  async function extendPeriod(recordId, payload) {
+    const list = await listModuleRecords('period');
+    const target = list.find((r) => r.id === recordId);
+    if (!target) throw new Error('找不到本次经期记录');
+    const current = normalizePeriodRecord(target);
+    if (current.status !== 'active') throw new Error('只有进行中的经期可以延长');
+    const input = payload || {};
+    let actualEndDate = input.actualEndDate || '';
+    if (!actualEndDate && Number(input.days) > 0) actualEndDate = addDaysToDateKey(current.targetEndDate, Number(input.days));
+    if (!isValidDateKey(actualEndDate)) throw new Error('请选择合法的延长结束日');
+    if (diffDaysFromRef(actualEndDate, parseDateKeyLocal(current.targetEndDate)) <= 0) throw new Error('延长结束日必须晚于当前目标结束日');
+    return await updateModuleRecord('period', recordId, {
+      actualEndDate, status: 'active', durationDays: current.durationDays, days: current.durationDays,
+      cycleDays: current.cycleDays, extendedAt: Date.now()
+    });
+  }
+
+  /** 提前结束或到期确认结束，仅写入本次 actualEndDate */
+  async function endPeriod(recordId, actualEndDate) {
+    const list = await listModuleRecords('period');
+    const target = list.find((r) => r.id === recordId);
+    if (!target) throw new Error('找不到本次经期记录');
+    const current = normalizePeriodRecord(target);
+    if (current.status !== 'active') throw new Error('本次经期已经结束');
+    const endKey = actualEndDate || toDateKey();
+    if (!isValidDateKey(endKey) || diffDaysFromRef(endKey, parseDateKeyLocal(current.startDate)) < 0) throw new Error('实际结束日不能早于经期首日');
+    return await updateModuleRecord('period', recordId, {
+      actualEndDate: endKey, status: 'ended', endedAt: Date.now(),
+      durationDays: current.durationDays, days: current.durationDays, cycleDays: current.cycleDays
+    });
+  }
+
+  /** 历史/当前经期日期修正，锁定的周期参数保持不变 */
+  async function updatePeriodRecord(recordId, patch) {
+    const list = await listModuleRecords('period');
+    const target = list.find((r) => r.id === recordId);
+    if (!target) throw new Error('找不到这条经期记录');
+    const current = normalizePeriodRecord(target);
+    const input = patch || {};
+    const startDate = input.startDate || current.startDate;
+    if (!isValidDateKey(startDate)) throw new Error('请选择合法的经期首日');
+    if (list.some((r) => r.id !== recordId && r.startDate === startDate)) throw new Error('该首日已有另一条经期记录');
+    const rawEnd = Object.prototype.hasOwnProperty.call(input, 'actualEndDate') ? input.actualEndDate : current.actualEndDate;
+    const actualEndDate = rawEnd || '';
+    if (actualEndDate && (!isValidDateKey(actualEndDate) || diffDaysFromRef(actualEndDate, parseDateKeyLocal(startDate)) < 0)) throw new Error('实际结束日不能早于经期首日');
+    return await updateModuleRecord('period', recordId, {
+      startDate, dateKey: startDate, actualEndDate,
+      durationDays: current.durationDays, days: current.durationDays, cycleDays: current.cycleDays,
+      status: current.status
+    });
+  }
+
+  /** 每日体感以 dateKey 为唯一业务键，同日覆盖且保留原 id/createdAt */
+  async function savePeriodDailyLog(payload) {
+    const input = payload || {};
+    const dateKey = input.dateKey || toDateKey();
+    if (!isValidDateKey(dateKey)) throw new Error('请选择合法的体感记录日期');
+    const note = String(input.note || '').trim().slice(0, 2000);
+    if (!note) throw new Error('请填写当日体感');
+    const list = await listModuleRecords('periodLog');
+    const existing = list.find((r) => r.dateKey === dateKey);
+    if (existing) return await updateModuleRecord('periodLog', existing.id, { dateKey, note });
+    return await addModuleRecord('periodLog', { dateKey, note, loggedAt: Date.now() });
   }
 
   function normalizeAccount(a, idx) {
@@ -1841,6 +2043,12 @@ const LifeStore = (() => {
     topupValueCard,
     toggleMedToday,
     toggleMemoDone,
+    // 经期管理
+    startPeriod,
+    extendPeriod,
+    endPeriod,
+    updatePeriodRecord,
+    savePeriodDailyLog,
     getFullSnapshot
   };
 })();
