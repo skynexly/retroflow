@@ -32,20 +32,20 @@
   "channel": "stable",
   "latest": {
     "version": "1.3.4",
-    "build": 1310,
+    "build": 1311,
     "minBinary": 7,
-    "releasedAt": "2026-11-19T01:24:09Z",
+    "releasedAt": "2026-11-19T03:28:05Z",
     "notes": [
-      "feat: 生活服务新增经期管理，可记录首日、延长、确认结束、修正日期，并记录每日体感",
-      "fix: 记忆或生图指令里含中文引号、英文单引号时，不再被误判为格式不合法",
-      "fix: 识图结果回写保留原始时间，多张图并发识图不再打乱顺序",
-      "fix: 长按图片消息能读到最新识图结果，引用图片时只显示 [图片]"
+      "feat: 识图失败的图片可以点「识别失败，点击重试」重新识别（助手页、随行舱、私聊）",
+      "fix: 识图中途关掉页面后，图片不再一直卡在「识别中」，发送键也不会被锁住",
+      "fix: 随行舱识图完成后保留消息原始时间，历史图片的识图状态能正常显示",
+      "feat: 识图结果在 5 轮之后自动截断，减少上下文占用（私聊同步对齐）"
     ],
     "packages": {
       "full": {
-        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1310/retroflow-ota-full-b1310.zip",
-        "sha256": "01b976894dbb143a598bc360a84b09847af89c96345f87b6528a5e007c3eaf60",
-        "size": 2110057
+        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1311/retroflow-ota-full-b1311.zip",
+        "sha256": "76c5a18893be2825c1b82c83063a298d60c3209b7838ac1bbf89cf203f54dcb3",
+        "size": 2117317
       },
       "patch": {
         "sinceBuild": 0,
@@ -55,5 +55,5 @@
       }
     }
   },
-  "_status": "已发布 build 1310（全量包，字体常驻不打包）。patch 差分留待后续。"
+  "_status": "已发布 build 1311（全量包，字体常驻不打包）。patch 差分留待后续。"
 }
