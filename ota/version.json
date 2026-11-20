@@ -31,19 +31,19 @@
   "schemaVersion": 1,
   "channel": "stable",
   "latest": {
-    "version": "1.3.5",
-    "build": 1315,
+    "version": "1.3.6",
+    "build": 1316,
     "minBinary": 7,
-    "releasedAt": "2026-11-20T10:09:51Z",
+    "releasedAt": "2026-11-20T10:44:27Z",
     "notes": [
-      "修复：导入「线上数据」备份会清空记忆提取进度点，导致从最早的对话重新提取",
-      "只导入记忆进度点时不再清空记忆向量；记忆巡检恢复备份时保留所有对话窗口的进度点"
+      "记忆库列表改为按记录时间排序，新的在上",
+      "未完事项仍是未完成的在前，同组内按记录时间排序"
     ],
     "packages": {
       "full": {
-        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1315/retroflow-ota-full-b1315.zip",
-        "sha256": "b91703dd464cbadbef67c016e98bb32ebe540c761ffe127df6810fb586139c26",
-        "size": 2123055
+        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1316/retroflow-ota-full-b1316.zip",
+        "sha256": "85142c88ad1096fd38630c8ab9401cbd58ab1f8252a4aae24308a5cf3acb204c",
+        "size": 2123372
       },
       "patch": {
         "sinceBuild": 0,
@@ -53,5 +53,5 @@
       }
     }
   },
-  "_status": "已发布 build 1315（全量包，字体常驻不打包）。patch 差分留待后续。"
+  "_status": "已发布 build 1316（全量包，字体常驻不打包）。patch 差分留待后续。"
 }
