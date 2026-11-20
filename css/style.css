@@ -44286,19 +44286,3 @@ html:not(.is-native) #otaUpdateModule { display: none !important; }
     transform: none;
   }
 }
-
-/* ==== 诊断开关：停掉全站 CSS 动画（见 js/boot.js 的 RetroflowMotion） ====
- * 排查渲染线程持续吃满 CPU 的耗电问题时，用 ?noanim=1 或
- * localStorage.retroflow_reduce_motion=1 打开。
- * 只暂停动画与过渡，不改布局尺寸与最终视觉结果，关掉即恢复。
- * 用 animation-play-state 而不是 animation:none，是为了让元素停在做动
- * 画首帧的样式上——不会突然跳回静态基线位置，便于肉眼前后对比。
- */
-html.no-anim *,
-html.no-anim *::before,
-html.no-anim *::after {
-  animation-play-state: paused !important;
-  transition-duration: 0.001s !important;
-  scroll-behavior: auto !important;
-}
-/* 跑马灯已移除，此处原先的归位规则随之作废，保留 no-anim 的通用暂停即可 */

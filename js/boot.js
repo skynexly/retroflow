@@ -16,63 +16,12 @@
  * 所以模块无需关心自己是在装载前还是装载后加载的。
  */
 
-/**
- * 诊断开关：停掉全站 CSS 动画，用来排查「渲染线程持续吃满 CPU」的耗电问题。
- *
- * 用法（三种触发方式，任一命中即生效）：
- *   · URL 带 ?noanim=1
- *   · 控制台执行 localStorage.setItem('retroflow_reduce_motion', '1') 后重开
- *   · 系统打开「减弱动态效果」时自动跟随（这一条常驻生效，不需要上面的开关）
- *
- * 生效方式：在 <html> 上加 no-anim 类，由 css/style.css 末尾的规则统一暂停。
- * 只作用于 CSS 动画与过渡，不改任何布局和视觉结果，随时可逆。
- * 排查完把开关关掉即可恢复，代码不必回退。
- */
-function resolveAnimationPolicy() {
-  let forced = false;
-  try {
-    const q = new URLSearchParams(window.location.search || '');
-    forced = q.get('noanim') === '1';
-    if (!forced && window.localStorage && localStorage.getItem('retroflow_reduce_motion') === '1') {
-      forced = true;
-    }
-  } catch (err) {
-    // 隐私模式 / 参数异常都按「不强制」处理，不影响启动
-  }
-  let systemReduce = false;
-  try {
-    systemReduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  } catch (err) {}
-  return { forced, systemReduce };
-}
-
-/** 按当前策略给 <html> 打标记，返回策略快照供控制台自查 */
-function applyAnimationPolicy() {
-  const p = resolveAnimationPolicy();
-  const root = document.documentElement;
-  root.classList.toggle('no-anim', p.forced);
-  root.classList.toggle('respect-reduced-motion', p.systemReduce);
-  return p;
-}
-
-if (typeof window !== 'undefined') {
-  window.RetroflowMotion = {
-    apply: applyAnimationPolicy,
-    /** 运行时切换（调试用）：on=true 停动画，on=false 恢复 */
-    set(forced) {
-      try { localStorage.setItem('retroflow_reduce_motion', forced ? '1' : '0'); } catch (err) {}
-      return applyAnimationPolicy();
-    },
-    /** 当前是否处于「停动画」状态（供设置页开关回填，权威判据是 html 上的类） */
-    isOn() {
-      return document.documentElement.classList.contains('no-anim');
-    }
-  };
-  applyAnimationPolicy();
-}
-
 const Boot = (() => {
   'use strict';
+
+  // 清理已下线的「暂停常驻动画」诊断开关残留值（b1312 临时埋点，已随排查结束移除）。
+  // 只删这一个旧 key，不动其他配置；隐私模式等异常下失败也无影响。
+  try { localStorage.removeItem('retroflow_reduce_motion'); } catch (err) {}
 
   // 原生壳标记（全站唯一判定点）：Capacitor 装机版在 <html> 上打 is-native 类。
   // 放在模块顶层、脚本一加载即执行，早于任何视图渲染，避免 UPDATE 等
