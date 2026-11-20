@@ -69,6 +69,10 @@ window.ForkRunApi = (() => {
 
   /* ================= 流水 → API 消息 ================= */
 
+/** 视觉描述在早期轮次只保留的字数（与助手页、私聊同口径） */
+  const VISION_KEEP_TURNS = 5;
+  const VISION_SUMMARY_CHARS = 100;
+
   /**
    * 把一条流水的视觉描述拼成上下文前缀。
    *
@@ -77,20 +81,70 @@ window.ForkRunApi = (() => {
    * 识别失败的图仍然报数，让模型知道有影像存在但内容不可读，
    * 比装作没有这张图更诚实。
    *
+   * 早期轮次的描述会被压成摘要（见 isStaleVisionRecord）：
+   * 副本是长线推演，几十轮下来视觉描述能占掉整个预算。压缩只动「描述正文」，
+   * 图片 ID 与张数始终保留，模型仍能按编号回指某张图。
+   *
    * @param {Object} rec 流水记录
+   * @param {boolean} [stale] 是否属于早期轮次（只留摘要）
    * @returns {string} 无附图时返回空串
    */
-  function buildVisionPrefix(rec) {
+  function buildVisionPrefix(rec, stale) {
     const imgs = (rec && Array.isArray(rec.images)) ? rec.images.filter(Boolean) : [];
     if (!imgs.length) return '';
-
     const lines = imgs.map((img, i) => {
       const desc = trimStr(img && img.visionDescription);
       const no = String(i + 1).padStart(2, '0');
-      return desc ? `${no}. ${desc}` : `${no}. （该影像未能解析，内容不可读）`;
+      const id = trimStr(img && (img.galleryId || img.id));
+      const idLine = id ? ` 图片 ID：${id}` : '';
+      if (!desc) {
+        return `${no}. （该影像未能解析，内容不可读）${idLine}`;
+      }
+      if (stale && Array.from(desc).length > VISION_SUMMARY_CHARS) {
+        const brief = Array.from(desc).slice(0, VISION_SUMMARY_CHARS).join('').replace(/\s+/g, ' ').trim();
+        return `${no}. ${brief}…（早期影像，仅留摘要）${idLine}`;
+      }
+      return `${no}. ${desc}${idLine}`;
     });
-
     return `[执行员携带的现场影像 // 共 ${imgs.length} 张]\n${lines.join('\n')}\n[/现场影像]\n\n`;
+  }
+
+  /**
+   * 标出「描述需要压成摘要」的早期记录。
+   *
+   * 轮边界与推演一致：一条 envoy 行动开一轮，紧随其后的叙事同轮。开场首帧是没有
+   * 对应行动的孤立叙事，不占号。当前轮与最近 VISION_KEEP_TURNS 轮保留全文。
+   *
+   * @param {Array} records 按时间正序的流水
+   * @returns {Set<string>} 需要压缩的记录 id
+   */
+  function findStaleVisionRecords(records) {
+    const list = Array.isArray(records) ? records : [];
+    const stale = new Set();
+    if (!list.length) return stale;
+    // 先数总轮数：判据是「距最新轮次有多远」，不是「轮号有多大」。
+    // 用轮号直接比阈值会把当前轮也算成早期 —— 长线副本永远在第 6 轮以上，
+    // 那样最新一条行动的图也会被压成摘要。
+    let totalTurns = 0;
+    list.forEach((rec) => {
+      if (rec && rec.role === 'envoy') totalTurns += 1;
+    });
+    if (totalTurns <= VISION_KEEP_TURNS) return stale;
+    const cutoff = totalTurns - VISION_KEEP_TURNS;
+    let turn = 0;
+    let sawEnvoy = false;
+    list.forEach((rec) => {
+      if (!rec) return;
+      if (rec.role === 'envoy') {
+        turn += 1;
+        sawEnvoy = true;
+      } else if (!sawEnvoy) {
+        // 开场首帧：没有行动的孤立叙事，算第 0 轮，不占号
+        return;
+      }
+      if (turn > 0 && turn <= cutoff) stale.add(String(rec.id || ''));
+    });
+    return stale;
   }
 
   /**
@@ -137,14 +191,18 @@ window.ForkRunApi = (() => {
    */
   async function toApiMessages(records, forkId) {
     const list = Array.isArray(records) ? records : [];
+    // 早期轮次的视觉描述压成摘要。每条记录都算一次，不能从 DOM 反推：
+    // 渲染是分页的，上下文必须与渲染解耦（与助手页同一套理由）。
+    const staleVision = findStaleVisionRecords(list);
     const out = [];
-
     for (const rec of list) {
       if (!rec) continue;
       // envoy 是执行员的行动，其余（narration 等）一律视为模型自己的叙事输出
       const role = rec.role === 'envoy' ? 'user' : 'assistant';
       // 视觉描述与战术文件只挂在执行员行动上，前置于正文：模型先「看见」线索再读指令
-      const visionPrefix = role === 'user' ? buildVisionPrefix(rec) : '';
+      const visionPrefix = role === 'user'
+        ? buildVisionPrefix(rec, staleVision.has(String(rec.id || '')))
+        : '';
       const filePrefix = role === 'user' ? await buildFilePrefix(rec, forkId) : '';
       const content = visionPrefix + filePrefix + trimStr(rec.content);
       if (!trimStr(content)) continue;
@@ -204,9 +262,14 @@ window.ForkRunApi = (() => {
       if (!isEnvoy) sawNarration = true;
     });
 
+    // 预算估算必须和真正发出去的内容同口径：早期轮次按摘要算。
+    // 否则估算偏大，会把本可以装下的旧轮整轮丢掉。
+    const staleVision = findStaleVisionRecords(list);
     const costOf = (turn) => turn.reduce(
       (sum, r) => sum + ContextBudget.estimateTokens(
-        (r && r.role === 'envoy' ? buildVisionPrefix(r) : '') + ((r && r.content) || '')
+        (r && r.role === 'envoy'
+          ? buildVisionPrefix(r, staleVision.has(String(r.id || '')))
+          : '') + ((r && r.content) || '')
       ) + 4,
       0
     );

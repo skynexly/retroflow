@@ -195,6 +195,33 @@
     setTimeout(skaSyncNote, 400);
   }
 
+  // ===== 性能诊断（暂停常驻动画）=====
+  // 权威状态归 js/boot.js 的 RetroflowMotion（localStorage.retroflow_reduce_motion +
+  // <html> 上的 no-anim 类）。这里只做视图代理，不自己另存一份状态。
+  let motionEl = null; // 暂停常驻动画开关
+
+  function motionFill() {
+    if (!motionEl) return;
+    const M = window.RetroflowMotion;
+    motionEl.checked = !!(M && typeof M.isOn === 'function' && M.isOn());
+  }
+
+  function onMotionToggle() {
+    const M = window.RetroflowMotion;
+    if (!M || !motionEl) return;
+    const on = motionEl.checked;
+    if (typeof M.set === 'function') M.set(on);
+    // set() 走的是同一套策略解析，理论上与勾选态一致；回填一次防万一
+    motionFill();
+    if (window.RetroToast) {
+      RetroToast.show({
+        tag: 'POWER DIAG // 性能诊断',
+        message: on ? '常驻动画已暂停，界面不再持续重绘' : '常驻动画已恢复',
+        type: 'info'
+      });
+    }
+  }
+
   function init() {
     if (!inited) {
       orbToggleEl = document.getElementById('terminalToggleFloatingOrb');
@@ -227,6 +254,10 @@
       bindHelpDrawer('terminalOrbHelpBtn', 'terminalOrbManualDrawer');
       bindHelpDrawer('terminalKeepaliveHelpBtn', 'terminalKeepaliveManualDrawer');
 
+      motionEl = document.getElementById('terminalToggleReduceMotion');
+      if (motionEl) motionEl.addEventListener('change', onMotionToggle);
+      bindHelpDrawer('terminalMotionHelpBtn', 'terminalMotionManualDrawer');
+
       snoModule = document.getElementById('terminalNoticeModule');
       snoOnEl = document.getElementById('terminalToggleNotice');
       if (snoOnEl) snoOnEl.addEventListener('change', onSnoToggle);
@@ -242,6 +273,7 @@
     }
     skaFill();
     snoFill();
+    motionFill();
   }
 
   window.TerminalConfigUI = { init };

@@ -900,6 +900,9 @@ const ForkRunStore = (() => {
     if (rec && trimStr(rec.name)) record.name = trimStr(rec.name);
     if (rec && Array.isArray(rec.images)) record.images = rec.images;
     if (rec && Array.isArray(rec.files)) record.files = rec.files;
+    // 识图状态随流水一起存：不存的话重开这条线时，失败态胶囊会退回正常态的
+    // 「现场影像 // N」，执行员就再也看不到「这张图当初没识别出来」。
+    if (rec && trimStr(rec.visionState)) record.visionState = trimStr(rec.visionState);
 
     try {
       await Storage.putRecord(record);
@@ -955,6 +958,9 @@ const ForkRunStore = (() => {
     // 调用方手上本来就是完整清单，合并只会在图被删掉时留下幽灵条目。
     if (patch && Array.isArray(patch.images)) next.images = patch.images;
     if (patch && Array.isArray(patch.files)) next.files = patch.files;
+    // 识图状态可单独推进（识图闸门收尾、点击重试都会改它）；
+    // 传空串表示明确落回「无状态」，与「不改」区分开。
+    if (patch && typeof patch.visionState === 'string') next.visionState = trimStr(patch.visionState);
 
     try {
       await Storage.putRecord(next);

@@ -19,7 +19,7 @@
 
   <!-- 样式资产（带构建版本戳穿透 HTTP 磁盘缓存） -->
   <link rel="stylesheet" href="css/variables.css?v=190">
-  <link rel="stylesheet" href="css/style.css?v=903">
+  <link rel="stylesheet" href="css/style.css?v=905">
   <link rel="stylesheet" href="css/fork-deck-camera.css?v=3">
   <link rel="stylesheet" href="css/api-call-log.css?v=4">
   <link rel="stylesheet" href="css/life-service.css?v=129">
@@ -3338,6 +3338,47 @@
                 <div class="terminal-config-hint terminal-keepalive-status" id="terminalKeepaliveStatus" hidden>
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
                   <span id="terminalKeepaliveStatusText">待机</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 性能诊断（POWER DIAG // 性能诊断）
+                 临时排查入口：全站 CSS 动画停不停。权威状态归 js/boot.js 的
+                 RetroflowMotion（localStorage.retroflow_reduce_motion），本页只做
+                 视图代理。查完耗电问题后整块可删，不影响其他模块。
+                 灵动岛保护由 .settings-header 继承 safe-area-inset-top，此处不新增。 -->
+            <div class="theme-module">
+              <div class="module-label-row">
+                <span class="module-label-en">POWER DIAG</span>
+                <span class="module-label-slash">//</span>
+                <span class="module-label-zh">性能诊断</span>
+              </div>
+              <div class="chat-bento-card terminal-config-card">
+                <!-- 常驻动画总闸（暂停而非删除，关掉即恢复） -->
+                <div class="chat-bento-row">
+                  <div class="chat-bento-label">
+                    <span class="chat-bento-zh">暂停常驻动画</span>
+                    <span class="chat-bento-en">REDUCE MOTION · 停掉全站 CSS 动画，对比渲染负载</span>
+                  </div>
+                  <div class="terminal-config-row-actions">
+                    <button type="button" class="psych-help-circle-btn" id="terminalMotionHelpBtn" aria-label="查看性能诊断说明" title="查看性能诊断说明">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                        <path d="M12 17h.01"/>
+                      </svg>
+                    </button>
+                    <label class="chat-bento-switch">
+                      <input type="checkbox" id="terminalToggleReduceMotion">
+                      <span class="chat-switch-slider"></span>
+                    </label>
+                  </div>
+                </div>
+                <!-- 诊断说明抽屉（默认收起，点问号展开） -->
+                <div class="psych-radar-manual-drawer terminal-config-drawer" id="terminalMotionManualDrawer" hidden>
+                  <div class="terminal-config-hint">
+                    排查耗电用的临时开关。打开后全站 CSS 动画停在做首帧的样式上、过渡近乎瞬时，界面结构与尺寸不变，只是不再持续重绘。用来对比渲染线程的 CPU 占用：关着和开着各静置一会儿，看耗电与温度差异。平时保持关闭，排查结束后这个模块会移除。
+                  </div>
                 </div>
               </div>
             </div>
@@ -11372,7 +11413,7 @@
   <script src="js/psych-store.js?v=191"></script>
   <script src="js/psych-archive-app.js?v=198"></script>
   <script src="js/app-version.js?v=1"></script>
-  <script src="js/boot.js?v=187"></script>
+  <script src="js/boot.js?v=189"></script>
   <script src="js/keepalive-core.js?v=5"></script>
   <script src="js/downloader.js?v=189"></script>
   <script src="js/chat-shot.js?v=4"></script>
@@ -11410,7 +11451,7 @@
   <script src="js/manual-app.js?v=201"></script>
   <script src="js/api-call-log.js?v=2"></script>
   <script src="js/api-call-log-ui.js?v=2"></script>
-  <script src="js/terminal-config.js?v=8"></script>
+  <script src="js/terminal-config.js?v=9"></script>
   <script src="js/ota-updater.js?v=1"></script>
   <script src="js/ota-engine.js?v=1"></script>
   <script src="js/ota-ui.js?v=2"></script>
@@ -11424,7 +11465,7 @@
     <script src="js/fork-run-parser.js?v=5"></script>
   <script src="js/fork-run-prompt.js?v=23"></script>
   <script src="js/fork-doc-ui.js?v=16"></script>
-  <script src="js/fork-run-store.js?v=25"></script>
+  <script src="js/fork-run-store.js?v=26"></script>
   <script src="js/memory-store.js?v=1"></script>
   <script src="js/assistant-memory-store.js?v=4"></script>
   <script src="js/memory-vectors.js?v=1"></script>
@@ -11434,9 +11475,9 @@
   <script src="js/memory-audit-modal.js?v=3"></script>
   <script src="js/fork-run-wallpaper.js?v=1"></script>
   <script src="js/fork-run-settings.js?v=19"></script>
-  <script src="js/fork-run-api.js?v=23"></script>
+  <script src="js/fork-run-api.js?v=24"></script>
   <script src="js/fork-run-context-inspector.js?v=5"></script>
-  <script src="js/fork-run-ui.js?v=193"></script>
+  <script src="js/fork-run-ui.js?v=194"></script>
   <script src="js/fork-editor-ui.js?v=84"></script>
   <script src="js/onboarding-ui.js?v=61"></script>
   <script src="js/talent-prompt.js?v=3"></script>

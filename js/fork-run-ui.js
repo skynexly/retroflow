@@ -5468,7 +5468,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
     // 署名与挂载胶囊行：附图胶囊、文件胶囊置于左侧，代号居中，头像居右，整体与气泡右对齐同轴收边
     const pills = [];
     if (act && Array.isArray(act.images) && act.images.length) {
-      pills.push(buildActImagePill(act.images, act.visionState));
+      pills.push(buildActImagePill(act.images, act.visionState, { recordId: act.recordId }));
     }
     if (act && Array.isArray(act.files) && act.files.length) {
       pills.push(buildActFilePill(act.files));
@@ -5607,31 +5607,93 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
     + '<path d="M9 3L7.2 5H4a2 2 0 00-2 2v11a2 2 0 002 2h16a2 2 0 002-2V7a2 2 0 00-2-2h-3.2L15 3H9zm3 5a5 5 0 110 10 5 5 0 010-10zm0 2a3 3 0 100 6 3 3 0 000-6z"/>'
     + '</svg>';
 
+  /** 重试图标（环形箭头，纯 SVG）：识图失败时给执行员一个明确的出口 */
+  const VISION_RETRY_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true">'
+    + '<path d="M17.65 6.35A7.96 7.96 0 0012 4a8 8 0 108 8h-2a6 6 0 11-6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>'
+    + '</svg>';
+
+  /** 附图胶囊组 → 渲染元数据。重画与回写都靠它，避免把 id 塞进 dataset 再读回来 */
+  const visionGroupMeta = new WeakMap();
+  /** 在途重试的流水 id：连点、以及「重试中又点发送」都要挡住 */
+  const forkVisionInFlight = new Set();
+  /** 图库释放监听只挂一次（init 可能被重复调用） */
+  let galleryReleaseBound = false;
+
   /**
    * 把一条行动的附图列表收成一枚胶囊。
    *
    * 胶囊只读 images 的长度与识图状态，不预加载任何图 —— 一条线可能有几十条带图行动，
    * 进本时全量拉 Blob 会把主线程和内存一起拖垮。真正取图延后到点开灯箱那一刻。
    *
+   * 失败态拆成两枚：左边「识别失败 · 重试」只重跑识图，不触发推演（推演是另一回事，
+   * 执行员要自己按发送键）；右边保留纯图标的灯箱入口，图还是要能翻的。
+   * 原图已从视界档案里释放时，左边退成不可点的标签，避免点下去必然弹「影像缺失」。
+   *
    * @param {Array} images 形如 [{ galleryId, assetKey }] 的附图清单
    * @param {string} [visionState] 'pending' | 'done' | 'failed'，缺省按 done 渲染
+   * @param {{recordId?: string}} [opts] 所属流水 id，重试要靠它回写
    * @returns {HTMLElement}
    */
-  function buildActImagePill(images, visionState) {
+  function buildActImagePill(images, visionState, opts) {
     const list = Array.isArray(images) ? images.filter(Boolean) : [];
+    const recordId = trimStr(opts && opts.recordId);
+    const state = trimStr(visionState);
+    const retryable = state === 'failed' && visionImagesAvailable(list);
+
+    const group = document.createElement('span');
+    group.className = 'fork-run-act-vision-group';
+    visionGroupMeta.set(group, { images: list, recordId, visionState: state });
+
+    // 失败且可重试：重试键 + 纯图标查看键
+    if (retryable) {
+      const retryPill = document.createElement('button');
+      retryPill.type = 'button';
+      retryPill.className = 'fork-run-act-image-pill is-retryable';
+      retryPill.dataset.visionState = 'failed';
+      retryPill.innerHTML = `${VISION_RETRY_SVG}<span class="fork-run-act-image-pill-text">识别失败 · 重试</span>`;
+      retryPill.setAttribute('aria-label', '这张影像未识别成功，点击重新识别');
+      retryPill.addEventListener('click', (e) => {
+        e.stopPropagation();
+        retryForkVision(recordId, group).catch((err) => {
+          console.warn('[ForkRun] 影像重试异常：', err);
+        });
+      });
+      group.append(retryPill, buildVisionViewPill(list, 'failed', true));
+      return group;
+    }
+
+    // 失败但原图已释放：不可点，只报事实
+    if (state === 'failed') {
+      const dead = document.createElement('span');
+      dead.className = 'fork-run-act-image-pill is-released';
+      dead.dataset.visionState = 'failed';
+      dead.innerHTML = `${VISION_PILL_SVG}<span class="fork-run-act-image-pill-text">原图已释放</span>`;
+      dead.setAttribute('aria-label', '原图已释放，无法重试');
+      group.append(dead);
+      return group;
+    }
+
+    group.append(buildVisionViewPill(list, state, false));
+    return group;
+  }
+
+  /**
+   * 灯箱入口胶囊。state 为 pending 时呼吸，failed 时为图标模式（重试键已占了文字位）。
+   */
+  function buildVisionViewPill(list, state, iconOnly) {
     const pill = document.createElement('button');
     pill.type = 'button';
-    pill.className = 'fork-run-act-image-pill';
-    if (visionState) pill.dataset.visionState = visionState;
+    pill.className = iconOnly ? 'fork-run-act-image-pill is-icon-only' : 'fork-run-act-image-pill';
+    if (state) pill.dataset.visionState = state;
 
-    const label = visionState === 'pending'
+    const label = state === 'pending'
       ? 'VISION // 识别中'
-      : (visionState === 'failed' ? 'VISION // 识别失败' : `现场影像 // ${list.length}`);
+      : (state === 'failed' ? `现场影像 // ${list.length}` : `现场影像 // ${list.length}`);
 
-    pill.innerHTML = `${VISION_PILL_SVG}<span class="fork-run-act-image-pill-text">${escapeHtml(label)}</span>`
-      + '<span class="fork-run-act-image-pill-arrow" aria-hidden="true">'
-      + '<svg viewBox="0 0 24 24"><path d="M9.29 6.71a1 1 0 000 1.41L13.17 12l-3.88 3.88a1 1 0 101.42 1.41l4.58-4.58a1 1 0 000-1.42L10.7 6.71a1 1 0 00-1.41 0z"/></svg>'
-      + '</span>';
+    pill.innerHTML = `${VISION_PILL_SVG}<span class="fork-run-act-image-pill-text">${escapeHtml(iconOnly ? String(list.length) : label)}</span>`
+      + (iconOnly ? '' : '<span class="fork-run-act-image-pill-arrow" aria-hidden="true">'
+        + '<svg viewBox="0 0 24 24"><path d="M9.29 6.71a1 1 0 000 1.41L13.17 12l-3.88 3.88a1 1 0 101.42 1.41l4.58-4.58a1 1 0 000-1.42L10.7 6.71a1 1 0 00-1.41 0z"/></svg>'
+        + '</span>');
     pill.setAttribute('aria-label', `查看现场影像，共 ${list.length} 张`);
 
     pill.addEventListener('click', (e) => {
@@ -5641,6 +5703,44 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
     });
 
     return pill;
+  }
+
+  /** 附图原图是否还在视界档案里：全丢时重试必然读不到图，入口直接置灰 */
+  function visionImagesAvailable(images) {
+    const list = Array.isArray(images) ? images.filter(Boolean) : [];
+    if (!list.length) return false;
+    return list.some((item) => {
+      const id = typeof item === 'string' ? item : (item && (item.galleryId || item.id));
+      if (!id) return !!((item && item.url) || (item && item.assetKey));
+      try {
+        if (window.GalleryStore && typeof GalleryStore.getEntry === 'function') {
+          return !!GalleryStore.getEntry(id);
+        }
+      } catch (_) { /* 索引读不到按不可用处理 */ }
+      return false;
+    });
+  }
+
+  /**
+   * 页面重开时归一化识图状态。
+   *
+   * 存量记录里可能留着 pending —— 那是上次识图中途退出（杀进程、切页）留下的死状态，
+   * 原样渲染会让这条行动永远停在「识别中」且没有出口。统一按失败态处理，给出重试入口。
+   */
+  function normalizeRestoredVisionState(raw) {
+    const s = trimStr(raw);
+    if (s === 'pending') return 'failed';
+    return s;
+  }
+
+  /** 就地重画一枚胶囊组（状态变了、原图释放了都走这里） */
+  function refreshVisionGroup(group) {
+    if (!group || !group.parentNode) return null;
+    const meta = visionGroupMeta.get(group);
+    if (!meta) return null;
+    const next = buildActImagePill(meta.images, meta.visionState, { recordId: meta.recordId });
+    group.parentNode.replaceChild(next, group);
+    return next;
   }
 
   /** 把附图清单解析成可显示的 src 列表（objectURL，关灯箱时统一 revoke） */
@@ -5997,7 +6097,10 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
           name: rec.name,
           turn: turnCursor,
           images: rec.images || [],
-          files: rec.files || []
+          files: rec.files || [],
+          // 老记录没有 visionState（字段是后加的）：按 done 渲染。
+          // pending 是上次识图中途退出的残留死状态，归一化为失败态给出重试入口。
+          visionState: normalizeRestoredVisionState(rec.visionState)
         });
       } else {
         // 叙事条目的 content 是 AI 原始文本，先过契约解析器拆成结构化数据，
@@ -6789,7 +6892,12 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
   async function submitAct() {
     if (isReadonly || !textarea) return;
     // 推演/识图进行中不受理新行动：按钮此时是终止态，点击走 abortInference
+    // 单条重试也在进行中则同理挡住：它正在改这条行动的图元数据，此时发车会读到半新半旧的流水
     if (currentInference || currentVision) return;
+    if (forkVisionInFlight.size) {
+      toast('VISION // 稍候', '影像还在重新识别', '等这一条补完再提交行动', 'info');
+      return;
+    }
     const text = trimStr(textarea.value);
     const imageBlobs = pendingImages.map((p) => p.blob).filter(Boolean);
     const filesToSend = pendingFiles.slice();
@@ -6854,7 +6962,9 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
         name: actName,
         turn: nextTurn,
         images: savedImages,
-        files: savedFiles
+        files: savedFiles,
+        // pending 一并落库：万一识图中途退出，重进能看到「可重试」而不是永远识别中
+        visionState: hasVision ? 'pending' : ''
       });
       if (!saved) {
         toast('DECK // 落库失败', '这条行动没能存上', '内容仍在屏上，但重进本页会丢失', 'error');
@@ -6888,6 +6998,123 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
   }
 
   /* ================= 识图闸门 ================= */
+
+  /**
+   * 点击重试：只重跑这一条行动的识图，不改因果、不触发推演。
+   *
+   * 与助手页、私聊的口径一致：失败重试是「把这张图的描述补回来」，不是「重发这轮行动」。
+   * 推演要不要重跑由执行员自己按发送键决定 —— 自动重发会让一条已经写进流水的行动
+   * 在模型眼里出现两次，副本是长线因果，这种重复比缺描述更难收拾。
+   *
+   * @param {string} recordId 目标流水 id
+   * @param {HTMLElement} group 屏上的胶囊组，成功后原地换态
+   */
+  async function retryForkVision(recordId, group) {
+    const id = trimStr(recordId);
+    const meta = group ? visionGroupMeta.get(group) : null;
+    const warn = (message) => {
+      if (typeof toast === 'function') toast('VISION // 重试失败', message, '', 'warning');
+    };
+    if (!id) {
+      warn('这条行动没有可回写的流水编号');
+      return { ok: false };
+    }
+    if (forkVisionInFlight.has(id) || currentVision) return { ok: false, skipped: true };
+    if (isReadonly) {
+      warn('本线为只读存档，无法重新识别');
+      return { ok: false };
+    }
+
+    const images = (meta && Array.isArray(meta.images)) ? meta.images : [];
+    if (!images.length) {
+      warn('这条行动没有影像');
+      return { ok: false };
+    }
+
+    // 先把原图全部读回来：一张都读不到就没必要发请求
+    const blobs = [];
+    for (const item of images) {
+      const gid = typeof item === 'string' ? item : (item && (item.galleryId || item.id));
+      let blob = null;
+      try {
+        if (gid && window.GalleryStore && typeof GalleryStore.getBlob === 'function') {
+          blob = await GalleryStore.getBlob(gid);
+        }
+      } catch (err) {
+        console.warn('[ForkRun] 重试读图失败：', gid, err);
+      }
+      blobs.push(blob || null);
+    }
+    if (!blobs.some(Boolean)) {
+      warn('原图已从视界档案释放，无法重新识别');
+      // 就地置灰，避免执行员反复点
+      if (group) {
+        const stale = visionGroupMeta.get(group);
+        if (stale) {
+          visionGroupMeta.set(group, Object.assign({}, stale, { images: [] }));
+          refreshVisionGroup(group);
+        }
+      }
+      return { ok: false };
+    }
+
+    forkVisionInFlight.add(id);
+    // 胶囊进「识别中」：换态走同一套渲染，避免出现两种视觉
+    if (group) {
+      const cur = visionGroupMeta.get(group);
+      if (cur) visionGroupMeta.set(group, Object.assign({}, cur, { visionState: 'pending' }));
+      const pendingGroup = refreshVisionGroup(group);
+      if (pendingGroup) group = pendingGroup;
+    }
+
+    let results = [];
+    try {
+      results = await Promise.all(images.map((_, i) => (
+        blobs[i]
+          ? recognizeForkImage(blobs[i], '').then((d) => d).catch((err) => {
+            console.warn('[ForkRun] 重试识图失败：', err);
+            return '';
+          })
+          : Promise.resolve('')
+      )));
+    } finally {
+      forkVisionInFlight.delete(id);
+    }
+
+    const merged = images.map((item, i) => Object.assign({}, item, {
+      visionDescription: results[i] || (item && item.visionDescription) || ''
+    }));
+    const okCount = results.filter(Boolean).length;
+    const nextState = okCount ? 'done' : 'failed';
+
+    if (okCount && window.ForkRunStore && typeof ForkRunStore.updateRunRecord === 'function') {
+      try {
+        await ForkRunStore.updateRunRecord(currentRunId, id, { images: merged, visionState: nextState });
+      } catch (err) {
+        console.warn('[ForkRun] 重试回写失败：', err);
+      }
+    } else if (window.ForkRunStore && typeof ForkRunStore.updateRunRecord === 'function') {
+      // 仍失败：只落状态，描述保持原样（可能原本就是空）
+      try {
+        await ForkRunStore.updateRunRecord(currentRunId, id, { visionState: nextState });
+      } catch (_) { /* 状态没落住不影响本次反馈 */ }
+    }
+
+    if (group) {
+      const cur = visionGroupMeta.get(group);
+      if (cur) {
+        visionGroupMeta.set(group, Object.assign({}, cur, { images: merged, visionState: nextState }));
+        refreshVisionGroup(group);
+      }
+    }
+
+    if (okCount) {
+      toast('VISION // 已归档', '影像记忆已补回', '描述会随下一次推演进入上下文', 'success');
+    } else {
+      warn('影像仍未解析出来，可稍后再试或检查视觉模型节点');
+    }
+    return { ok: !!okCount, okCount };
+  }
 
   /** 视觉识别超时护栏：单张 90 秒，超时按失败处理，不无限吊着 */
   function withForkVisionTimeout(task, timeoutMs) {
@@ -6981,24 +7208,34 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
       visionDescription: results[i] || ''
     }));
     const okCount = results.filter(Boolean).length;
+    // 部分成功按成功算：只要有一张描述可用，这轮行动就带着视觉信息进上下文了
+    const nextState = okCount ? 'done' : 'failed';
 
-    // 描述回填流水；写失败不拦推演，只是这轮模型看不到图的内容
+    // 描述与状态回填流水；写失败不拦推演，只是这轮模型看不到图的内容
     if (ctx.recordId && window.ForkRunStore && typeof ForkRunStore.updateRunRecord === 'function') {
       try {
-        await ForkRunStore.updateRunRecord(currentRunId, ctx.recordId, { images: merged });
+        await ForkRunStore.updateRunRecord(currentRunId, ctx.recordId, {
+          images: merged,
+          visionState: nextState
+        });
       } catch (err) {
         console.warn('[ForkRun] 视觉描述回填失败：', err);
       }
     }
 
-    // 胶囊换态：全失败标红，部分成功按成功算
+    // 胶囊换态：全失败标红并给出重试入口，部分成功按成功算
     if (ctx.row) {
-      const oldPill = ctx.row.querySelector('.fork-run-act-image-pill');
-      if (oldPill && oldPill.parentNode) {
-        oldPill.parentNode.replaceChild(
-          buildActImagePill(merged, okCount ? 'done' : 'failed'),
-          oldPill
-        );
+      const group = ctx.row.querySelector('.fork-run-act-vision-group');
+      if (group) {
+        const meta = visionGroupMeta.get(group);
+        if (meta) {
+          visionGroupMeta.set(group, Object.assign({}, meta, {
+            images: merged,
+            visionState: nextState,
+            recordId: ctx.recordId || meta.recordId
+          }));
+          refreshVisionGroup(group);
+        }
       }
     }
 
@@ -7008,6 +7245,27 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
 
     setSendButtonState(false);
     return true;
+  }
+
+  /**
+   * 视界档案释放原图：把屏上所有失败态胶囊就地重画。
+   *
+   * 助手页有同样的联动（system-chat-ui.js），副本这边此前没接：
+   * 原图被删掉后重试键还在，点下去必然弹「影像缺失」，属于假入口。
+   */
+  function bindGalleryReleaseSync() {
+    if (galleryReleaseBound) return;
+    galleryReleaseBound = true;
+    window.addEventListener('retroflow:gallery-assets-released', () => {
+      if (!streamEl) return;
+      const groups = streamEl.querySelectorAll('.fork-run-act-vision-group');
+      groups.forEach((group) => {
+        const meta = visionGroupMeta.get(group);
+        if (!meta || meta.visionState !== 'failed') return;
+        // 复用渲染分支：visionImagesAvailable 会就地判定为不可重试并退成灰标签
+        refreshVisionGroup(group);
+      });
+    });
   }
 
   /**
@@ -8022,6 +8280,8 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
     }
 
     if (backBtn) backBtn.addEventListener('click', () => close());
+    // 视界档案释放原图后同步失败态胶囊：只挂一次，init 可能被重复调用
+    bindGalleryReleaseSync();
     if (menuBtn) {
       menuBtn.addEventListener('click', (e) => {
         e.stopPropagation();

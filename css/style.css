@@ -32565,7 +32565,42 @@ button.fork-run-mission-action-card:active,
 .fork-run-act-image-pill[data-vision-state="pending"] {
   animation: fork-pill-breathe 1.5s ease-in-out infinite;
 }
-
+/* 失败态：重试键右邻一个纯图标查看键，两者成组，间距比行内 gap 更紧 */
+.fork-run-act-vision-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+/* 可点重试：与助手页同口径，危险色描边 + 呼吸提示，最小点击高度 28px */
+.fork-run-act-image-pill.is-retryable {
+  background: rgba(var(--danger-color-rgb), 0.12);
+  color: var(--danger-color);
+  box-shadow: inset 0 0 0 1px rgba(var(--danger-color-rgb), 0.34);
+  min-height: 28px;
+  padding: 4px 9px 4px 8px;
+}
+.fork-run-act-image-pill.is-retryable:active {
+  background: rgba(var(--danger-color-rgb), 0.22);
+  transform: scale(0.96);
+}
+/* 纯图标查看键：宽度压到与图标等宽，不与重试键抢视线 */
+.fork-run-act-image-pill.is-icon-only {
+  padding: 4px 6px;
+  min-height: 28px;
+  opacity: 0.72;
+}
+.fork-run-act-image-pill.is-icon-only .fork-run-act-image-pill-text {
+  font-size: 9px;
+  opacity: 0.9;
+}
+/* 原图已释放：不是按钮，退成中性灰标签，避免看着能点 */
+.fork-run-act-image-pill.is-released {
+  cursor: default;
+  background: rgba(var(--text-muted-rgb), 0.1);
+  color: var(--text-muted);
+  opacity: 0.75;
+}
 .fork-run-act-image-pill[data-vision-state="failed"] {
   background: rgba(var(--danger-color-rgb), 0.12);
   color: var(--danger-color);
@@ -44322,4 +44357,24 @@ html:not(.is-native) #otaUpdateModule { display: none !important; }
   .mem-audit-btn:active {
     transform: none;
   }
+}
+
+/* ==== 诊断开关：停掉全站 CSS 动画（见 js/boot.js 的 RetroflowMotion） ====
+ * 排查渲染线程持续吃满 CPU 的耗电问题时，用 ?noanim=1 或
+ * localStorage.retroflow_reduce_motion=1 打开。
+ * 只暂停动画与过渡，不改布局尺寸与最终视觉结果，关掉即恢复。
+ * 用 animation-play-state 而不是 animation:none，是为了让元素停在做动
+ * 画首帧的样式上——不会突然跳回静态基线位置，便于肉眼前后对比。
+ */
+html.no-anim *,
+html.no-anim *::before,
+html.no-anim *::after {
+  animation-play-state: paused !important;
+  transition-duration: 0.001s !important;
+  scroll-behavior: auto !important;
+}
+/* 跑马灯这类长距离位移停住后会把内容停在偏移位置，直接回到起点更干净 */
+html.no-anim .profile-marquee-track {
+  animation: none !important;
+  transform: none !important;
 }
