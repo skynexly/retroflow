@@ -784,8 +784,13 @@ const DataVault = (() => {
     const storeNames = [];
     let clearVectors = false;
     // 旧备份没有「记忆」块，进度点还在聊天记录里：这时聊天块照旧认领进度点，
-    // 保持聊天流水与进度点一起替换，不会出现「换了聊天、进度点还是旧的」
-    const legacyChatCursors = !pkgBlocks.includes('memory');
+    // 保持聊天流水与进度点一起替换，不会出现「换了聊天、进度点还是旧的」。
+    // 只认包里确实带着进度点的旧备份：新版单独导出的「线上数据」等包也没有记忆块，
+    // 但导出时已排除进度点，若也按旧备份处理，会把手机上的进度点全部删掉。
+    const MEM_CURSOR_PREFIX = 'sysChat/memcursor.';
+    const pkgHasCursors = !!(pkg.payload.docs && typeof pkg.payload.docs === 'object') &&
+      Object.keys(pkg.payload.docs).some((k) => String(k).startsWith(MEM_CURSOR_PREFIX));
+    const legacyChatCursors = !pkgBlocks.includes('memory') && pkgHasCursors;
 
     for (const id of targetBlocks) {
       const block = BLOCKS[id];
@@ -921,13 +926,16 @@ const DataVault = (() => {
 
     // 5. 记忆表：整表覆盖。包里没有某张表时不动它（来自更旧或更新版本的包）
     const pkgStores = payload.stores && typeof payload.stores === 'object' ? payload.stores : {};
+    let storesReplaced = false;
     for (const storeName of storeNames) {
       if (!Array.isArray(pkgStores[storeName])) continue;
       await Storage.replaceBackupStore(storeName, pkgStores[storeName]);
+      storesReplaced = true;
     }
 
-    // 6. 向量：记忆被替换后旧向量全部作废，之后在记忆库点「向量化」重新生成
-    if (clearVectors && typeof Storage.clearAllVectors === 'function') {
+    // 6. 向量：记忆被替换后旧向量全部作废，之后在记忆库点「向量化」重新生成。
+    // 包里没有记忆表（如只含提取进度点）时记忆没动，向量仍然有效，不清。
+    if (clearVectors && storesReplaced && typeof Storage.clearAllVectors === 'function') {
       try { await Storage.clearAllVectors(); } catch (_) { /* ignore */ }
     }
 

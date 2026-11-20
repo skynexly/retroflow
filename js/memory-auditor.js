@@ -14,6 +14,7 @@ const MemoryAuditor = (() => {
   'use strict';
 
   const BATCH_SIZE = 50; // 每批最多 50 条记忆
+  const MEM_CURSOR_PREFIX = 'sysChat/memcursor.'; // 记忆提取进度点 doc 键前缀
   const KEYWORD_SIMILARITY_THRESHOLD = 0.7; // 关键词相似度阈值
   const TITLE_BOOST_THRESHOLD = 0.5; // title 词汇交集可以降低关键词阈值到这个值
 
@@ -681,17 +682,25 @@ const MemoryAuditor = (() => {
     // 读取所有助手记忆
     const memories = memStore.all();
 
-    // 读取提取进度点
+    // 读取全部对话窗口的提取进度点（键为完整 doc 键）。
+    // 恢复时「记忆」块会先清空所有 sysChat/memcursor.*，只备份主对话会丢掉其他窗口的进度点。
     let cursor = {};
+    const cursors = {};
     try {
-      const mainCursor = await st.getDoc('sysChat/memcursor.main');
+      const keys = typeof st.listDocKeys === 'function' ? await st.listDocKeys(MEM_CURSOR_PREFIX) : [];
+      for (const k of (keys || [])) {
+        const v = await st.getDoc(k);
+        if (v) cursors[k] = v;
+      }
+      const mainCursor = cursors[`${MEM_CURSOR_PREFIX}main`] || await st.getDoc(`${MEM_CURSOR_PREFIX}main`);
       if (mainCursor) cursor.main = mainCursor;
     } catch (_) { /* ignore */ }
 
     const backup = {
       timestamp: Date.now(),
       memories: memories,
-      cursor: cursor
+      cursor: cursor,
+      cursors: cursors
     };
 
     await st.setDoc(BACKUP_KEY, backup);
@@ -748,9 +757,27 @@ const MemoryAuditor = (() => {
       }
     };
 
-    // 如果有 cursor，加进去（docPrefixes 'sysChat/memcursor.' 归 memory 块）
-    if (backup.cursor && backup.cursor.main) {
-      pkg.payload.docs['sysChat/memcursor.main'] = backup.cursor.main;
+    // 进度点（docPrefixes 'sysChat/memcursor.' 归 memory 块，导入时先清空全部再写回）。
+    // 新备份带全部窗口的 cursors；旧备份只有 cursor.main。
+    // 两者都没有时不写，并保留手机上现有进度点，避免恢复后从最早的对话重新提取。
+    if (backup.cursors && typeof backup.cursors === 'object') {
+      Object.keys(backup.cursors).forEach((k) => {
+        if (String(k).startsWith(MEM_CURSOR_PREFIX) && backup.cursors[k]) pkg.payload.docs[k] = backup.cursors[k];
+      });
+    }
+    if (backup.cursor && backup.cursor.main && !pkg.payload.docs[`${MEM_CURSOR_PREFIX}main`]) {
+      pkg.payload.docs[`${MEM_CURSOR_PREFIX}main`] = backup.cursor.main;
+    }
+    // 旧格式备份只存了主对话进度点：其余窗口用手机上现有的进度点补齐，不让它们被清空
+    if (!backup.cursors && typeof st.listDocKeys === 'function') {
+      try {
+        const keys = await st.listDocKeys(MEM_CURSOR_PREFIX);
+        for (const k of (keys || [])) {
+          if (pkg.payload.docs[k]) continue;
+          const v = await st.getDoc(k);
+          if (v) pkg.payload.docs[k] = v;
+        }
+      } catch (_) { /* ignore */ }
     }
 
     const dv = dataVault();
