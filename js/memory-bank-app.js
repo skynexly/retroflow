@@ -898,15 +898,26 @@ const MemoryBankApp = (() => {
     return m ? `${m[1]}.${m[2]}.${m[3]}` : String(raw || '日期不详');
   }
 
+  /**
+   * 列表固定按记录时间（entry.time）新的在上；同一时间再比写入时间、最后比 ID，顺序稳定。
+   * 自动提取同一批写入的 createdAt 完全相同，按写入时间排会出现批内乱序。
+   */
+  function assistantRecordTimeNewestFirst(a, b) {
+    return ((Date.parse(b && b.time) || 0) - (Date.parse(a && a.time) || 0))
+      || (((b && b.createdAt) || 0) - ((a && a.createdAt) || 0))
+      || String((b && b.id) || '').localeCompare(String((a && a.id) || ''));
+  }
   /** 展示层排序，原数组保持原样，多选与删除继续使用稳定的 ID。 */
   function assistantDisplayEntries(cat, entries) {
-    if (cat.id !== 'pending') return entries;
-    return entries.map((entry, index) => ({ entry, index })).sort((a, b) => {
+    const byTime = entries.slice().sort(assistantRecordTimeNewestFirst);
+    if (cat.id !== 'pending') return byTime;
+    // 待办：未完成在前；已完成按完成日期新的在上；同组内保持记录时间顺序
+    return byTime.map((entry, index) => ({ entry, index })).sort((a, b) => {
       const completed = Number(assistantEntryCompleted(a.entry)) - Number(assistantEntryCompleted(b.entry));
       if (completed) return completed;
       if (assistantEntryCompleted(a.entry)) {
         const dateOrder = b.entry.completedDate.localeCompare(a.entry.completedDate);
-        return dateOrder || (b.index - a.index);
+        return dateOrder || (a.index - b.index);
       }
       return a.index - b.index;
     }).map((item) => item.entry);
@@ -1882,7 +1893,9 @@ const MemoryBankApp = (() => {
 
     const rawQuery = assistantSearchOpen ? assistantSearchQuery.trim() : '';
     const query = rawQuery.toLowerCase();
-    const shown = assistantDisplayEntries(cat, groupEntries.filter((e) => assistantEntryMatches(e, query)));
+    // 序号按排序后的完整列表编号，搜索时保留原序号
+    const ordered = assistantDisplayEntries(cat, groupEntries);
+    const shown = ordered.filter((e) => assistantEntryMatches(e, query));
 
     // 被删掉或不可见组的条目不能残留在已选集合里
     const visibleIds = new Set(groupEntries.map((e) => e.id));
@@ -1895,7 +1908,7 @@ const MemoryBankApp = (() => {
       list.setAttribute('role', 'list');
       list.setAttribute('aria-label', `${cat.name} 记忆列表`);
     }
-    list.innerHTML = shown.map((entry) => assistantEntryCardHtml(entry, groupEntries.indexOf(entry), cat)).join('');
+    list.innerHTML = shown.map((entry) => assistantEntryCardHtml(entry, ordered.indexOf(entry), cat)).join('');
 
     const countEl = page.querySelector('[data-assistant-count]');
     if (countEl) {
