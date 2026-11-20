@@ -429,46 +429,9 @@ body.has-wallpaper {
   background-color: rgba(var(--bg-color-rgb), 0.15);
 }
 
-/* 全局时空广播跑马灯（置于整个组件顶部，横贯全宽，自然被破框照片遮挡部分） */
-.profile-marquee-wrap {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: clamp(14px, 3.5vw, 16px);
-  overflow: hidden;
-  user-select: none;
-  pointer-events: none;
-  z-index: 1; /* 位于红卡（z-index: 2）和照片（z-index: 5）下方 */
-  /* 两端柔和渐隐，文字自然滑入滑出 */
-  mask-image: linear-gradient(90deg, transparent 0%, black 5%, black 95%, transparent 100%);
-  -webkit-mask-image: linear-gradient(90deg, transparent 0%, black 5%, black 95%, transparent 100%);
-}
-
-.profile-marquee-track {
-  display: flex;
-  width: max-content;
-  will-change: transform;
-  animation: marqueeRun 32s linear infinite;
-}
-
-.marquee-item {
-  font-family: var(--mono-font);
-  font-size: clamp(9px, 2.2vw, 9.5px);
-  font-weight: 700;
-  letter-spacing: 0.8px;
-  color: rgba(var(--secondary-color-rgb), 0.5);
-  white-space: nowrap;
-}
-
-@keyframes marqueeRun {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
-}
+/* 原「全局时空广播跑马灯」样式已移除（.profile-marquee-wrap / .profile-marquee-track /
+   .marquee-item / @keyframes marqueeRun）。它在 120Hz 屏上常驻触发合成层重绘，
+   是发烫耗电的主因之一。未来若需要横向滚动的公告，改用变换频率更低或按需触发的方案。 */
 
 /* 红卡右下角机能条码微标装饰（纯 SVG） */
 .profile-card-barcode-deco {
@@ -1074,6 +1037,8 @@ body.has-wallpaper {
   gap: 3px;
   opacity: 0;
   transform: translateY(-3px);
+  /* 悬停才出现的小角标：关闭态用 visibility 退出合成，否则 backdrop-filter 常驻 */
+  visibility: hidden;
   transition: all 0.2s ease;
   backdrop-filter: blur(4px);
   user-select: none;
@@ -1087,6 +1052,7 @@ body.has-wallpaper {
 
 .p2-gallery-frame:hover .p2-gallery-hover-tag {
   opacity: 1;
+  visibility: visible;
   transform: translateY(0);
 }
 
@@ -1832,13 +1798,16 @@ body.has-wallpaper {
   justify-content: center;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.25s ease;
+  /* 关闭态彻底退出合成：只用 opacity 渐隐时元素仍是全屏活动层，
+     backdrop-filter 会跟着参与重绘。visibility 过渡保留淡出效果。 */
+  visibility: hidden;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
   z-index: 14000;
   padding: 0;
 }
-
 .avatar-modal-backdrop.active {
   opacity: 1;
+  visibility: visible;
   pointer-events: auto;
 }
 
@@ -2481,12 +2450,7 @@ body.has-wallpaper.has-wallpaper-mask .clock-day .day-zh {
   color: rgba(var(--bg-color-rgb), 0.9);
 }
 
-/* 2. 红卡顶部时空广播跑马灯 */
-body.has-wallpaper.has-wallpaper-mask .marquee-item {
-  color: rgba(var(--bg-color-rgb), 0.85);
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
-}
-
+/* 2. （原红卡顶部时空广播跑马灯已移除，此处规则随之作废） */
 /* 3. 红卡左下角外部底纹装饰英文（深色壁纸下 0.55 仍偏灰，提一档保底可读） */
 body.has-wallpaper.has-wallpaper-mask .card-bg-watermark span {
   color: rgba(var(--bg-color-rgb), 0.72);
@@ -12718,44 +12682,8 @@ button.api-node-badge:active {
   pointer-events: none;
 }
 
-/* 登录按钮下方平台广播跑马灯（零分割线，两端渐隐，无缝循环） */
-.online-login-marquee-wrap {
-  width: 100%;
-  margin-top: 14px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  overflow: hidden;
-  user-select: none;
-  pointer-events: none;
-  mask-image: linear-gradient(90deg, transparent 0%, black 8%, black 92%, transparent 100%);
-  -webkit-mask-image: linear-gradient(90deg, transparent 0%, black 8%, black 92%, transparent 100%);
-}
-
-.online-login-marquee-track {
-  display: flex;
-  width: max-content;
-  will-change: transform;
-  animation: onlineLoginMarqueeRun 42s linear infinite;
-}
-
-.online-login-marquee-item {
-  font-family: var(--mono-font);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  color: rgba(var(--secondary-color-rgb), 0.58);
-  white-space: nowrap;
-}
-
-@keyframes onlineLoginMarqueeRun {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
-}
+/* 原「登录页平台广播跑马灯」样式已移除（.online-login-marquee-wrap / -track / -item /
+   @keyframes onlineLoginMarqueeRun）。与首页跑马灯同因，避免常驻合成层。 */
 
 /* ==========================================================================
    线上联络主面板 (Online Main Panel - 四 Tab 骨架与机能导航)
@@ -44373,8 +44301,4 @@ html.no-anim *::after {
   transition-duration: 0.001s !important;
   scroll-behavior: auto !important;
 }
-/* 跑马灯这类长距离位移停住后会把内容停在偏移位置，直接回到起点更干净 */
-html.no-anim .profile-marquee-track {
-  animation: none !important;
-  transform: none !important;
-}
+/* 跑马灯已移除，此处原先的归位规则随之作废，保留 no-anim 的通用暂停即可 */

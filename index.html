@@ -19,7 +19,7 @@
 
   <!-- 样式资产（带构建版本戳穿透 HTTP 磁盘缓存） -->
   <link rel="stylesheet" href="css/variables.css?v=190">
-  <link rel="stylesheet" href="css/style.css?v=905">
+  <link rel="stylesheet" href="css/style.css?v=906">
   <link rel="stylesheet" href="css/fork-deck-camera.css?v=3">
   <link rel="stylesheet" href="css/api-call-log.css?v=4">
   <link rel="stylesheet" href="css/life-service.css?v=129">
@@ -93,13 +93,8 @@
 
           <!-- 复合英雄角色组件（破框照片 + 红色档案卡 + 外置按钮） -->
           <section class="profile-hero-section">
-            <!-- 全局时空广播跑马灯（置于组件顶部，自然被破框照片遮挡部分） -->
-            <div class="profile-marquee-wrap" aria-hidden="true">
-              <div class="profile-marquee-track">
-                <span class="marquee-item">// TERMINAL INITIALIZED · WELCOME TO RETROFLOW PROJECT · WE NAVIGATE THE CAUSAL TIDES TO CALIBRATE REALITY · ALL FORK INTERVENTIONS ARE MONITORED UNDER CANON LAW · RESOLVE THE GLITCH; MERGE THE TRUTH · AWAITING DEEP DIVE AUTHORIZATION ·&nbsp;</span>
-                <span class="marquee-item">// TERMINAL INITIALIZED · WELCOME TO RETROFLOW PROJECT · WE NAVIGATE THE CAUSAL TIDES TO CALIBRATE REALITY · ALL FORK INTERVENTIONS ARE MONITORED UNDER CANON LAW · RESOLVE THE GLITCH; MERGE THE TRUTH · AWAITING DEEP DIVE AUTHORIZATION ·&nbsp;</span>
-              </div>
-            </div>
+            <!-- 原「全局时空广播跑马灯」已移除：32s 无限滚动 + will-change 常驻合成层，
+                 在 120Hz 屏上持续触发重绘，是耗电主因之一。未来若需回归请改用它处实现。 -->
 
             <!-- 红色档案信息条 -->
             <div class="profile-card">
@@ -7556,13 +7551,7 @@
                 <span>登录</span>
               </button>
 
-              <!-- 登录页底部平台广播跑马灯（两端柔和渐隐，首尾无缝衔接） -->
-              <div class="online-login-marquee-wrap" aria-hidden="true">
-                <div class="online-login-marquee-track">
-                  <span class="online-login-marquee-item">WELCOME TO RETROFLOW // RETROFLOW IS A DEDICATED ONLINE COMMUNICATION PLATFORM DESIGNED FOR ENVOYS // CONNECT SECURELY, CHAT FREELY, AND EXPAND YOUR SOCIAL CIRCLE ACROSS THE TIMELINE NETWORK // ENJOY YOUR CONVERSATIONS //&nbsp;&nbsp;&nbsp;&nbsp;</span>
-                  <span class="online-login-marquee-item">WELCOME TO RETROFLOW // RETROFLOW IS A DEDICATED ONLINE COMMUNICATION PLATFORM DESIGNED FOR ENVOYS // CONNECT SECURELY, CHAT FREELY, AND EXPAND YOUR SOCIAL CIRCLE ACROSS THE TIMELINE NETWORK // ENJOY YOUR CONVERSATIONS //&nbsp;&nbsp;&nbsp;&nbsp;</span>
-                </div>
-              </div>
+              <!-- 原「登录页底部平台广播跑马灯」已移除，与首页跑马灯同因：42s 无限滚动 + 常驻合成层 -->
             </div>
           </div>
         </div>
