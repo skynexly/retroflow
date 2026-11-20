@@ -32,18 +32,18 @@
   "channel": "stable",
   "latest": {
     "version": "1.3.4",
-    "build": 1312,
+    "build": 1313,
     "minBinary": 7,
-    "releasedAt": "2026-11-20T07:08:25Z",
+    "releasedAt": "2026-11-20T08:16:24Z",
     "notes": [
-      "临时开关：设置 › 终端配置 › 性能诊断，可一键暂停全站常驻 CSS 动画（排查渲染耗电用）",
-      "下潜副本识图：失败可点击重试，残留「识别中」恢复后自动归一化，识图结果 5 轮后截断"
+      "移除首页与登录页两条无限滚动跑马灯，减少常驻合成层重绘（降耗电）",
+      "弹窗遮罩与悬停角标关闭态改用 visibility 退出合成，避免 backdrop-filter 空转"
     ],
     "packages": {
       "full": {
-        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1312/retroflow-ota-full-b1312.zip",
-        "sha256": "fc389dc9f4bb23242138ee48fb04fff35cc1255cc142961d391b776628200a7b",
-        "size": 2124940
+        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1313/retroflow-ota-full-b1313.zip",
+        "sha256": "7979cb0b46456d0e53fd4f3e3b1d6ecf515251fbf07249f354c056aea40fbd21",
+        "size": 2124530
       },
       "patch": {
         "sinceBuild": 0,
@@ -53,5 +53,5 @@
       }
     }
   },
-  "_status": "已发布 build 1312（全量包，字体常驻不打包）。patch 差分留待后续。"
+  "_status": "已发布 build 1313（全量包，字体常驻不打包）。patch 差分留待后续。"
 }
