@@ -32,20 +32,18 @@
   "channel": "stable",
   "latest": {
     "version": "1.3.4",
-    "build": 1311,
+    "build": 1312,
     "minBinary": 7,
-    "releasedAt": "2026-11-19T03:28:05Z",
+    "releasedAt": "2026-11-20T07:08:25Z",
     "notes": [
-      "feat: 识图失败的图片可以点「识别失败，点击重试」重新识别（助手页、随行舱、私聊）",
-      "fix: 识图中途关掉页面后，图片不再一直卡在「识别中」，发送键也不会被锁住",
-      "fix: 随行舱识图完成后保留消息原始时间，历史图片的识图状态能正常显示",
-      "feat: 识图结果在 5 轮之后自动截断，减少上下文占用（私聊同步对齐）"
+      "临时开关：设置 › 终端配置 › 性能诊断，可一键暂停全站常驻 CSS 动画（排查渲染耗电用）",
+      "下潜副本识图：失败可点击重试，残留「识别中」恢复后自动归一化，识图结果 5 轮后截断"
     ],
     "packages": {
       "full": {
-        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1311/retroflow-ota-full-b1311.zip",
-        "sha256": "76c5a18893be2825c1b82c83063a298d60c3209b7838ac1bbf89cf203f54dcb3",
-        "size": 2117317
+        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1312/retroflow-ota-full-b1312.zip",
+        "sha256": "fc389dc9f4bb23242138ee48fb04fff35cc1255cc142961d391b776628200a7b",
+        "size": 2124940
       },
       "patch": {
         "sinceBuild": 0,
@@ -55,5 +53,5 @@
       }
     }
   },
-  "_status": "已发布 build 1311（全量包，字体常驻不打包）。patch 差分留待后续。"
+  "_status": "已发布 build 1312（全量包，字体常驻不打包）。patch 差分留待后续。"
 }
