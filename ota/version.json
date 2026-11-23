@@ -32,17 +32,17 @@
   "channel": "stable",
   "latest": {
     "version": "1.4.0",
-    "build": 1317,
+    "build": 1318,
     "minBinary": 7,
-    "releasedAt": "2026-11-23T04:02:39Z",
+    "releasedAt": "2026-11-23T04:17:24Z",
     "notes": [
-      "新增设置「外部服务」页：接入 Tavily 联网搜索，多服务商框架支持额度耗尽自动降级；系统助手与线上联络均可联网查实时信息（双层开关控制）"
+      "UI修复：外部服务卡片去掉单卡开关（Key即为启用），测试按钮独立一行"
     ],
     "packages": {
       "full": {
-        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1317/retroflow-ota-full-b1317.zip",
-        "sha256": "baeb7080c4559a86bbc81c705d252fb8d055a03ee24450b9885b4130efb28e0b",
-        "size": 2136561
+        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1318/retroflow-ota-full-b1318.zip",
+        "sha256": "40de4d3386bd57f465e4ec5e27a1bd326b261cc383b5336d9d7b18a9d9315ac2",
+        "size": 2136511
       },
       "patch": {
         "sinceBuild": 0,
@@ -52,5 +52,5 @@
       }
     }
   },
-  "_status": "已发布 build 1317（全量包，字体常驻不打包）。patch 差分留待后续。"
+  "_status": "已发布 build 1318（全量包，字体常驻不打包）。patch 差分留待后续。"
 }
