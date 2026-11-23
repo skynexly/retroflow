@@ -32,17 +32,17 @@
   "channel": "stable",
   "latest": {
     "version": "1.4.0",
-    "build": 1320,
+    "build": 1321,
     "minBinary": 7,
-    "releasedAt": "2026-11-23T05:14:42Z",
+    "releasedAt": "2026-11-23T05:27:25Z",
     "notes": [
-      "外部服务页：「已就绪」徽标与测试成功提示改用重点色"
+      "外部服务页：卡片、输入行、按钮等圆角统一为 4px"
     ],
     "packages": {
       "full": {
-        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1320/retroflow-ota-full-b1320.zip",
-        "sha256": "87a3407dda5349e4d6a98d60800e8eeb239ad290e5189279f1deccb251f880cd",
-        "size": 2137499
+        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1321/retroflow-ota-full-b1321.zip",
+        "sha256": "f1778c6d2d088d3810ebef99df798328f2b614bc6f504e76d703bcdd7585ee02",
+        "size": 2137591
       },
       "patch": {
         "sinceBuild": 0,
@@ -52,5 +52,5 @@
       }
     }
   },
-  "_status": "已发布 build 1320（全量包，字体常驻不打包）。patch 差分留待后续。"
+  "_status": "已发布 build 1321（全量包，字体常驻不打包）。patch 差分留待后续。"
 }
