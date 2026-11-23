@@ -44456,8 +44456,36 @@ html:not(.is-native) #otaUpdateModule { display: none !important; }
 .es-provider-key-row:focus-within {
   background-color: rgba(var(--primary-color-rgb), 0.07);
 }
+/* Key 显隐按钮：输入框右侧的方形小按钮，无底色，按下给轻微底块 */
+.es-key-eye {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  margin-right: -6px;
+  border: none;
+  border-radius: 4px;
+  background-color: transparent;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.es-key-eye svg {
+  width: 15px;
+  height: 15px;
+  fill: currentColor;
+}
+.es-key-eye[aria-pressed="true"] {
+  color: var(--primary-color);
+}
+.es-key-eye:active {
+  background-color: rgba(var(--primary-color-rgb), 0.12);
+}
 
-/* 操作行：测试按钮居左，结果提示占中间弹性位，启用开关靠右 */
+/* 操作行：测试按钮居左，结果提示占剩余弹性位 */
 .es-provider-actions {
   display: flex;
   align-items: center;
@@ -44543,6 +44571,7 @@ html:not(.is-native) #otaUpdateModule { display: none !important; }
 
 @media (prefers-reduced-motion: reduce) {
   .es-reorder-btn,
+  .es-key-eye,
   .es-test-btn {
     transition: none;
   }

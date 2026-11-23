@@ -20,6 +20,14 @@ const ExternalServicesUI = (() => {
   let containerEl = null;
   let initialized = false;
 
+  // Key 显隐按钮图标：睁眼 = 点击显示明文；划线眼 = 点击收起
+  const KEY_EYE_SHOW_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true">'
+    + '<path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>'
+    + '</svg>';
+  const KEY_EYE_HIDE_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true">'
+    + '<path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/>'
+    + '</svg>';
+
   /* ---------------- 入口 ---------------- */
 
   function init() {
@@ -149,9 +157,14 @@ const ExternalServicesUI = (() => {
       // Key 输入行
       +   '<div class="es-provider-key-row">'
       +     '<input type="password" class="es-key-input" id="svcKey_' + escapeHtml(p.id) + '"'
-      +       + ' placeholder="' + escapeHtml(meta.keyHint) + '"'
-      +       + ' value="' + escapeHtml(p.apiKey) + '"'
-      +       + ' autocomplete="off" spellcheck="false">'
+      +       ' placeholder="' + escapeHtml(meta.keyHint) + '"'
+      +       ' value="' + escapeHtml(p.apiKey) + '"'
+      +       ' autocomplete="off" spellcheck="false">'
+      // 显隐切换：默认圆点，点眼睛看明文，再点收起
+      +     '<button type="button" class="es-key-eye" data-provider="' + escapeHtml(p.id) + '"'
+      +       ' aria-label="显示 Key" title="显示 Key" aria-pressed="false">'
+      +       KEY_EYE_SHOW_SVG
+      +     '</button>'
       +   '</div>'
       // 操作行：测试按钮 + 结果提示（启用由全局开关统一控制，不再单卡开关）
       +   '<div class="es-provider-actions">'
@@ -240,6 +253,24 @@ const ExternalServicesUI = (() => {
       };
     });
 
+    // Key 显隐切换：只改输入框 type，不触发保存与重渲
+    containerEl.querySelectorAll('.es-key-eye').forEach((btn) => {
+      // pointerdown 阻止默认，避免点眼睛时输入框失焦触发 change → 整页重渲吞掉这次点击
+      btn.onpointerdown = (e) => e.preventDefault();
+      btn.onclick = () => {
+        const id = btn.getAttribute('data-provider');
+        const input = containerEl.querySelector('#svcKey_' + id);
+        if (!input) return;
+        const reveal = input.type === 'password';
+        input.type = reveal ? 'text' : 'password';
+        btn.innerHTML = reveal ? KEY_EYE_HIDE_SVG : KEY_EYE_SHOW_SVG;
+        const label = reveal ? '隐藏 Key' : '显示 Key';
+        btn.setAttribute('aria-label', label);
+        btn.setAttribute('title', label);
+        btn.setAttribute('aria-pressed', reveal ? 'true' : 'false');
+      };
+    });
+
     // 测试连接按钮
     containerEl.querySelectorAll('.es-test-btn').forEach((btn) => {
       btn.onclick = async () => {
@@ -293,7 +324,7 @@ const ExternalServicesUI = (() => {
   /* ---------------- 工具 ---------------- */
 
   function escapeHtml(str) {
-    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '"', "'": '&#39;' };
+    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
     return String(str == null ? '' : str).replace(/[&<>"']/g, (c) => map[c]);
   }
 
