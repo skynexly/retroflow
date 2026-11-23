@@ -32,18 +32,18 @@
   "channel": "stable",
   "latest": {
     "version": "1.4.0",
-    "build": 1324,
+    "build": 1325,
     "minBinary": 7,
-    "releasedAt": "2026-11-23T08:06:40Z",
+    "releasedAt": "2026-11-23T15:06:17Z",
     "notes": [
-      "网页抓取新增本机直连，读不到时自动切换 Jina Reader。",
-      "外部服务商改为独立浅色卡片，测试连接新增常驻待命状态框。"
+      "清理全站冗余符号，界面文字与图标进一步精简。",
+      "私聊通知改为逐条错峰弹出，入场新增回弹落定动效。"
     ],
     "packages": {
       "full": {
-        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1324/retroflow-ota-full-b1324.zip",
-        "sha256": "1e88899a4194c5e30773d26526602da0f82f788bdba90ade9afc0bb7f93bc8bb",
-        "size": 2147759
+        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1325/retroflow-ota-full-b1325.zip",
+        "sha256": "b3de69403e5b71e7250c55bbc8507c16da131183f90dfc9d4cb2cdde74c0f3bb",
+        "size": 2146469
       },
       "patch": {
         "sinceBuild": 0,
@@ -53,5 +53,5 @@
       }
     }
   },
-  "_status": "已发布 build 1324（全量包，字体常驻不打包）。patch 差分留待后续。"
+  "_status": "已发布 build 1325（全量包，字体常驻不打包）。patch 差分留待后续。"
 }
