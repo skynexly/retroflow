@@ -44366,9 +44366,10 @@ html:not(.is-native) #otaUpdateModule { display: none !important; }
   border-radius: 4px;
   white-space: nowrap;
 }
+/* 就绪态用重点色而非装饰色（success 别名指向 decor，本页单独覆盖） */
 .es-status-ok {
-  color: var(--success-color);
-  background-color: rgba(var(--success-color-rgb), 0.1);
+  color: var(--primary-color);
+  background-color: rgba(var(--primary-color-rgb), 0.1);
 }
 .es-status-nokey {
   color: var(--text-muted);
@@ -44533,7 +44534,7 @@ html:not(.is-native) #otaUpdateModule { display: none !important; }
   opacity: 0.7;
 }
 .es-test-ok {
-  color: var(--success-color);
+  color: var(--primary-color);
 }
 .es-test-fail {
   color: var(--danger-color);
