@@ -113,14 +113,224 @@ const ExternalServices = (() => {
   // 注册顺序即默认优先级
   const PROVIDER_IDS = Object.keys(PROVIDERS);
 
+  /* ---------------- 本机直连：原生 HTTP + 本地正文提取 ---------------- */
+
+  /** 是否运行在 APK 原生壳里且能调到 CapacitorHttp 插件（绕开 WebView 跨域限制） */
+  function hasNativeHttp() {
+    const cap = window.Capacitor;
+    if (!cap || typeof cap.isNativePlatform !== 'function' || !cap.isNativePlatform()) return false;
+    const plugin = cap.Plugins && cap.Plugins.CapacitorHttp;
+    return !!((plugin && typeof plugin.request === 'function') || typeof cap.nativePromise === 'function');
+  }
+
+  function nativeHttpRequest(options) {
+    const cap = window.Capacitor;
+    const plugin = cap.Plugins && cap.Plugins.CapacitorHttp;
+    if (plugin && typeof plugin.request === 'function') return plugin.request(options);
+    return cap.nativePromise('CapacitorHttp', 'request', options);
+  }
+
+  /** 响应头大小写不定，统一按小写名取值 */
+  function headerValue(headers, name) {
+    if (!headers || typeof headers !== 'object') return '';
+    const target = name.toLowerCase();
+    for (const k of Object.keys(headers)) {
+      if (String(k).toLowerCase() === target) return String(headers[k] == null ? '' : headers[k]);
+    }
+    return '';
+  }
+
+  /** 原始字节上限：超过只解析前这么多，防止大页面卡死 WebView */
+  const DIRECT_MAX_BYTES = 3 * 1024 * 1024;
+  /** 最多手动跟随几次重定向（原生层不跟随跨协议跳转，统一放到 JS 层处理） */
+  const DIRECT_MAX_REDIRECTS = 5;
+
+  function base64ToBytes(b64) {
+    const bin = atob(String(b64 || '').replace(/\s+/g, ''));
+    const len = Math.min(bin.length, DIRECT_MAX_BYTES);
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
+  }
+
+  /** 编码识别顺序：响应头 charset → 页面头部 meta charset → UTF-8 */
+  function decodeBody(bytes, contentType) {
+    let charset = '';
+    const m1 = /charset\s*=\s*["']?([\w-]+)/i.exec(contentType || '');
+    if (m1) charset = m1[1];
+    if (!charset) {
+      const head = new TextDecoder('latin1').decode(bytes.subarray(0, Math.min(bytes.length, 4096)));
+      const m2 = /<meta[^>]+charset\s*=\s*["']?([\w-]+)/i.exec(head);
+      if (m2) charset = m2[1];
+    }
+    charset = (charset || 'utf-8').toLowerCase();
+    // gb2312 / gbk 统一按超集 gb18030 解码，避免生僻字乱码
+    if (charset === 'gb2312' || charset === 'gbk' || charset === 'x-gbk') charset = 'gb18030';
+    try {
+      return new TextDecoder(charset).decode(bytes);
+    } catch (_) {
+      return new TextDecoder('utf-8').decode(bytes);
+    }
+  }
+
+  const DIRECT_DROP_SELECTOR = 'script,style,noscript,svg,iframe,canvas,template,nav,header,footer,aside,form,button,select,textarea,link,meta,object,embed';
+  const DIRECT_BLOCK_TAGS = {
+    P: 1, DIV: 1, SECTION: 1, ARTICLE: 1, MAIN: 1, BLOCKQUOTE: 1, PRE: 1, UL: 1, OL: 1,
+    LI: 1, TR: 1, TABLE: 1, DL: 1, DT: 1, DD: 1, FIGURE: 1, FIGCAPTION: 1, BR: 1, HR: 1,
+    H1: 1, H2: 1, H3: 1, H4: 1, H5: 1, H6: 1
+  };
+
+  /** 把 DOM 节点转成按块换行的纯文本；标题加 #，列表项加 -，表格单元格用空格隔开 */
+  function nodeToText(root) {
+    const out = [];
+    const walk = (node) => {
+      if (node.nodeType === 3) { out.push(node.nodeValue); return; }
+      if (node.nodeType !== 1) return;
+      const tag = node.tagName;
+      if (node.hasAttribute('hidden') || node.getAttribute('aria-hidden') === 'true') return;
+      const block = !!DIRECT_BLOCK_TAGS[tag];
+      if (block) out.push('\n');
+      if (/^H[1-6]$/.test(tag)) out.push('#'.repeat(Number(tag[1])) + ' ');
+      else if (tag === 'LI') out.push('- ');
+      for (let c = node.firstChild; c; c = c.nextSibling) walk(c);
+      if (tag === 'TD' || tag === 'TH') out.push(' ');
+      if (block) out.push('\n');
+    };
+    walk(root);
+    const lines = out.join('').split('\n')
+      .map((l) => l.replace(/[\s\u00a0\u3000]+/g, ' ').trim())
+      .filter((l) => l && !/^#+$/.test(l) && l !== '-');
+    // 去掉相邻重复行（导航残留、重复标题）
+    return lines.filter((l, i) => i === 0 || l !== lines[i - 1]).join('\n');
+  }
+
+  /** 反爬验证页 / 纯 JS 渲染壳页的特征词，命中且正文很短时判为没读到正文 */
+  const DIRECT_BLOCK_HINTS = [
+    '安全验证', '验证码', '人机验证', '滑动验证', '访问验证', '请完成验证', '异常访问', '访问过于频繁',
+    'captcha', 'just a moment', 'attention required', 'access denied', 'are you a robot',
+    'verify you are human', 'enable javascript', '请开启 javascript', '请启用 javascript', '需要启用 javascript'
+  ];
+
+  function extractReadable(html, pageUrl) {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const ogTitle = doc.querySelector('meta[property="og:title"]');
+    const title = String((doc.title || '').trim() || (ogTitle && ogTitle.getAttribute('content')) || '').trim();
+    doc.querySelectorAll(DIRECT_DROP_SELECTOR).forEach((el) => el.remove());
+    // 正文容器：article / main 里取字数最多的一个，太短就退回 body
+    let root = null;
+    let best = 0;
+    doc.querySelectorAll('article,main,[role="main"]').forEach((el) => {
+      const n = (el.textContent || '').replace(/\s+/g, '').length;
+      if (n > best) { best = n; root = el; }
+    });
+    if (!root || best < 200) root = doc.body || doc.documentElement;
+    const content = root ? nodeToText(root) : '';
+    const probe = (title + '\n' + content.slice(0, 1500)).toLowerCase();
+    const blocked = DIRECT_BLOCK_HINTS.some((h) => probe.indexOf(h) !== -1);
+    if (blocked && content.length < 800) {
+      return { error: '目标网站返回了验证页或需要 JavaScript 才能显示，本机直连读不到正文' };
+    }
+    if (content.length < 50) {
+      return { error: '没提取到正文，页面可能需要 JavaScript 渲染' };
+    }
+    return { title, url: pageUrl, content };
+  }
+
   /* ---------------- 网页抓取服务商注册表 ---------------- */
   // 每家一个适配器：read(apiKey, url, timeoutMs) → { status, title, url, content, raw } 或 { status, error }
   // Key 选填的服务商标 keyOptional，UI 与可用性判定据此放行无 Key 状态。
+  // 完全不需要 Key 的标 noKey（UI 不渲染 Key 输入）；只能在 APK 原生壳里用的标 nativeOnly。
   const FETCHERS = {
+    direct: {
+      name: '本机直连',
+      en: 'DIRECT FETCH',
+      desc: '由手机直接打开网页并提取正文。免 Key、不限次数、无需境外网络，仅装机版可用。需要 JavaScript 渲染或带验证的页面会读不到，此时自动换下一家。',
+      keyHint: '',
+      noKey: true,
+      nativeOnly: true,
+      async read(apiKey, url, timeoutMs) {
+        if (!hasNativeHttp()) throw new Error('仅装机版可用');
+        const deadline = Date.now() + timeoutMs;
+        let current = url;
+        let resp = null;
+        for (let hop = 0; hop <= DIRECT_MAX_REDIRECTS; hop++) {
+          const left = deadline - Date.now();
+          if (left <= 0) throw new Error(`请求超时（${Math.round(timeoutMs / 1000)} 秒）`);
+          let timer = null;
+          const timeout = new Promise((_, reject) => {
+            timer = setTimeout(() => reject(new Error(`请求超时（${Math.round(timeoutMs / 1000)} 秒）`)), left + 1000);
+          });
+          try {
+            resp = await Promise.race([
+              nativeHttpRequest({
+                url: current,
+                method: 'GET',
+                headers: {
+                  'User-Agent': 'Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36',
+                  'Accept': 'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.5',
+                  'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.6'
+                },
+                connectTimeout: Math.min(10000, left),
+                readTimeout: left,
+                disableRedirects: true,
+                responseType: 'arraybuffer'
+              }),
+              timeout
+            ]);
+          } catch (err) {
+            const msg = (err && (err.message || err.errorMessage)) || String(err || '');
+            throw new Error(msg || '网络请求失败');
+          } finally {
+            clearTimeout(timer);
+          }
+          const st = Number(resp && resp.status) || 0;
+          const loc = headerValue(resp && resp.headers, 'location');
+          if (st >= 300 && st < 400 && loc) {
+            let next;
+            try { next = new URL(loc, current); } catch (_) { return { status: st, error: `重定向地址无效：${loc}` }; }
+            if (next.protocol !== 'http:' && next.protocol !== 'https:') {
+              return { status: st, error: '重定向到了非 http(s) 地址' };
+            }
+            current = next.href;
+            continue;
+          }
+          break;
+        }
+        const status = Number(resp && resp.status) || 0;
+        if (status >= 300 && status < 400) return { status, error: '重定向次数过多' };
+        if (status < 200 || status >= 300) {
+          const text = typeof resp.data === 'string' ? resp.data : JSON.stringify(resp.data || '');
+          return { status, error: `目标网站返回 HTTP ${status}${text ? '：' + text.slice(0, 300) : ''}` };
+        }
+        const finalUrl = current;
+        const contentType = headerValue(resp.headers, 'content-type').toLowerCase();
+        // 原生层遇到 JSON 会直接解析成对象返回，按文本交出去
+        if (resp.data && typeof resp.data === 'object') {
+          const json = JSON.stringify(resp.data, null, 1);
+          return { status, title: '', url: finalUrl, content: json, raw: json.slice(0, 2000) };
+        }
+        if (contentType && !/html|xml|text\//.test(contentType)) {
+          return { status, error: `不是网页内容（${contentType.split(';')[0]}）` };
+        }
+        let text;
+        try {
+          text = decodeBody(base64ToBytes(resp.data), contentType);
+        } catch (_) {
+          // 个别情况原生层直接给了文本：原样使用
+          text = String(resp.data || '');
+        }
+        if (contentType.indexOf('text/plain') !== -1) {
+          return { status, title: '', url: finalUrl, content: text, raw: text.slice(0, 2000) };
+        }
+        const page = extractReadable(text, finalUrl);
+        if (page.error) return { status, error: page.error };
+        return { status, title: page.title, url: page.url, content: page.content, raw: page.content.slice(0, 2000) };
+      }
+    },
     jina: {
       name: 'Jina Reader',
       en: 'JINA READER',
-      desc: '将网页转为正文。Key 选填：匿名每分钟 20 次，免费 Key 每分钟 500 次。',
+      desc: '云端将网页转为正文，能处理需要 JavaScript 渲染的页面。需境外网络；不填 Key 时部分网站会被拒绝，填免费 Key 更稳定。',
       keyHint: '选填，jina_ 开头的 API Key，在 jina.ai 获取',
       keyOptional: true,
       async read(apiKey, url, timeoutMs) {
@@ -252,7 +462,14 @@ const ExternalServices = (() => {
       if (p && FETCHERS[p.id]) byId[p.id] = p;
     });
     const ordered = stored.filter((p) => p && FETCHERS[p.id]).map((p) => p.id);
-    FETCHER_IDS.forEach((id) => { if (ordered.indexOf(id) === -1) ordered.push(id); });
+    // 新注册的服务商按注册表位置插入：插到注册表里排在它后面、且已存在的第一家前面。
+    // 老配置只有 jina 时，本机直连会自动排到 jina 前面；用户调整过顺序后存储里已包含全部 id，不受影响。
+    FETCHER_IDS.forEach((id, idx) => {
+      if (ordered.indexOf(id) !== -1) return;
+      const after = FETCHER_IDS.slice(idx + 1).find((nid) => ordered.indexOf(nid) !== -1);
+      if (after) ordered.splice(ordered.indexOf(after), 0, id);
+      else ordered.push(id);
+    });
     const providers = ordered.map((id) => {
       const p = byId[id] || {};
       return {
@@ -285,12 +502,30 @@ const ExternalServices = (() => {
     return saveFetchConfig(fc);
   }
 
+  /** 调整抓取服务商优先级：上移/下移一格。dir 为 -1 或 1。 */
+  async function moveFetcher(id, dir) {
+    const fc = getFetchConfig();
+    const at = fc.providers.findIndex((p) => p.id === id);
+    const to = at + dir;
+    if (at < 0 || to < 0 || to >= fc.providers.length) return false;
+    const list = fc.providers.slice();
+    const [item] = list.splice(at, 1);
+    list.splice(to, 0, item);
+    fc.providers = list;
+    return saveFetchConfig(fc);
+  }
+
   /* ---------------- 可用性判定 ---------------- */
 
-  /** 抓取服务商是否具备调用条件：启用，且已填 Key 或该家 Key 选填 */
+  /** 当前环境是否支持该抓取服务商：仅装机版可用的，在浏览器里判为不支持 */
+  function fetcherSupported(meta) {
+    return !!meta && (!meta.nativeOnly || hasNativeHttp());
+  }
+
+  /** 抓取服务商是否具备调用条件：启用、当前环境支持，且已填 Key 或该家 Key 选填 / 免 Key */
   function fetcherUsable(p) {
     const meta = FETCHERS[p.id];
-    return !!(meta && p.enabled && (p.apiKey || meta.keyOptional));
+    return !!(meta && p.enabled && fetcherSupported(meta) && (p.apiKey || meta.keyOptional || meta.noKey));
   }
 
   /** 全局是否有可用的网页抓取能力：总开关开 + 至少一家可用 */
@@ -300,9 +535,11 @@ const ExternalServices = (() => {
     return fc.providers.some(fetcherUsable);
   }
 
-  /** 抓取卡片的状态徽标：ok / nokey / disabled / cooldown / anon（Key 选填且未填） */
+  /** 抓取卡片的状态徽标：ok / nokey / disabled / cooldown / anon（Key 选填且未填）/ unsupported（仅装机版可用） */
   function fetcherStatus(p) {
     const meta = FETCHERS[p.id];
+    if (!fetcherSupported(meta)) return 'unsupported';
+    if (meta && meta.noKey) return p.enabled ? 'ok' : 'disabled';
     if (!p.apiKey && !(meta && meta.keyOptional)) return 'nokey';
     if (!p.enabled) return 'disabled';
     if (inQuotaCooldown(p)) return 'cooldown';
@@ -571,6 +808,11 @@ const ExternalServices = (() => {
           error: ''
         };
       }
+      if (adapter.noKey) {
+        // 免 Key 的服务商：状态码来自目标网站本身，不涉及额度，不冷却，原样报告
+        errors.push(`${adapter.name}：${outcome.error || `HTTP ${outcome.status}`}`);
+        continue;
+      }
       const cooled = classifyFetchError(outcome.status, outcome.error) === 'quota';
       if (cooled) await updateFetcher(p.id, { quotaExhaustedUntil: nextMidnight() });
       errors.push(describeFetchError(adapter.name, outcome.status, outcome.error, !!p.apiKey, cooled));
@@ -588,7 +830,8 @@ const ExternalServices = (() => {
     const fc = getFetchConfig();
     const p = fc.providers.find((it) => it.id === id);
     if (!p) return { ok: false, message: '未知的服务商。' };
-    if (!p.apiKey && !adapter.keyOptional) return { ok: false, message: '请先填写 API Key。' };
+    if (!fetcherSupported(adapter)) return { ok: false, message: '仅装机版可用，浏览器里会自动跳过。' };
+    if (!p.apiKey && !adapter.keyOptional && !adapter.noKey) return { ok: false, message: '请先填写 API Key。' };
     const target = 'https://example.com/';
     const started = Date.now();
     let outcome;
@@ -614,8 +857,9 @@ const ExternalServices = (() => {
     if (ok) {
       if (p.quotaExhaustedUntil) await updateFetcher(id, { quotaExhaustedUntil: 0 });
       const len = String(outcome.content || '').trim().length;
-      return { ok: true, message: `连接正常，读到 ${len} 字正文${p.apiKey ? '' : '（匿名模式）'}。` };
+      return { ok: true, message: `连接正常，读到 ${len} 字正文${(p.apiKey || adapter.noKey) ? '' : '（匿名模式）'}。` };
     }
+    if (adapter.noKey) return { ok: false, message: (outcome.error || ('HTTP ' + outcome.status)) + '。' };
     return { ok: false, message: describeFetchError(adapter.name, outcome.status, outcome.error, !!p.apiKey, false).replace(/^[^：]+：/, '') + '。' };
   }
 
@@ -648,6 +892,7 @@ const ExternalServices = (() => {
     getFetchConfig,
     setFetchEnabled,
     updateFetcher,
+    moveFetcher,
     isFetchAvailable,
     fetcherStatus,
     fetchPage,

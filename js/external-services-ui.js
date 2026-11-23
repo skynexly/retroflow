@@ -87,43 +87,37 @@ const ExternalServicesUI = (() => {
     const count = search.providers.length;
     return ''
       + '<div class="theme-module">'
-      +   '<div class="module-label-row">'
-      +     '<span class="module-label-en">SEARCH</span>'
-      +     '<span class="module-label-zh">联网检索</span>'
+      // 裸控制行：无大卡片包裹，直接放在页面底色上
+      +   '<div class="chat-bento-row es-module-toggle-row">'
+      +     '<div class="chat-bento-label">'
+      +       '<span class="chat-bento-zh">联网搜索能力</span>'
+      +       '<span class="chat-bento-en">ENABLE WEB SEARCH · 允许 AI 搜索实时信息</span>'
+      +     '</div>'
+      +     '<div class="terminal-config-row-actions">'
+      +       '<button type="button" class="psych-help-circle-btn" id="svcSearchHelpBtn" aria-label="查看联网搜索说明" title="查看联网搜索说明">'
+      +         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+      +           '<circle cx="12" cy="12" r="10"/>'
+      +           '<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>'
+      +           '<path d="M12 17h.01"/>'
+      +         '</svg>'
+      +       '</button>'
+      +       '<label class="chat-bento-switch">'
+      +         '<input type="checkbox" id="svcSearchGlobalToggle"' + (globalOn ? ' checked' : '') + '>'
+      +         '<span class="chat-switch-slider"></span>'
+      +       '</label>'
+      +     '</div>'
       +   '</div>'
-      +   '<div class="chat-bento-card">'
-      // 全局开关 + 说明
-      +     '<div class="chat-bento-row">'
-      +       '<div class="chat-bento-label">'
-      +         '<span class="chat-bento-zh">联网搜索能力</span>'
-      +         '<span class="chat-bento-en">ENABLE WEB SEARCH · 允许 AI 搜索实时信息</span>'
-      +       '</div>'
-      +       '<div class="terminal-config-row-actions">'
-      +         '<button type="button" class="psych-help-circle-btn" id="svcSearchHelpBtn" aria-label="查看联网搜索说明" title="查看联网搜索说明">'
-      +           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-      +             '<circle cx="12" cy="12" r="10"/>'
-      +             '<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>'
-      +             '<path d="M12 17h.01"/>'
-      +           '</svg>'
-      +         '</button>'
-      +         '<label class="chat-bento-switch">'
-      +           '<input type="checkbox" id="svcSearchGlobalToggle"' + (globalOn ? ' checked' : '') + '>'
-      +           '<span class="chat-switch-slider"></span>'
-      +         '</label>'
-      +       '</div>'
-      +     '</div>'
       // 说明抽屉
-      +     '<div class="psych-radar-manual-drawer terminal-config-drawer" id="svcSearchHelpDrawer" hidden>'
-      +       '<div class="terminal-config-hint">'
-      +         'AI 可搜索实时信息。需配置至少一家服务商，并在对话窗口开启「联网搜索」。'
-      +         '按列表顺序尝试，额度耗尽后自动切换。'
-      +       '</div>'
-      +       providerHelpHtml(search.providers, 'search')
+      +   '<div class="psych-radar-manual-drawer terminal-config-drawer" id="svcSearchHelpDrawer" hidden>'
+      +     '<div class="terminal-config-hint">'
+      +       'AI 可搜索实时信息。需配置至少一家服务商，并在对话窗口开启「联网搜索」。'
+      +       '按列表顺序尝试，额度耗尽后自动切换。'
       +     '</div>'
+      +     providerHelpHtml(search.providers, 'search')
+      +   '</div>'
       // 服务商列表
-      +     '<div class="es-provider-list" id="svcProviderList">'
-      +       search.providers.map((p, i) => providerCardHtml(p, i, count, 'search')).join('')
-      +     '</div>'
+      +   '<div class="es-provider-list" id="svcProviderList">'
+      +     search.providers.map((p, i) => providerCardHtml(p, i, count, 'search')).join('')
       +   '</div>'
       + '</div>';
   }
@@ -135,40 +129,35 @@ const ExternalServicesUI = (() => {
     const count = fetchCfg.providers.length;
     return ''
       + '<div class="theme-module">'
-      +   '<div class="module-label-row">'
-      +     '<span class="module-label-en">READER</span>'
-      +     '<span class="module-label-zh">网页抓取</span>'
+      +   '<div class="chat-bento-row es-module-toggle-row">'
+      +     '<div class="chat-bento-label">'
+      +       '<span class="chat-bento-zh">读取网页能力</span>'
+      +       '<span class="chat-bento-en">ENABLE PAGE READER · 允许 AI 打开链接读正文</span>'
+      +     '</div>'
+      +     '<div class="terminal-config-row-actions">'
+      +       '<button type="button" class="psych-help-circle-btn" id="svcFetchHelpBtn" aria-label="查看网页抓取说明" title="查看网页抓取说明">'
+      +         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+      +           '<circle cx="12" cy="12" r="10"/>'
+      +           '<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>'
+      +           '<path d="M12 17h.01"/>'
+      +         '</svg>'
+      +       '</button>'
+      +       '<label class="chat-bento-switch">'
+      +         '<input type="checkbox" id="svcFetchGlobalToggle"' + (globalOn ? ' checked' : '') + '>'
+      +         '<span class="chat-switch-slider"></span>'
+      +       '</label>'
+      +     '</div>'
       +   '</div>'
-      +   '<div class="chat-bento-card">'
-      +     '<div class="chat-bento-row">'
-      +       '<div class="chat-bento-label">'
-      +         '<span class="chat-bento-zh">读取网页能力</span>'
-      +         '<span class="chat-bento-en">ENABLE PAGE READER · 允许 AI 打开链接读正文</span>'
-      +       '</div>'
-      +       '<div class="terminal-config-row-actions">'
-      +         '<button type="button" class="psych-help-circle-btn" id="svcFetchHelpBtn" aria-label="查看网页抓取说明" title="查看网页抓取说明">'
-      +           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-      +             '<circle cx="12" cy="12" r="10"/>'
-      +             '<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>'
-      +             '<path d="M12 17h.01"/>'
-      +           '</svg>'
-      +         '</button>'
-      +         '<label class="chat-bento-switch">'
-      +           '<input type="checkbox" id="svcFetchGlobalToggle"' + (globalOn ? ' checked' : '') + '>'
-      +           '<span class="chat-switch-slider"></span>'
-      +         '</label>'
-      +       '</div>'
+      +   '<div class="psych-radar-manual-drawer terminal-config-drawer" id="svcFetchHelpDrawer" hidden>'
+      +     '<div class="terminal-config-hint">'
+      +       'AI 可打开网址读取正文，常与联网搜索配合。单次最多读取前 ' + ES.FETCH_MAX_CHARS + ' 字。'
+      +       '按列表顺序尝试，前一家读不到会自动换下一家。'
+      +       '需在对话窗口开启「联网搜索」。'
       +     '</div>'
-      +     '<div class="psych-radar-manual-drawer terminal-config-drawer" id="svcFetchHelpDrawer" hidden>'
-      +       '<div class="terminal-config-hint">'
-      +         'AI 可打开网址读取正文，常与联网搜索配合。单次最多读取前 ' + ES.FETCH_MAX_CHARS + ' 字。'
-      +         '需在对话窗口开启「联网搜索」。'
-      +       '</div>'
-      +       providerHelpHtml(fetchCfg.providers, 'fetch')
-      +     '</div>'
-      +     '<div class="es-provider-list" id="svcFetcherList">'
-      +       fetchCfg.providers.map((p, i) => providerCardHtml(p, i, count, 'fetch')).join('')
-      +     '</div>'
+      +     providerHelpHtml(fetchCfg.providers, 'fetch')
+      +   '</div>'
+      +   '<div class="es-provider-list" id="svcFetcherList">'
+      +     fetchCfg.providers.map((p, i) => providerCardHtml(p, i, count, 'fetch')).join('')
       +   '</div>'
       + '</div>';
   }
@@ -178,7 +167,8 @@ const ExternalServicesUI = (() => {
     nokey: '未配置 Key',
     disabled: '已停用',
     cooldown: '额度冷却中',
-    anon: '匿名可用'
+    anon: '匿名可用',
+    unsupported: '仅装机版可用'
   };
 
   /** 按模块取元数据与状态：search 走 PROVIDERS，fetch 走 FETCHERS */
@@ -231,10 +221,11 @@ const ExternalServicesUI = (() => {
       +     '</div>'
       +     '<div class="es-provider-meta">'
       +       '<span class="es-provider-status ' + statusClass + '" id="svcStatus_' + dk + '">' + escapeHtml(statusText) + cooldown + '</span>'
-      +       reorderArrowsHtml(p.id, index, total)
+      +       reorderArrowsHtml(p.id, index, total, kind)
       +     '</div>'
       +   '</div>'
-      // Key 输入行
+      // Key 输入行（免 Key 的服务商如本机直连不渲染）
+      + (meta.noKey ? '' : ''
       +   '<div class="es-provider-key-row">'
       +     '<input type="password" class="es-key-input" id="svcKey_' + dk + '"' + dataAttrs
       +       ' placeholder="' + escapeHtml(meta.keyHint) + '"'
@@ -245,8 +236,8 @@ const ExternalServicesUI = (() => {
       +       ' aria-label="显示 Key" title="显示 Key" aria-pressed="false">'
       +       KEY_EYE_SHOW_SVG
       +     '</button>'
-      +   '</div>'
-      // 操作行：测试按钮 + 结果提示（启用由全局开关统一控制，不再单卡开关）
+      +   '</div>')
+      // 操作行：测试按钮 + 常驻状态框（启用由全局开关统一控制，不再单卡开关）
       +   '<div class="es-provider-actions">'
       +     '<button type="button" class="es-test-btn"' + dataAttrs + '>'
       +       '<svg viewBox="0 0 24 24" aria-hidden="true">'
@@ -254,19 +245,23 @@ const ExternalServicesUI = (() => {
       +       '</svg>'
       +       '<span>测试连接</span>'
       +     '</button>'
-      +     '<div class="es-test-result" id="svcTestMsg_' + dk + '" hidden></div>'
+      +     '<div class="es-test-result" id="svcTestMsg_' + dk + '" role="status" aria-live="polite">'
+      +       '<span class="es-test-indicator" aria-hidden="true"></span>'
+      +       '<span class="es-test-text">STANDBY · 待命</span>'
+      +     '</div>'
       +   '</div>'
       + '</div>';
   }
 
-  function reorderArrowsHtml(id, index, total) {
+  function reorderArrowsHtml(id, index, total, kind) {
     if (total <= 1) return '';
+    const attrs = ' data-provider="' + escapeHtml(id) + '" data-kind="' + escapeHtml(kind || 'search') + '"';
     return ''
       + '<div class="es-reorder-arrows">'
-      +   '<button type="button" class="es-reorder-btn" data-provider="' + escapeHtml(id) + '" data-dir="-1"' + (index === 0 ? ' disabled aria-disabled="true"' : '') + ' aria-label="上移服务商">'
+      +   '<button type="button" class="es-reorder-btn"' + attrs + ' data-dir="-1"' + (index === 0 ? ' disabled aria-disabled="true"' : '') + ' aria-label="上移服务商">'
       +     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z"/></svg>'
       +   '</button>'
-      +   '<button type="button" class="es-reorder-btn" data-provider="' + escapeHtml(id) + '" data-dir="1"' + (index === total - 1 ? ' disabled aria-disabled="true"' : '') + ' aria-label="下移服务商">'
+      +   '<button type="button" class="es-reorder-btn"' + attrs + ' data-dir="1"' + (index === total - 1 ? ' disabled aria-disabled="true"' : '') + ' aria-label="下移服务商">'
       +     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>'
       +   '</button>'
       + '</div>';
@@ -379,8 +374,8 @@ const ExternalServicesUI = (() => {
             await kindUpdate(kind, id, { apiKey: typed });
           }
         }
-        msgEl.removeAttribute('hidden');
-        msgEl.textContent = '测试中…';
+        const textEl = msgEl.querySelector('.es-test-text');
+        if (textEl) textEl.textContent = '测试中…';
         msgEl.className = 'es-test-result es-test-pending';
         btn.disabled = true;
         const result = kind === 'fetch' ? await ES.testFetcher(id) : await ES.testProvider(id);
@@ -394,7 +389,7 @@ const ExternalServicesUI = (() => {
             statusEl.className = 'es-provider-status es-status-' + st;
           }
         }
-        msgEl.textContent = result.message;
+        if (textEl) textEl.textContent = result.message;
         msgEl.className = 'es-test-result ' + (result.ok ? 'es-test-ok' : 'es-test-fail');
         btn.disabled = false;
       };
@@ -406,7 +401,8 @@ const ExternalServicesUI = (() => {
         const id = btn.getAttribute('data-provider');
         const dir = parseInt(btn.getAttribute('data-dir'), 10);
         if (!id || (dir !== 1 && dir !== -1)) return;
-        await ES.moveProvider(id, dir);
+        if (btn.getAttribute('data-kind') === 'fetch') await ES.moveFetcher(id, dir);
+        else await ES.moveProvider(id, dir);
         render();
       };
     });

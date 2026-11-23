@@ -44297,14 +44297,16 @@ html:not(.is-native) #otaUpdateModule { display: none !important; }
 .es-header-title {
   gap: 8px;
 }
-
+/* 裸控制行：无大卡片包裹，直接坐在页面底色上，左右微缩进与卡片对齐 */
+.es-module-toggle-row {
+  padding: 0 2px;
+}
 /* 服务商列表：卡片之间用间距分隔，不用线 */
 .es-provider-list {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
-
 /* 本页所有方块圆角统一 4px；复用类（bento 卡 / 说明抽屉）在此单独覆盖，不改全局 */
 #servicesDetailSection .chat-bento-card {
   border-radius: 4px;
@@ -44312,14 +44314,14 @@ html:not(.is-native) #otaUpdateModule { display: none !important; }
 #servicesDetailSection .terminal-config-drawer {
   border-radius: 4px;
 }
-/* 单个服务商卡片：比外层 bento 卡略深一点的底色块 */
+/* 单个服务商卡片：已是页面最外层卡片，与其他模块卡片同底色，不再做嵌套加深 */
 .es-provider-card {
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 10px 12px;
   border-radius: 4px;
-  background-color: rgba(var(--secondary-color-rgb), 0.045);
+  background-color: var(--card-bg-color);
 }
 
 .es-provider-head {
@@ -44394,6 +44396,11 @@ html:not(.is-native) #otaUpdateModule { display: none !important; }
 /* Key 选填的服务商未填 Key：可用但走匿名额度，重点色文字、不加底色以区别于已就绪 */
 .es-status-anon {
   color: var(--primary-color);
+  background-color: rgba(var(--secondary-color-rgb), 0.07);
+}
+/* 仅原生壳可用的服务商在浏览器里打开：弱化显示，与已停用区分开不降透明度 */
+.es-status-unsupported {
+  color: var(--text-muted);
   background-color: rgba(var(--secondary-color-rgb), 0.07);
 }
 
@@ -44548,21 +44555,55 @@ html:not(.is-native) #otaUpdateModule { display: none !important; }
   cursor: default;
 }
 
+/* 常驻测试状态框：沿用本页字号与状态色，只借用 API 页的状态点结构 */
 .es-test-result {
   flex: 1;
   min-width: 0;
+  min-height: 27px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  background-color: rgba(var(--bg-color-rgb), 0.65);
   font-size: 10px;
   line-height: 1.5;
   color: var(--text-muted);
 }
+.es-test-indicator {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: var(--text-muted);
+  opacity: 0.45;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+.es-test-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .es-test-pending {
   opacity: 0.7;
+}
+.es-test-pending .es-test-indicator {
+  background-color: var(--decor-color);
+  opacity: 1;
 }
 .es-test-ok {
   color: var(--primary-color);
 }
+.es-test-ok .es-test-indicator {
+  background-color: var(--primary-color);
+  opacity: 1;
+}
 .es-test-fail {
   color: var(--danger-color);
+}
+.es-test-fail .es-test-indicator {
+  background-color: var(--danger-color);
+  opacity: 1;
 }
 
 /* 占位模块：描述 + 「暂未开放」徽标，整卡降透明度表示未实装 */
