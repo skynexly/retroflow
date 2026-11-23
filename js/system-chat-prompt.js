@@ -200,7 +200,7 @@ Retroflow平台会提供执行员每条消息的时间戳，它属于后台信�
 仅当执行员明确要求你更换自己的头像，且对话上下文中已经出现可用图片 ID 时，才可追加下列标记；assistantId 必须原样照抄下方示例中已填好的值，galleryId 必须原样填写目标图片的"图片 ID"：
 <RETROFLOW_ACTION>{"type":"set_assistant_avatar","assistantId":"{{ASST_ID}}","galleryId":"上下文中的图片 ID"}</RETROFLOW_ACTION>
 历史消息中的"图片 ID"就是该图片对应的真实图库编号；需要引用或使用某张图片时，必须原样使用上下文中已有的图片 ID，不要猜测、改写或伪造编号，也不需要查询或罗列图片资产列表。
-{{FILE_TOOL_PERMISSION}}{{IMAGE_GEN_PERMISSION}}{{MEMORY_TOOL_PERMISSION}}{{WEB_SEARCH_PERMISSION}}
+{{FILE_TOOL_PERMISSION}}{{IMAGE_GEN_PERMISSION}}{{MEMORY_TOOL_PERMISSION}}{{WEB_SEARCH_PERMISSION}}{{READ_WEB_PERMISSION}}
 以上权限只约束你对自身实体行为的描写与系统动作，不影响你讨论执行员、第三方或故事世界中实际发生的动作。
 
 </权限清单>`;
@@ -290,6 +290,17 @@ limit 可选：返回条数上限，默认 20，最大 100。
 <RETROFLOW_ACTION>{"type":"web_search","query":"搜索关键词"}</RETROFLOW_ACTION>
 query 用简洁的搜索词，不要写成完整问句；一次搜不到可换关键词再试。系统会把结果（标题、链接、摘要）以“[工具结果 · 联网搜索]”回传给你。
 引用搜索结果时说明信息来源；结果与你的认知冲突时以搜索到的为准，但也要留意信息的发布时间。搜索无果或失败时如实告知执行员，不要编造。不要向执行员播报「让我搜索一下」这类过程，直接把查到的信息自然地说出来。日常闲聊与你确知的常识不需要搜索。
+`;
+
+  /* ================= 读取网页权限（可开关） ================= */
+
+  // 读取网页走外部服务网页抓取（ExternalServices.fetchPage），
+  // 与联网搜索共用本对话的 webSearch 开关，另需外部服务页网页抓取全局可用。
+  const READ_WEB_PERMISSION = `
+【读取网页】
+当执行员发来网址请你看看，或你需要某个网页的完整内容（例如搜索结果的摘要不够用）时，可追加下列标记读取网页正文：
+<RETROFLOW_ACTION>{"type":"read_webpage","url":"https://..."}</RETROFLOW_ACTION>
+url 必须是完整的 http/https 网址，原样照抄，不要猜测或拼凑。系统会把网页标题与正文（过长时只截取开头一部分）以“[工具结果 · 读取网页]”回传给你。一次只读真正需要的页面；读取失败时如实告知执行员，不要编造网页内容。
 `;
 
   /* ================= 执行员档案模板 ================= */
@@ -628,6 +639,16 @@ Ta现在活生生地在你眼前，并非你的臆想，也绝非一个幻影，
       if (!window.ExternalServices || !ExternalServices.isSearchAvailable()) return '';
       return WEB_SEARCH_PERMISSION;
     })();
+    // 读取网页：本窗口 webSearch 开 + 外部服务网页抓取全局可用，与运行期 isReadWebEnabled 同口径
+    const readWebPermission = (() => {
+      const s = (window.SystemChatSettings && typeof SystemChatSettings.getSettings === 'function')
+        ? SystemChatSettings.getSettings()
+        : null;
+      if (s && s.webSearch === false) return '';
+      if (!window.ExternalServices || typeof ExternalServices.isFetchAvailable !== 'function'
+        || !ExternalServices.isFetchAvailable()) return '';
+      return READ_WEB_PERMISSION;
+    })();
 
     // 通信场景说明：副本场景换副本版，日常用线上纯文字版；两版都在末尾追加系统权限段。
     // 之后还要加上对话指导说明。
@@ -636,7 +657,8 @@ Ta现在活生生地在你眼前，并非你的臆想，也绝非一个幻影，
       .replace('{{FILE_TOOL_PERMISSION}}', filePermission)
       .replace('{{IMAGE_GEN_PERMISSION}}', imagePermission)
       .replace('{{MEMORY_TOOL_PERMISSION}}', memoryToolPermission)
-      .replace('{{WEB_SEARCH_PERMISSION}}', webSearchPermission);
+      .replace('{{WEB_SEARCH_PERMISSION}}', webSearchPermission)
+      .replace('{{READ_WEB_PERMISSION}}', readWebPermission);
 
     // 使用手册关键词命中段：整本手册常驻会撑爆 Token，故只注入与最近对话相关的条目。
     // 位置在场景与权限之后、执行员档案之前；无命中时返回空串，不占位。

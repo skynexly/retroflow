@@ -3884,6 +3884,17 @@ ${parts.join('\n\n———\n\n')}`;
   const MEMORY_TOOL_TYPES = new Set(['create_memory', 'search_memory', 'update_memory', 'remove_memory']);
   // 联网搜索工具：走外部服务（ExternalServices），双层开关校验
   const WEB_SEARCH_TOOL_TYPES = new Set(['web_search']);
+  // 读取网页工具：走外部服务网页抓取，与联网搜索共用本窗口 webSearch 开关
+  const READ_WEB_TOOL_TYPES = new Set(['read_webpage']);
+  /** 读取网页是否可用：本窗口 webSearch 开 + 外部服务抓取全局可用（与提示词注入同口径） */
+  function isReadWebEnabled() {
+    const s = (window.SystemChatSettings && typeof SystemChatSettings.getSettings === 'function')
+      ? SystemChatSettings.getSettings()
+      : null;
+    if (s && s.webSearch === false) return false;
+    return !!(window.ExternalServices && typeof ExternalServices.isFetchAvailable === 'function'
+      && ExternalServices.isFetchAvailable());
+  }
 
   // 工具卡片上的中文显示名：胶囊直接显示英文函数名对用户没有信息量
   const TOOL_LABELS = {
@@ -3895,7 +3906,8 @@ ${parts.join('\n\n———\n\n')}`;
     search_memory: '查询记忆',
     update_memory: '修改记忆',
     remove_memory: '删除记忆',
-    web_search: '联网搜索'
+    web_search: '联网搜索',
+    read_webpage: '读取网页'
   };
 
   /** 工具的人类可读名，未登记时回落原始名 */
@@ -3913,6 +3925,7 @@ ${parts.join('\n\n———\n\n')}`;
     const key = String(name || '').trim();
     if (MEMORY_TOOL_TYPES.has(key)) return 'MEMORY // 记忆工具';
     if (WEB_SEARCH_TOOL_TYPES.has(key)) return 'SEARCH // 联网检索';
+    if (READ_WEB_TOOL_TYPES.has(key)) return 'READER // 网页抓取';
     if (MANUAL_TOOL_TYPES.has(key)) return 'MANUAL // 手册查阅';
     if (FILE_TOOL_TYPES.has(key)) return 'FILE // 工具调用';
     return 'TOOL // 工具调用';
@@ -3936,6 +3949,8 @@ ${parts.join('\n\n———\n\n')}`;
       if (s && s.webSearch === false) return false;
       return !!(window.ExternalServices && ExternalServices.isSearchAvailable());
     }
+    // 读取网页同样独立于「内置工具」开关
+    if (READ_WEB_TOOL_TYPES.has(type)) return isReadWebEnabled();
     // 内置工具开关关闭时，工具标记一律不识别为工具：
     // 提示词里也不会给出这些标记，即便模型硬凑出来也不触发工具循环、不额外消耗调用。
     if (!isBuiltinToolsEnabled()) return false;
@@ -4272,6 +4287,20 @@ ${parts.join('\n\n———\n\n')}`;
         input,
         status: result.ok ? 'success' : 'error',
         output: ExternalServices.formatResultsForModel(result, query)
+      };
+    }
+    // 读取网页分流：走外部服务网页抓取，不需要文件区条目
+    if (READ_WEB_TOOL_TYPES.has(type)) {
+      const url = String(action.url || action.link || action.href || '').trim();
+      if (!url) {
+        return { name: type, input, status: 'error', output: '缺少 url，无法读取网页。' };
+      }
+      const result = await ExternalServices.fetchPage(url, { caller: '系统助手 · 读取网页' });
+      return {
+        name: type,
+        input,
+        status: result.ok ? 'success' : 'error',
+        output: ExternalServices.formatPageForModel(result, url)
       };
     }
     // 记忆工具分流：直接走记忆库，不需要解析文件区条目

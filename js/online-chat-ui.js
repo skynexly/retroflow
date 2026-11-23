@@ -2589,6 +2589,8 @@ const records = await OnlineChatStore.listMessages(session.accountId, session.co
   const FILE_TOOL_TYPES = new Set(['read_file', 'search_file']);
   // 联网搜索：走外部服务，与本窗口 webSearch 开关联动
   const WEB_SEARCH_TOOL_TYPES = new Set(['web_search']);
+  // 读取网页：走外部服务网页抓取，与本窗口 webSearch 开关联动
+  const READ_WEB_TOOL_TYPES = new Set(['read_webpage']);
   /**
    * 联网搜索是否可用：本窗口 webSearch 开 + 外部服务全局可用，两层同时满足。
    * 与提示词注入（promptOptions.webSearch）和运行期识别用同一口径。
@@ -2598,6 +2600,13 @@ const records = await OnlineChatStore.listMessages(session.accountId, session.co
     const s = chatSettings();
     if (s && s.webSearch === false) return false;
     return !!(window.ExternalServices && ExternalServices.isSearchAvailable());
+  }
+  /** 读取网页是否可用：本窗口 webSearch 开 + 外部服务抓取全局可用，独立于内置工具开关 */
+  function isReadWebEnabled() {
+    const s = chatSettings();
+    if (s && s.webSearch === false) return false;
+    return !!(window.ExternalServices && typeof ExternalServices.isFetchAvailable === 'function'
+      && ExternalServices.isFetchAvailable());
   }
   /** 单次翻阅返回的分页字符上限，与助手页一致 */
   const FILE_TOOL_PAGE_CHARS = 30000;
@@ -2662,6 +2671,7 @@ const records = await OnlineChatStore.listMessages(session.accountId, session.co
     const type = String(action && (action.type || action.action) || '').trim().toLowerCase();
     // 联网搜索是独立能力，不受「内置工具」开关约束：本窗口 webSearch + 外部服务全局，两层校验
     if (WEB_SEARCH_TOOL_TYPES.has(type)) return isWebSearchEnabled();
+    if (READ_WEB_TOOL_TYPES.has(type)) return isReadWebEnabled();
     if (!isBuiltinToolsEnabled()) return false;
     return FILE_TOOL_TYPES.has(type);
   }
@@ -2702,6 +2712,22 @@ const records = await OnlineChatStore.listMessages(session.accountId, session.co
         query,
         status: result.ok ? 'success' : 'error',
         output: ExternalServices.formatResultsForModel(result, query)
+      };
+    }
+    // 读取网页分流：返回结构沿用搜索分支，fileName 放网页标题或网址，供生活化胶囊复用
+    if (READ_WEB_TOOL_TYPES.has(type)) {
+      const url = String(action.url || action.link || action.href || '').trim();
+      if (!url) {
+        return { name: type, fileName: '', url: '', status: 'error', output: '没有给出网址，无法打开网页。' };
+      }
+      const result = await ExternalServices.fetchPage(url, { caller: '线上联络 · 上网看看' });
+      return {
+        name: type,
+        fileName: result.title || result.url || url,
+        url: result.url || url,
+        title: result.title || '',
+        status: result.ok ? 'success' : 'error',
+        output: ExternalServices.formatPageForModel(result, url)
       };
     }
     const scope = onlineFileScope();
@@ -2795,11 +2821,16 @@ const records = await OnlineChatStore.listMessages(session.accountId, session.co
     if (!messagesWrap || !result) return null;
     const name = trimStr(result.fileName) || '文件';
     const isSearch = result.name === 'web_search';
+    const isReadWeb = result.name === 'read_webpage';
     let label;
     if (isSearch) {
       label = result.status === 'error'
         ? '没能上网查到东西'
         : `上网查了下「${trimStr(result.query) || name}」`;
+    } else if (isReadWeb) {
+      label = result.status === 'error'
+        ? '没能打开那个网页'
+        : `点开网页看了看「${trimStr(result.title) || name}」`;
     } else if (result.status === 'error') {
       label = `没能打开「${name}」`;
     } else if (result.name === 'search_file' && trimStr(result.keyword)) {
@@ -2814,7 +2845,7 @@ const records = await OnlineChatStore.listMessages(session.accountId, session.co
     attachRowBatchSelection(row);
     const pill = document.createElement('div');
     pill.className = 'chat-status-pill';
-    pill.innerHTML = `${isSearch ? WEB_SEARCH_PEEK_SVG : FILE_PEEK_SVG}<span class="chat-status-pill-text"></span>`;
+    pill.innerHTML = `${isSearch || isReadWeb ? WEB_SEARCH_PEEK_SVG : FILE_PEEK_SVG}<span class="chat-status-pill-text"></span>`;
     const textEl = pill.querySelector('.chat-status-pill-text');
     if (textEl) textEl.textContent = label;
 
@@ -3179,7 +3210,8 @@ const records = await OnlineChatStore.listMessages(session.accountId, session.co
       const promptOptions = {
         fileTools: isBuiltinToolsEnabled(),
         imageGen: isImageGenEnabled(),
-        webSearch: isWebSearchEnabled()
+        webSearch: isWebSearchEnabled(),
+        readWeb: isReadWebEnabled()
       };
 
       // 装配分两遍，为的是破一个循环依赖：
@@ -3319,6 +3351,9 @@ const records = await OnlineChatStore.listMessages(session.accountId, session.co
           if (toolResult.name === 'web_search') {
             hasSearch = true;
             backLines.push(`[网上查到的信息 · ${toolResult.query || toolResult.fileName}]\n${toolResult.output}`);
+          } else if (toolResult.name === 'read_webpage') {
+            hasSearch = true;
+            backLines.push(`[网页内容 · ${toolResult.title || toolResult.url || toolResult.fileName}]\n${toolResult.output}`);
           } else {
             backLines.push(`[文件内容 · ${toolResult.fileName}]\n${toolResult.output}`);
           }

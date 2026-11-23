@@ -44391,6 +44391,11 @@ html:not(.is-native) #otaUpdateModule { display: none !important; }
   color: var(--warning-color);
   background-color: rgba(var(--secondary-color-rgb), 0.07);
 }
+/* Key 选填的服务商未填 Key：可用但走匿名额度，重点色文字、不加底色以区别于已就绪 */
+.es-status-anon {
+  color: var(--primary-color);
+  background-color: rgba(var(--secondary-color-rgb), 0.07);
+}
 
 /* 上下移动：一对方形小按钮，列表只有一家时整组不渲染 */
 .es-reorder-arrows {
@@ -44428,11 +44433,24 @@ html:not(.is-native) #otaUpdateModule { display: none !important; }
   pointer-events: none;
 }
 
-.es-provider-desc {
+/* 服务商说明集中收纳在模块问号抽屉内 */
+.es-provider-help-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.es-provider-help-item {
   font-size: 10.5px;
   line-height: 1.6;
   color: var(--text-muted);
-  opacity: 0.75;
+}
+
+.es-provider-help-name {
+  margin-right: 6px;
+  font-weight: 700;
+  color: var(--secondary-color);
 }
 
 /* Key 输入行：底色块承托，无边框（零分割线） */

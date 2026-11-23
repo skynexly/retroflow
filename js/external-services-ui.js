@@ -46,9 +46,10 @@ const ExternalServicesUI = (() => {
   function render() {
     if (!containerEl) return;
     const search = ES.getSearchConfig();
+    const fetchCfg = ES.getFetchConfig();
     containerEl.innerHTML = ''
       + sectionHeader()
-      + body(search);
+      + body(search, fetchCfg);
     bindEvents();
   }
 
@@ -68,10 +69,11 @@ const ExternalServicesUI = (() => {
       + '</header>';
   }
 
-  function body(search) {
+  function body(search, fetchCfg) {
     return ''
       + '<div class="settings-body-scroll">'
       +   searchModuleHtml(search)
+      +   fetchModuleHtml(fetchCfg)
       +   placeholderModuleHtml('IMAGERY', '图像素材', '图库搜索与抓取，为角色、壁纸和对话配图提供视觉素材。接入 Unsplash 等服务商。', '暂未开放')
       +   placeholderModuleHtml('PROTOCOL', '扩展协议', 'MCP（模型上下文协议）允许 AI 调用外部工具：数据库、文件系统、第三方 API 等。', '暂未开放')
       +   placeholderModuleHtml('RELAY', '自备后端', '用户可自建服务器，实现消息推送、定时任务与多端同步等高级功能。', '暂未开放')
@@ -113,34 +115,114 @@ const ExternalServicesUI = (() => {
       // 说明抽屉
       +     '<div class="psych-radar-manual-drawer terminal-config-drawer" id="svcSearchHelpDrawer" hidden>'
       +       '<div class="terminal-config-hint">'
-      +         '开启后，AI 助手与线上联络角色均可主动联网搜索实时信息。需至少配置一家搜索服务商并填入有效 API Key。'
-      +         '全局开关控制能力总闸，各对话窗口的「联网搜索」开关控制该窗口是否实际使用。'
-      +         '多家服务商按列表顺序依次尝试，首家额度耗尽后自动切换下一家，并在调用日志中记录切换原因。'
+      +         'AI 可搜索实时信息。需配置至少一家服务商，并在对话窗口开启「联网搜索」。'
+      +         '按列表顺序尝试，额度耗尽后自动切换。'
       +       '</div>'
+      +       providerHelpHtml(search.providers, 'search')
       +     '</div>'
       // 服务商列表
       +     '<div class="es-provider-list" id="svcProviderList">'
-      +       search.providers.map((p, i) => providerCardHtml(p, i, count)).join('')
+      +       search.providers.map((p, i) => providerCardHtml(p, i, count, 'search')).join('')
       +     '</div>'
       +   '</div>'
       + '</div>';
   }
 
-  function providerCardHtml(p, index, total) {
-    const meta = ES.PROVIDERS[p.id];
-    const status = ES.providerStatus(p);
-    const statusText = {
-      ok: '已就绪',
-      nokey: '未配置 Key',
-      disabled: '已停用',
-      cooldown: '额度冷却中'
-    }[status];
+  /* ---------------- 网页抓取模块 ---------------- */
+
+  function fetchModuleHtml(fetchCfg) {
+    const globalOn = fetchCfg.enabled;
+    const count = fetchCfg.providers.length;
+    return ''
+      + '<div class="theme-module">'
+      +   '<div class="module-label-row">'
+      +     '<span class="module-label-en">READER</span>'
+      +     '<span class="module-label-zh">网页抓取</span>'
+      +   '</div>'
+      +   '<div class="chat-bento-card">'
+      +     '<div class="chat-bento-row">'
+      +       '<div class="chat-bento-label">'
+      +         '<span class="chat-bento-zh">读取网页能力</span>'
+      +         '<span class="chat-bento-en">ENABLE PAGE READER · 允许 AI 打开链接读正文</span>'
+      +       '</div>'
+      +       '<div class="terminal-config-row-actions">'
+      +         '<button type="button" class="psych-help-circle-btn" id="svcFetchHelpBtn" aria-label="查看网页抓取说明" title="查看网页抓取说明">'
+      +           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+      +             '<circle cx="12" cy="12" r="10"/>'
+      +             '<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>'
+      +             '<path d="M12 17h.01"/>'
+      +           '</svg>'
+      +         '</button>'
+      +         '<label class="chat-bento-switch">'
+      +           '<input type="checkbox" id="svcFetchGlobalToggle"' + (globalOn ? ' checked' : '') + '>'
+      +           '<span class="chat-switch-slider"></span>'
+      +         '</label>'
+      +       '</div>'
+      +     '</div>'
+      +     '<div class="psych-radar-manual-drawer terminal-config-drawer" id="svcFetchHelpDrawer" hidden>'
+      +       '<div class="terminal-config-hint">'
+      +         'AI 可打开网址读取正文，常与联网搜索配合。单次最多读取前 ' + ES.FETCH_MAX_CHARS + ' 字。'
+      +         '需在对话窗口开启「联网搜索」。'
+      +       '</div>'
+      +       providerHelpHtml(fetchCfg.providers, 'fetch')
+      +     '</div>'
+      +     '<div class="es-provider-list" id="svcFetcherList">'
+      +       fetchCfg.providers.map((p, i) => providerCardHtml(p, i, count, 'fetch')).join('')
+      +     '</div>'
+      +   '</div>'
+      + '</div>';
+  }
+
+  const STATUS_TEXT = {
+    ok: '已就绪',
+    nokey: '未配置 Key',
+    disabled: '已停用',
+    cooldown: '额度冷却中',
+    anon: '匿名可用'
+  };
+
+  /** 按模块取元数据与状态：search 走 PROVIDERS，fetch 走 FETCHERS */
+  function kindMeta(kind, id) {
+    return kind === 'fetch' ? ES.FETCHERS[id] : ES.PROVIDERS[id];
+  }
+  function kindStatus(kind, p) {
+    return kind === 'fetch' ? ES.fetcherStatus(p) : ES.providerStatus(p);
+  }
+  function kindConfig(kind) {
+    return kind === 'fetch' ? ES.getFetchConfig() : ES.getSearchConfig();
+  }
+  function kindUpdate(kind, id, fields) {
+    return kind === 'fetch' ? ES.updateFetcher(id, fields) : ES.updateProvider(id, fields);
+  }
+  /** DOM id 片段：两个模块的服务商 id 可能重名，抓取模块加 f_ 前缀 */
+  function domKey(kind, id) {
+    return (kind === 'fetch' ? 'f_' : '') + id;
+  }
+
+  function providerHelpHtml(providers, kind) {
+    return '<div class="es-provider-help-list">'
+      + providers.map((p) => {
+        const meta = kindMeta(kind, p.id);
+        return '<div class="es-provider-help-item">'
+          + '<span class="es-provider-help-name">' + escapeHtml(meta.name) + '</span>'
+          + escapeHtml(meta.desc)
+          + '</div>';
+      }).join('')
+      + '</div>';
+  }
+
+  function providerCardHtml(p, index, total, kind) {
+    const meta = kindMeta(kind, p.id);
+    const status = kindStatus(kind, p);
+    const statusText = STATUS_TEXT[status];
     const statusClass = 'es-status-' + status;
     const cooldown = p.quotaExhaustedUntil > Date.now()
       ? '，预计明日零点恢复' : '';
+    const dk = escapeHtml(domKey(kind, p.id));
+    const dataAttrs = ' data-provider="' + escapeHtml(p.id) + '" data-kind="' + escapeHtml(kind) + '"';
 
     return ''
-      + '<div class="es-provider-card" data-provider="' + escapeHtml(p.id) + '">'
+      + '<div class="es-provider-card"' + dataAttrs + '>'
       // 名称行
       +   '<div class="es-provider-head">'
       +     '<div class="es-provider-info">'
@@ -148,33 +230,31 @@ const ExternalServicesUI = (() => {
       +       '<span class="es-provider-en">' + escapeHtml(meta.en) + '</span>'
       +     '</div>'
       +     '<div class="es-provider-meta">'
-      +       '<span class="es-provider-status ' + statusClass + '" id="svcStatus_' + escapeHtml(p.id) + '">' + escapeHtml(statusText) + cooldown + '</span>'
+      +       '<span class="es-provider-status ' + statusClass + '" id="svcStatus_' + dk + '">' + escapeHtml(statusText) + cooldown + '</span>'
       +       reorderArrowsHtml(p.id, index, total)
       +     '</div>'
       +   '</div>'
-      // 描述
-      +   '<div class="es-provider-desc">' + escapeHtml(meta.desc) + '</div>'
       // Key 输入行
       +   '<div class="es-provider-key-row">'
-      +     '<input type="password" class="es-key-input" id="svcKey_' + escapeHtml(p.id) + '"'
+      +     '<input type="password" class="es-key-input" id="svcKey_' + dk + '"' + dataAttrs
       +       ' placeholder="' + escapeHtml(meta.keyHint) + '"'
       +       ' value="' + escapeHtml(p.apiKey) + '"'
       +       ' autocomplete="off" spellcheck="false">'
       // 显隐切换：默认圆点，点眼睛看明文，再点收起
-      +     '<button type="button" class="es-key-eye" data-provider="' + escapeHtml(p.id) + '"'
+      +     '<button type="button" class="es-key-eye"' + dataAttrs
       +       ' aria-label="显示 Key" title="显示 Key" aria-pressed="false">'
       +       KEY_EYE_SHOW_SVG
       +     '</button>'
       +   '</div>'
       // 操作行：测试按钮 + 结果提示（启用由全局开关统一控制，不再单卡开关）
       +   '<div class="es-provider-actions">'
-      +     '<button type="button" class="es-test-btn" data-provider="' + escapeHtml(p.id) + '">'
+      +     '<button type="button" class="es-test-btn"' + dataAttrs + '>'
       +       '<svg viewBox="0 0 24 24" aria-hidden="true">'
       +         '<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>'
       +       '</svg>'
       +       '<span>测试连接</span>'
       +     '</button>'
-      +     '<div class="es-test-result" id="svcTestMsg_' + escapeHtml(p.id) + '" hidden></div>'
+      +     '<div class="es-test-result" id="svcTestMsg_' + dk + '" hidden></div>'
       +   '</div>'
       + '</div>';
   }
@@ -225,11 +305,20 @@ const ExternalServicesUI = (() => {
         render();
       };
     }
+    // 全局网页抓取开关
+    const fetchToggle = containerEl.querySelector('#svcFetchGlobalToggle');
+    if (fetchToggle) {
+      fetchToggle.onchange = async () => {
+        await ES.setFetchEnabled(fetchToggle.checked);
+        render();
+      };
+    }
 
-    // 帮助说明
-    const helpBtn = containerEl.querySelector('#svcSearchHelpBtn');
-    const helpDrawer = containerEl.querySelector('#svcSearchHelpDrawer');
-    if (helpBtn && helpDrawer) {
+    // 帮助说明（两个模块各一组按钮 + 抽屉）
+    [['#svcSearchHelpBtn', '#svcSearchHelpDrawer'], ['#svcFetchHelpBtn', '#svcFetchHelpDrawer']].forEach(([btnSel, drawerSel]) => {
+      const helpBtn = containerEl.querySelector(btnSel);
+      const helpDrawer = containerEl.querySelector(drawerSel);
+      if (!helpBtn || !helpDrawer) return;
       helpBtn.onclick = () => {
         const hidden = helpDrawer.hasAttribute('hidden');
         if (hidden) {
@@ -240,14 +329,15 @@ const ExternalServicesUI = (() => {
           helpBtn.classList.remove('active');
         }
       };
-    }
+    });
 
     // 服务商 Key 输入（失焦保存）
     containerEl.querySelectorAll('.es-key-input').forEach((input) => {
       input.onchange = async () => {
-        const id = input.id.replace('svcKey_', '');
+        const id = input.getAttribute('data-provider');
+        const kind = input.getAttribute('data-kind');
         const val = input.value.trim();
-        await ES.updateProvider(id, { apiKey: val });
+        await kindUpdate(kind, id, { apiKey: val });
         // 填入 Key 后如果之前是未配置状态，刷新整个卡片显示新状态
         render();
       };
@@ -258,8 +348,8 @@ const ExternalServicesUI = (() => {
       // pointerdown 阻止默认，避免点眼睛时输入框失焦触发 change → 整页重渲吞掉这次点击
       btn.onpointerdown = (e) => e.preventDefault();
       btn.onclick = () => {
-        const id = btn.getAttribute('data-provider');
-        const input = containerEl.querySelector('#svcKey_' + id);
+        const dk = domKey(btn.getAttribute('data-kind'), btn.getAttribute('data-provider'));
+        const input = containerEl.querySelector('#svcKey_' + dk);
         if (!input) return;
         const reveal = input.type === 'password';
         input.type = reveal ? 'text' : 'password';
@@ -275,31 +365,32 @@ const ExternalServicesUI = (() => {
     containerEl.querySelectorAll('.es-test-btn').forEach((btn) => {
       btn.onclick = async () => {
         const id = btn.getAttribute('data-provider');
-        const msgEl = containerEl.querySelector('#svcTestMsg_' + id);
+        const kind = btn.getAttribute('data-kind');
+        const dk = domKey(kind, id);
+        const msgEl = containerEl.querySelector('#svcTestMsg_' + dk);
         if (!msgEl) return;
-        // 先把当前输入框的值保存（测试不走 change 事件，这里手动取）
-        const keyInput = containerEl.querySelector('#svcKey_' + id);
-        if (keyInput && keyInput.value.trim()) {
-          const current = ES.getSearchConfig();
-          const p = current.providers.find((it) => it.id === id);
-          if (p && p.apiKey !== keyInput.value.trim()) {
-            await ES.updateProvider(id, { apiKey: keyInput.value.trim() });
+        // 先把当前输入框的值保存（测试不走 change 事件，这里手动取）。
+        // 抓取模块 Key 选填，清空也要落盘，否则测的还是旧 Key。
+        const keyInput = containerEl.querySelector('#svcKey_' + dk);
+        if (keyInput) {
+          const typed = keyInput.value.trim();
+          const p = kindConfig(kind).providers.find((it) => it.id === id);
+          if (p && p.apiKey !== typed && (typed || kind === 'fetch')) {
+            await kindUpdate(kind, id, { apiKey: typed });
           }
         }
         msgEl.removeAttribute('hidden');
         msgEl.textContent = '测试中…';
         msgEl.className = 'es-test-result es-test-pending';
         btn.disabled = true;
-        const result = await ES.testProvider(id);
+        const result = kind === 'fetch' ? await ES.testFetcher(id) : await ES.testProvider(id);
         // 只刷新状态徽标，不整页重渲：测试结果要留在原地给执行员看
-        const statusEl = containerEl.querySelector('#svcStatus_' + id);
+        const statusEl = containerEl.querySelector('#svcStatus_' + dk);
         if (statusEl) {
-          const cfg = ES.getSearchConfig();
-          const prov = cfg.providers.find((it) => it.id === id);
+          const prov = kindConfig(kind).providers.find((it) => it.id === id);
           if (prov) {
-            const st = ES.providerStatus(prov);
-            const text = { ok: '已就绪', nokey: '未配置 Key', disabled: '已停用', cooldown: '额度冷却中' }[st];
-            statusEl.textContent = text;
+            const st = kindStatus(kind, prov);
+            statusEl.textContent = STATUS_TEXT[st];
             statusEl.className = 'es-provider-status es-status-' + st;
           }
         }

@@ -142,7 +142,8 @@ window.ApiCallLog = (() => {
     tts: '语音合成',
     embed: '向量生成',
     models: '模型列表',
-    search: '联网检索'
+    search: '联网检索',
+    fetch: '网页抓取'
   };
 
   /**
