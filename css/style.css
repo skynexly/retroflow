@@ -44305,13 +44305,20 @@ html:not(.is-native) #otaUpdateModule { display: none !important; }
   gap: 10px;
 }
 
+/* 本页所有方块圆角统一 4px；复用类（bento 卡 / 说明抽屉）在此单独覆盖，不改全局 */
+#servicesDetailSection .chat-bento-card {
+  border-radius: 4px;
+}
+#servicesDetailSection .terminal-config-drawer {
+  border-radius: 4px;
+}
 /* 单个服务商卡片：比外层 bento 卡略深一点的底色块 */
 .es-provider-card {
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 10px 12px;
-  border-radius: 6px;
+  border-radius: 4px;
   background-color: rgba(var(--secondary-color-rgb), 0.045);
 }
 
@@ -44433,7 +44440,7 @@ html:not(.is-native) #otaUpdateModule { display: none !important; }
   display: flex;
   align-items: center;
   background-color: rgba(var(--secondary-color-rgb), 0.05);
-  border-radius: 5px;
+  border-radius: 4px;
   padding: 0 10px;
 }
 .es-key-input {
@@ -44497,7 +44504,7 @@ html:not(.is-native) #otaUpdateModule { display: none !important; }
   align-items: center;
   gap: 5px;
   border: none;
-  border-radius: 5px;
+  border-radius: 4px;
   padding: 6px 10px;
   background-color: rgba(var(--primary-color-rgb), 0.1);
   color: var(--primary-color);
