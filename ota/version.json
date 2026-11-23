@@ -32,17 +32,17 @@
   "channel": "stable",
   "latest": {
     "version": "1.4.0",
-    "build": 1322,
+    "build": 1323,
     "minBinary": 7,
-    "releasedAt": "2026-11-23T06:03:50Z",
+    "releasedAt": "2026-11-23T07:12:08Z",
     "notes": [
-      "联网搜索新增服务商：博查（中文内容覆盖强，按次计费），支持多服务商排序与自动降级"
+      "接入 Jina Reader 网页抓取；外部服务商说明收纳至模块问号抽屉并精简文案。"
     ],
     "packages": {
       "full": {
-        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1322/retroflow-ota-full-b1322.zip",
-        "sha256": "f78665fa83df8c2938abea752f51ad3c5227e8311d794261e84bf564cba66481",
-        "size": 2138089
+        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1323/retroflow-ota-full-b1323.zip",
+        "sha256": "4e4b6f786c3183a5f609ec58b6ca19aaaf7d41ea4ef8c54f60cb9b1302617afd",
+        "size": 2142972
       },
       "patch": {
         "sinceBuild": 0,
@@ -52,5 +52,5 @@
       }
     }
   },
-  "_status": "已发布 build 1322（全量包，字体常驻不打包）。patch 差分留待后续。"
+  "_status": "已发布 build 1323（全量包，字体常驻不打包）。patch 差分留待后续。"
 }
