@@ -41,7 +41,7 @@
   // 三个抽屉的详细说明文案
   const DRAWER_CONTENTS = {
     '01': {
-      tag: 'DIRECTIVE // 01 · 机构目标',
+      tag: 'DIRECTIVE 01 · 机构目标',
       title: '什么是溯流计划？',
       body: `
         <p>「溯流计划」是一个能够通过特殊手段介入不同世界的中枢机构。它独立于所有被观测的世界之外，不属于其中任何一方，只负责观测与干预。</p>
@@ -53,7 +53,7 @@
       `
     },
     '02': {
-      tag: 'REGULATION // 02 · 岗位规约',
+      tag: 'REGULATION 02 · 岗位规约',
       title: '什么是执行员？',
       body: `
         <p>「执行员」是溯流计划从各个世界中招募的人，负责亲身进入那些濒临崩溃的世界，完成系统下达的任务、修正它们的走向。</p>
@@ -62,7 +62,7 @@
       `
     },
     '03': {
-      tag: 'LEGAL // 03 · 权责声明',
+      tag: 'LEGAL 03 · 权责声明',
       title: '开源用户协议与免责申明',
       body: `
         <p>1. <strong>开源与本地运行</strong>：本项目为纯前端离线 PWA 交互应用，完全基于开源协议运作。你的所有档案、推演日志、立绘资产及私有配置均完全存放于本地浏览器离线数据库（IndexedDB）中，本机构中枢不在任何云端服务器留存你的个人隐私或私密数据。</p>
@@ -143,7 +143,7 @@
 
   // 用户协议完整章节内容
   const AGREEMENT_DATA = {
-    sub: 'RETROFLOW INITIATIVE // LEGAL TERMS',
+    sub: 'RETROFLOW INITIATIVE LEGAL TERMS',
     title: '溯流计划 · 用户协议',
     notice: '在开始使用前，请仔细审阅本协议。它明确了本项目的运作定位、离线本地数据边界以及使用过程中的各项权责约定。',
     sections: [
@@ -328,7 +328,7 @@
       <div class="onboarding-hud-topbar">
         <div class="onboarding-hud-badge">
           <span class="onboarding-hud-dot"></span>
-          <span class="onboarding-hud-code" id="onboardingHudCode">INITIALIZE // 01</span>
+          <span class="onboarding-hud-code" id="onboardingHudCode">INITIALIZE 01</span>
         </div>
         <button type="button" class="onboarding-hud-close-btn" id="onboardingCloseBtn" title="关闭向导 (调试模式)">
           ${ICONS.close}
@@ -342,7 +342,7 @@
             
             <!-- 战术标头 -->
             <div class="onboarding-sub-badge">
-              <span class="onboarding-mono-sub">RETROFLOW INITIATIVE // ONBOARDING DOSSIER</span>
+              <span class="onboarding-mono-sub">RETROFLOW INITIATIVE ONBOARDING DOSSIER</span>
               <span class="onboarding-org-tag">溯流计划 · 人力资源与执勤部</span>
             </div>
 
@@ -436,7 +436,7 @@
           <div class="onboarding-content-wrap">
             
             <div class="onboarding-sub-badge">
-              <span class="onboarding-mono-sub">INITIALIZE // 02</span>
+              <span class="onboarding-mono-sub">INITIALIZE 02</span>
               <span class="onboarding-org-tag">配置 AI 接口</span>
             </div>
 
@@ -461,7 +461,7 @@
               </div>
 
               <div class="onboarding-api-status-body">
-                <div class="onboarding-api-model-title" id="onboardingApiModelTitle">STANDBY // 待挂载接口</div>
+                <div class="onboarding-api-model-title" id="onboardingApiModelTitle">STANDBY 待挂载接口</div>
                 <div class="onboarding-api-model-sub" id="onboardingApiModelSub">需接入至少一个主模型推理节点以驱动世界推演</div>
               </div>
 
@@ -552,7 +552,7 @@
           <div class="onboarding-content-wrap">
             
             <div class="onboarding-sub-badge">
-              <span class="onboarding-mono-sub">INITIALIZE // 03</span>
+              <span class="onboarding-mono-sub">INITIALIZE 03</span>
               <span class="onboarding-org-tag">档案登记</span>
             </div>
 
@@ -684,7 +684,7 @@
           <div class="onboarding-content-wrap">
 
             <div class="onboarding-sub-badge">
-              <span class="onboarding-mono-sub">INITIALIZE // 04</span>
+              <span class="onboarding-mono-sub">INITIALIZE 04</span>
               <span class="onboarding-org-tag">求职意向</span>
             </div>
 
@@ -791,7 +791,7 @@
 
             <!-- 战术标头 -->
             <div class="onboarding-sub-badge">
-              <span class="onboarding-mono-sub">TALENT AWAKENING // 05</span>
+              <span class="onboarding-mono-sub">TALENT AWAKENING 05</span>
               <span class="onboarding-org-tag">灵魂特质解析</span>
             </div>
 
@@ -818,7 +818,7 @@
                   </svg>
                 </div>
                 <div class="onboarding-awakening-core-status">
-                  <span class="onboarding-awakening-core-code">RESONANCE MATRIX // READY</span>
+                  <span class="onboarding-awakening-core-code">RESONANCE MATRIX READY</span>
                   <span class="onboarding-awakening-core-hint">灵魂锚点已锁定 · 共鸣回路就绪</span>
                 </div>
               </div>
@@ -846,7 +846,7 @@
               </button>
 
               <div class="onboarding-awakening-footnote">
-                <span>// 你填写的档案、部门选择和核心欲望都会影响天赋技能</span>
+                <span>你填写的档案、部门选择和核心欲望都会影响天赋技能</span>
               </div>
             </div>
 
@@ -855,7 +855,7 @@
               <!-- 候选池战术标头 -->
               <div class="onboarding-talent-pool-header">
                 <div class="onboarding-talent-pool-title-wrap">
-                  <span class="onboarding-talent-pool-tag">RESONANCE MATRIX // 五选一</span>
+                  <span class="onboarding-talent-pool-tag">RESONANCE MATRIX 五选一</span>
                   <h2 class="onboarding-talent-pool-title">灵魂共鸣候选天赋</h2>
                 </div>
                 <button type="button" class="onboarding-btn-reroll" id="onboardingTalentRerollBtn" title="保留当前设定，重新激发一组新天赋">
@@ -880,7 +880,7 @@
               <div class="onboarding-talent-dossier-card" id="onboardingTalentDossierCard">
                 <div class="onboarding-talent-dossier-header">
                   <div class="onboarding-talent-dossier-badge">
-                    <span class="onboarding-talent-dossier-code" id="onboardingTalentDossierCode">SLOT 01 // SELECTED</span>
+                    <span class="onboarding-talent-dossier-code" id="onboardingTalentDossierCode">SLOT 01 SELECTED</span>
                     <span class="onboarding-talent-dossier-index" id="onboardingTalentDossierIndex">01 / 05</span>
                   </div>
                   <h3 class="onboarding-talent-dossier-name" id="onboardingTalentDossierName">--</h3>
@@ -897,7 +897,7 @@
               <!-- 选定天赋自定义微调与落盘区域 (默认折叠，点开可改) -->
               <div class="onboarding-talent-custom-box" id="onboardingTalentCustomBox" style="display: none;">
                 <div class="onboarding-talent-custom-head">
-                  <span class="onboarding-talent-custom-tag">CUSTOMIZE & OVERRIDE // 技能微调</span>
+                  <span class="onboarding-talent-custom-tag">CUSTOMIZE & OVERRIDE 技能微调</span>
                   <span class="onboarding-talent-custom-hint">可直接修改下方名称与说明，亦可完全自由手写</span>
                 </div>
 
@@ -953,7 +953,7 @@
 
             <!-- 战术标头 -->
             <div class="onboarding-sub-badge">
-              <span class="onboarding-mono-sub">SYSTEM ALLOCATION // 06</span>
+              <span class="onboarding-mono-sub">SYSTEM ALLOCATION 06</span>
               <span class="onboarding-org-tag">终端主脑</span>
             </div>
 
@@ -1039,7 +1039,7 @@
 
             <!-- 战术标头 -->
             <div class="onboarding-sub-badge">
-              <span class="onboarding-mono-sub">ENLISTMENT COMPLETE // 07</span>
+              <span class="onboarding-mono-sub">ENLISTMENT COMPLETE 07</span>
               <span class="onboarding-org-tag">编号签发</span>
             </div>
 
@@ -1066,7 +1066,7 @@
                 <span class="onboarding-serial-digits" id="onboardingSerialDigits">------</span>
               </div>
               <div class="onboarding-serial-plate-foot">
-                <span class="onboarding-serial-plate-note" id="onboardingSerialState">SIGNING // 签发中</span>
+                <span class="onboarding-serial-plate-note" id="onboardingSerialState">SIGNING 签发中</span>
               </div>
             </div>
 
@@ -1257,7 +1257,7 @@
    */
   function openCustomAssistantForge() {
     if (!window.ResonanceUI || typeof ResonanceUI.openAsstEditor !== 'function') {
-      toastTalent('MODULE // 模块未就绪', '同调档案模块尚未加载', '请刷新页面后重试。', 'error');
+      toastTalent('MODULE 模块未就绪', '同调档案模块尚未加载', '请刷新页面后重试。', 'error');
       return;
     }
 
@@ -1445,7 +1445,7 @@
     }
 
     const target = String(finalSerial).padStart(6, '0').slice(-6);
-    if (stateEl) stateEl.textContent = 'SIGNING // 签发中';
+    if (stateEl) stateEl.textContent = 'SIGNING 签发中';
     digitsEl.classList.add('is-rolling');
 
     let locked = 0;          // 已锁定的位数
@@ -1469,7 +1469,7 @@
         digitsEl.textContent = target;
         digitsEl.classList.remove('is-rolling');
         digitsEl.classList.add('is-locked');
-        if (stateEl) stateEl.textContent = 'ISSUED // 已签发';
+        if (stateEl) stateEl.textContent = 'ISSUED 已签发';
       }
     }, TICK_MS);
   }
@@ -1504,7 +1504,7 @@
       digitsEl.classList.remove('is-rolling');
       digitsEl.classList.toggle('is-locked', !!clean);
     }
-    if (stateEl) stateEl.textContent = clean ? 'ISSUED // 已签发' : 'PENDING // 待签发';
+    if (stateEl) stateEl.textContent = clean ? 'ISSUED 已签发' : 'PENDING 待签发';
   }
 
   /** 编号输入区的提示行：空字符串即清空 */
@@ -1661,7 +1661,7 @@
       btnTextEl.innerHTML = `${ICONS.check} <span>我已阅读并同意以上全部条款</span>`;
     }
     if (hintEl) {
-      hintEl.textContent = 'PROTOCOL // 已滑动到底部 · 条款已就绪';
+      hintEl.textContent = 'PROTOCOL 已滑动到底部 · 条款已就绪';
     }
   }
 
@@ -1740,7 +1740,7 @@
         if (!isAgreementAgreed) {
           if (window.RetroToast) {
             window.RetroToast.show({
-              tag: 'PROTOCOL // 协议未签署',
+              tag: 'PROTOCOL 协议未签署',
               message: '请先完整阅读并同意用户协议',
               detail: '请点击下方 03 项「权责声明 · 用户协议」阅毕确认',
               type: 'warn'
@@ -2036,13 +2036,13 @@
         const finalDesc = descInput ? descInput.value.trim() : '';
 
         if (!finalName) {
-          toastTalent('VALIDATION // 校验未通过', '请填写或选择一项天赋名称', '天赋是执行员的核心技能，不可为空。', 'warning');
+          toastTalent('VALIDATION 校验未通过', '请填写或选择一项天赋名称', '天赋是执行员的核心技能，不可为空。', 'warning');
           if (nameInput) nameInput.focus();
           return;
         }
 
         if (!finalDesc) {
-          toastTalent('VALIDATION // 校验未通过', '请填写天赋的具体说明', '请为天赋添加简短的能力表现或联系。', 'warning');
+          toastTalent('VALIDATION 校验未通过', '请填写天赋的具体说明', '请为天赋添加简短的能力表现或联系。', 'warning');
           if (descInput) descInput.focus();
           return;
         }
@@ -2068,7 +2068,7 @@
         // 落盘失败不谎报成功，让执行员知道要重试
         if (!saved) {
           toastTalent(
-            'ERROR // 固化失败',
+            'ERROR 固化失败',
             '天赋未能写入灵魂契约',
             '本地存储异常，请重试或刷新页面后再次确认。',
             'error'
@@ -2134,7 +2134,7 @@
         if (!preset) return;
 
         openDrawerWith({
-          tag: `PERSONA // ${preset.serialNo}`,
+          tag: `PERSONA ${preset.serialNo}`,
           title: `${preset.name} · 人格模组档案`,
           body: buildAssistantDossierBody(preset)
         });
@@ -2304,7 +2304,7 @@
         if (!claimed || !claimed.ok) {
           step7FinishBtn.disabled = false;
           toastTalent(
-            'ERROR // 签发失败',
+            'ERROR 签发失败',
             '编号未能写入执行员档案',
             '本地存储异常，请重试或刷新页面后再次确认。',
             'error'
@@ -2367,7 +2367,7 @@
 
     // 1. 依赖与配置自检：缺任何一环都当场说清楚，不要静默失败
     if (!window.TalentPrompt || !window.RetroflowAPI || !window.RetroflowApiUI) {
-      toastTalent('MODULE // 模块未就绪', '天赋解析模块尚未加载', '请刷新页面后重试。', 'error');
+      toastTalent('MODULE 模块未就绪', '天赋解析模块尚未加载', '请刷新页面后重试。', 'error');
       return;
     }
 
@@ -2375,7 +2375,7 @@
       ? RetroflowApiUI.resolveSlot('main')
       : null;
     if (!config || !config.baseUrl || !config.modelId) {
-      toastTalent('API // 节点未接入', '尚未配置可用的模型节点', '请返回步骤二完成 API 配置后再激发。', 'error');
+      toastTalent('API 节点未接入', '尚未配置可用的模型节点', '请返回步骤二完成 API 配置后再激发。', 'error');
       return;
     }
 
@@ -2406,7 +2406,7 @@
 
       if (talents.length !== 5) {
         toastTalent(
-          'PARSE // 解析异常',
+          'PARSE 解析异常',
           `仅解析出 ${talents.length} 条候选天赋`,
           '返回格式不符合协议，请重新激发。',
           'error'
@@ -2430,7 +2430,7 @@
       }
       console.error('[Talent] 天赋激发失败:', err);
       toastTalent(
-        'ERROR // 共鸣中断',
+        'ERROR 共鸣中断',
         '天赋解析请求失败',
         (err && err.message) ? String(err.message) : '网络或节点异常，请稍后重试。',
         'error'
@@ -2509,7 +2509,7 @@
         void dossierCard.offsetWidth; // 触发 reflow 重启动画
         dossierCard.classList.add('is-refreshing');
       }
-      if (codeEl) codeEl.textContent = `SLOT 0${activeTalentArcIndex + 1} // ACTIVE RESONANCE`;
+      if (codeEl) codeEl.textContent = `SLOT 0${activeTalentArcIndex + 1} ACTIVE RESONANCE`;
       if (indexEl) indexEl.textContent = `0${activeTalentArcIndex + 1} / 05`;
       if (nameEl) nameEl.textContent = cur.name;
       if (descEl) descEl.textContent = cur.desc;
@@ -2651,7 +2651,7 @@
     if (hudCode) {
       // 步骤七是收尾的编号签发，与前六步的 INITIALIZE 区分开
       const prefix = step === 7 ? 'ENLISTMENT' : 'INITIALIZE';
-      hudCode.textContent = `${prefix} // ${String(step).padStart(2, '0')}`;
+      hudCode.textContent = `${prefix} ${String(step).padStart(2, '0')}`;
     }
 
     // 统一遍历全部步骤视图：目标步激活，其余一律摘掉 is-active 并补 aria-hidden。
@@ -2859,7 +2859,7 @@
           <span class="onboarding-api-model-name">${escapeHtml(model)}</span>
         `;
       }
-      if (sub) sub.textContent = 'ENDPOINT READY // 推理通信端点已配置，链路自洽';
+      if (sub) sub.textContent = 'ENDPOINT READY 推理通信端点已配置，链路自洽';
       
       const configBtnTxt = document.getElementById('onboardingApiConfigBtnTxt');
       if (configBtnTxt) configBtnTxt.textContent = '修改配置';
@@ -2871,7 +2871,7 @@
     } else {
       if (card) card.classList.remove('is-ready');
       if (astrolabe) astrolabe.classList.remove('is-ready');
-      if (title) title.textContent = 'STANDBY // 待挂载接口';
+      if (title) title.textContent = 'STANDBY 待挂载接口';
       if (sub) sub.textContent = '需接入至少一个主模型推理节点以驱动世界推演';
       
       const configBtnTxt = document.getElementById('onboardingApiConfigBtnTxt');

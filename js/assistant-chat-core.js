@@ -194,7 +194,7 @@ window.AssistantChatCore = (() => {
       } catch (err) {
         console.warn('[AssistantChatCore] 动作协议 JSON 解析失败：', normalized, err);
         if (window.RetroToast) {
-          RetroToast.show({ tag: 'ACTION // 解析失败', message: '助手动作指令格式不合法，未能执行。', type: 'warning' });
+          RetroToast.show({ tag: 'ACTION 解析失败', message: '助手动作指令格式不合法，未能执行。', type: 'warning' });
         }
       }
       return false;
@@ -390,7 +390,7 @@ window.AssistantChatCore = (() => {
         // 无工具动作（或已达上限）：执行常规动作、落定本条消息、收尾
         if (!toolActions.length || loopCount >= loopLimit || !actions.runTool) {
           if (toolActions.length && loopCount >= loopLimit && window.RetroToast) {
-            RetroToast.show({ tag: 'TOOL // 已达上限', message: `内置工具连续调用已达 ${loopLimit} 次上限`, type: 'info' });
+            RetroToast.show({ tag: 'TOOL 已达上限', message: `内置工具连续调用已达 ${loopLimit} 次上限`, type: 'info' });
           }
           const finalText = String(await actions.runOtherActions(currentReply) || '').trim();
 

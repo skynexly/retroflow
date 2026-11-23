@@ -436,7 +436,7 @@ const ForkReadyUI = (() => {
           ForkArchiveUI.openDossier(currentFork.id);
         } else if (window.RetroToast) {
           window.RetroToast.show({
-            tag: 'FORK // 卷宗详情',
+            tag: 'FORK 卷宗详情',
             message: currentFork.title || '副本详情',
             detail: `${currentFork.code || 'FORK'} · 等级 ${currentFork.levelKey || 'E'}`,
             type: 'info'
@@ -615,7 +615,7 @@ const ForkReadyUI = (() => {
     if (available.length === 0) {
       if (window.RetroToast) {
         window.RetroToast.show({
-          tag: 'OPENING // 自由推演',
+          tag: 'OPENING 自由推演',
           message: '当前身份无预置开场，进本将自由推演',
           type: 'info'
         });
@@ -626,7 +626,7 @@ const ForkReadyUI = (() => {
     if (available.length === 1) {
       if (window.RetroToast) {
         window.RetroToast.show({
-          tag: 'OPENING // 开场档案',
+          tag: 'OPENING 开场档案',
           message: '当前接驳身份仅有一套可用开场',
           type: 'info'
         });
@@ -653,7 +653,7 @@ const ForkReadyUI = (() => {
 
     const picked = await window.SelectModal.pick({
       title: '切换载入开场',
-      tag: 'OPENING // 开场档案',
+      tag: 'OPENING 开场档案',
       options: options,
       value: selectedOpeningId,
       searchable: options.length > 6
@@ -692,7 +692,7 @@ const ForkReadyUI = (() => {
     if (state && !state.ok) {
       if (!silent && window.RetroToast) {
         window.RetroToast.show({
-          tag: 'LOCKED // 条件未满足',
+          tag: 'LOCKED 条件未满足',
           message: `「${entry.zh}」当前不可选`,
           detail: state.reason,
           type: 'info'
@@ -739,7 +739,7 @@ const ForkReadyUI = (() => {
 
     const picked = await window.SelectModal.pick({
       title: '选择下潜模式',
-      tag: 'DIVE MODE // 下潜模式',
+      tag: 'DIVE MODE 下潜模式',
       options: options,
       value: currentMode,
       searchable: false
@@ -764,8 +764,8 @@ const ForkReadyUI = (() => {
       levelCrestIcon.innerHTML = lvlSvg;
     }
     if (levelCrestBtn) {
-      levelCrestBtn.setAttribute('title', `副本等级：${lvlInfo.letter} // ${lvlInfo.name}（点击查看说明）`);
-      levelCrestBtn.setAttribute('aria-label', `副本等级：${lvlInfo.letter} // ${lvlInfo.name}（点击查看说明）`);
+      levelCrestBtn.setAttribute('title', `副本等级：${lvlInfo.letter} ${lvlInfo.name}（点击查看说明）`);
+      levelCrestBtn.setAttribute('aria-label', `副本等级：${lvlInfo.letter} ${lvlInfo.name}（点击查看说明）`);
     }
 
     const rawOverview = currentFork.overview || currentFork.desc || '';
@@ -774,7 +774,7 @@ const ForkReadyUI = (() => {
         overviewEl.textContent = rawOverview.trim();
         overviewEl.classList.remove('is-empty');
       } else {
-        overviewEl.textContent = '// 副本接入准备中，等待执行员下潜干涉。';
+        overviewEl.textContent = '副本接入准备中，等待执行员下潜干涉。';
         overviewEl.classList.add('is-empty');
       }
     }
@@ -997,7 +997,7 @@ const ForkReadyUI = (() => {
       seatBtn.addEventListener('click', () => {
         if (window.RetroToast) {
           window.RetroToast.show({
-            tag: 'LINK // 协同链路',
+            tag: 'LINK 协同链路',
             message: '联络通讯信标处于待命中',
             detail: '可选择「补位匹配」或「单人模式」直接开始推演',
             type: 'info'
@@ -1064,7 +1064,7 @@ const ForkReadyUI = (() => {
 
     const picked = await window.SelectModal.pick({
       title: '选择接驳身份',
-      tag: 'SYNAPSE // 神经接驳',
+      tag: 'SYNAPSE 神经接驳',
       options: options,
       value: currentVal,
       searchable: options.length > 7
@@ -1078,7 +1078,7 @@ const ForkReadyUI = (() => {
         RetroflowPersonaUI.open('mask');
       } else if (window.RetroToast) {
         window.RetroToast.show({
-          tag: 'VAULT // 马甲库',
+          tag: 'VAULT 马甲库',
           message: '请前往个人档案模块编纂新马甲',
           type: 'info'
         });
@@ -1133,7 +1133,7 @@ const ForkReadyUI = (() => {
       syncModeAvailability();
       if (window.RetroToast) {
         window.RetroToast.show({
-          tag: 'LOCKED // 条件未满足',
+          tag: 'LOCKED 条件未满足',
           message: '下潜模式已失效，已退回单人模式',
           detail: state.reason,
           type: 'info'
@@ -1227,7 +1227,7 @@ const ForkReadyUI = (() => {
     if (roles.length === 0) {
       if (window.RetroToast) {
         window.RetroToast.show({
-          tag: 'VESSEL // 暂无躯壳',
+          tag: 'VESSEL 暂无躯壳',
           message: '当前副本尚未录入预设身份档案',
           type: 'info'
         });
@@ -1365,7 +1365,7 @@ const ForkReadyUI = (() => {
 
       if (window.RetroToast) {
         window.RetroToast.show({
-          tag: 'VESSEL // 接驳成功',
+          tag: 'VESSEL 接驳成功',
           message: `已接驳预设身份「${selectedIdentity.name}」`,
           type: 'success'
         });
@@ -1420,7 +1420,7 @@ const ForkReadyUI = (() => {
     const lvlInfo = LEVEL_MAP[lvlKey] || LEVEL_MAP['E'];
     const lvlSvg = LEVEL_SVGS[lvlInfo.letter] || LEVEL_SVGS['E'];
 
-    if (curValEl) curValEl.textContent = `${lvlInfo.letter} // ${lvlInfo.name}`;
+    if (curValEl) curValEl.textContent = `${lvlInfo.letter} ${lvlInfo.name}`;
     if (curEnEl) curEnEl.textContent = lvlInfo.enName || '';
     if (curPrivEl) curPrivEl.textContent = lvlInfo.priv || 'LV.1 准入';
     if (curIconEl) curIconEl.innerHTML = lvlSvg;

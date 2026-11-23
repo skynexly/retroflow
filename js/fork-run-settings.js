@@ -135,7 +135,7 @@ window.ForkRunSettingsUI = (() => {
         if (window.ForkRunContextInspector && typeof ForkRunContextInspector.open === 'function') {
           ForkRunContextInspector.open();
         } else if (window.RetroToast) {
-          RetroToast.show({ tag: 'CONTEXT // 不可用', message: '上下文查看器未就绪', type: 'warning' });
+          RetroToast.show({ tag: 'CONTEXT 不可用', message: '上下文查看器未就绪', type: 'warning' });
         }
       });
     }
@@ -174,13 +174,13 @@ window.ForkRunSettingsUI = (() => {
       searchRow.addEventListener('click', () => {
         if (!currentContext.runId) {
           if (window.RetroToast) {
-            RetroToast.show({ tag: 'SEARCH // 无记录', message: '当前世界线还没有推演记录', type: 'info' });
+            RetroToast.show({ tag: 'SEARCH 无记录', message: '当前世界线还没有推演记录', type: 'info' });
           }
           return;
         }
         if (!window.ChatHistorySearchUI || typeof ChatHistorySearchUI.open !== 'function') {
           if (window.RetroToast) {
-            RetroToast.show({ tag: 'SEARCH // 不可用', message: '检索模块未就绪', type: 'warning' });
+            RetroToast.show({ tag: 'SEARCH 不可用', message: '检索模块未就绪', type: 'warning' });
           }
           return;
         }
@@ -247,7 +247,7 @@ window.ForkRunSettingsUI = (() => {
       extractMemoryBtn.addEventListener('click', () => {
         if (window.RetroToast) {
           RetroToast.show({
-            tag: 'MEMORY // 记忆提取',
+            tag: 'MEMORY 记忆提取',
             message: '因果记忆中枢推演提取中',
             type: 'info'
           });
@@ -261,7 +261,7 @@ window.ForkRunSettingsUI = (() => {
         const forkId = currentContext.forkId;
         if (!forkId) {
           if (window.RetroToast) {
-            RetroToast.show({ tag: 'WALLPAPER // 无副本', message: '当前没有可装载壁纸的副本', type: 'info' });
+            RetroToast.show({ tag: 'WALLPAPER 无副本', message: '当前没有可装载壁纸的副本', type: 'info' });
           }
           return;
         }
@@ -282,7 +282,7 @@ window.ForkRunSettingsUI = (() => {
             if (ok) {
               syncWallpaperUI();
               if (window.RetroToast) {
-                RetroToast.show({ tag: 'WALLPAPER // 视界装载', message: '副本专属背景壁纸已装载', type: 'success' });
+                RetroToast.show({ tag: 'WALLPAPER 视界装载', message: '副本专属背景壁纸已装载', type: 'success' });
               }
             }
           }
@@ -297,7 +297,7 @@ window.ForkRunSettingsUI = (() => {
         await ForkRunWallpaper.clear(forkId);
         syncWallpaperUI();
         if (window.RetroToast) {
-          RetroToast.show({ tag: 'WALLPAPER // 视界复位', message: '对话壁纸已恢复默认纯色', type: 'info' });
+          RetroToast.show({ tag: 'WALLPAPER 视界复位', message: '对话壁纸已恢复默认纯色', type: 'info' });
         }
       });
     }
@@ -386,7 +386,7 @@ window.ForkRunSettingsUI = (() => {
     });
 
     const picked = await SelectModal.pick({
-      tag: 'WORLDLINES // 分支',
+      tag: 'WORLDLINES 分支',
       title: '查看与切换世界线',
       options: optList,
       value: runId
@@ -402,7 +402,7 @@ window.ForkRunSettingsUI = (() => {
     if (picked === runId) {
       if (window.RetroToast) {
         RetroToast.show({
-          tag: 'WORLDLINES // 活跃分支',
+          tag: 'WORLDLINES 活跃分支',
           message: '已锁定当前世界线',
           type: 'info'
         });
@@ -424,7 +424,7 @@ window.ForkRunSettingsUI = (() => {
     let confirmed = true;
     if (window.RetroModal && typeof RetroModal.confirm === 'function') {
       confirmed = await RetroModal.confirm({
-        tag: 'WORLDLINES // 删除分支',
+        tag: 'WORLDLINES 删除分支',
         message: `确认彻底删除「${label}」吗？`,
         detail: '该分支的全部对话流水与推演状态将被物理抹除，无法恢复。',
         confirmText: '确认删除',
@@ -443,7 +443,7 @@ window.ForkRunSettingsUI = (() => {
       await ForkRunStore.deleteRun(targetRunId);
       if (window.RetroToast) {
         RetroToast.show({
-          tag: 'WORLDLINES // 已删除',
+          tag: 'WORLDLINES 已删除',
           message: `分支「${label}」已抹除`,
           type: 'success'
         });
@@ -451,7 +451,7 @@ window.ForkRunSettingsUI = (() => {
     } catch (e) {
       console.warn('[ForkRunSettings] 删除分支失败:', e);
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'WORLDLINES // 删除失败', message: '分支删除失败', type: 'warning' });
+        RetroToast.show({ tag: 'WORLDLINES 删除失败', message: '分支删除失败', type: 'warning' });
       }
       return;
     }
@@ -492,7 +492,7 @@ window.ForkRunSettingsUI = (() => {
 
     if (!newRun) {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'WORLDLINES // 开辟失败', message: '新分支创建失败', type: 'warning' });
+        RetroToast.show({ tag: 'WORLDLINES 开辟失败', message: '新分支创建失败', type: 'warning' });
       }
       return;
     }
@@ -503,7 +503,7 @@ window.ForkRunSettingsUI = (() => {
       ForkRunUI.open(currentContext.forkId, { runId: newRun.id });
       if (window.RetroToast) {
         RetroToast.show({
-          tag: 'WORLDLINES // 已开辟',
+          tag: 'WORLDLINES 已开辟',
           message: '新的世界线已开启',
           type: 'success'
         });
@@ -529,7 +529,7 @@ window.ForkRunSettingsUI = (() => {
     if (allRuns.length <= 1) {
       if (window.RetroToast) {
         RetroToast.show({
-          tag: 'WORLDLINES // 保护',
+          tag: 'WORLDLINES 保护',
           message: '唯一分支不可删除',
           detail: '推演必须保留至少一条世界线作为因果底座',
           type: 'info'
@@ -544,7 +544,7 @@ window.ForkRunSettingsUI = (() => {
     let confirmed = true;
     if (window.RetroModal && typeof RetroModal.confirm === 'function') {
       confirmed = await RetroModal.confirm({
-        tag: 'WORLDLINES // 删除分支',
+        tag: 'WORLDLINES 删除分支',
         message: `确认彻底删除当前分支「${label}」吗？`,
         detail: '删除后将自动切换到最近的一条留存世界线。该分支的全部流水与状态将被物理抹除，无法恢复。',
         confirmText: '确认删除',
@@ -560,7 +560,7 @@ window.ForkRunSettingsUI = (() => {
     } catch (e) {
       console.warn('[ForkRunSettings] 删除当前分支失败:', e);
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'WORLDLINES // 删除失败', message: '分支删除失败', type: 'warning' });
+        RetroToast.show({ tag: 'WORLDLINES 删除失败', message: '分支删除失败', type: 'warning' });
       }
       return;
     }
@@ -576,7 +576,7 @@ window.ForkRunSettingsUI = (() => {
       if (window.RetroToast) {
         const nextLabel = ForkRunStore.getRunDisplayLabel(nextRun, remaining);
         RetroToast.show({
-          tag: 'WORLDLINES // 已切换',
+          tag: 'WORLDLINES 已切换',
           message: `已切换至世界线「${nextLabel}」`,
           type: 'success'
         });
@@ -591,7 +591,7 @@ window.ForkRunSettingsUI = (() => {
   async function openWorldbookMount() {
     if (!window.WorldBookMountModal || typeof WorldBookMountModal.open !== 'function') {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'WORLDBOOK // 面板缺席', message: '装载面板模块未就绪', type: 'warning' });
+        RetroToast.show({ tag: 'WORLDBOOK 面板缺席', message: '装载面板模块未就绪', type: 'warning' });
       }
       return;
     }
@@ -763,12 +763,12 @@ window.ForkRunSettingsUI = (() => {
         if (node && (node.modelId || node.baseUrl)) {
           return {
             name: node.modelId || node.alias || node.baseUrl || '主模型节点',
-            type: 'MODEL // MAIN'
+            type: 'MODEL MAIN'
           };
         }
       }
     } catch (_) { /* ignore */ }
-    return { name: '未配置主模型', type: 'MODEL // FORK DIVE' };
+    return { name: '未配置主模型', type: 'MODEL FORK DIVE' };
   }
 
   /** 把当前主模型信息回填到卡片（每次开页 / 从 API 页返回时刷新） */

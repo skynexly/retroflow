@@ -131,7 +131,7 @@
     if (!locModalOverlay || !location) return;
     const seqStr = String(index + 1).padStart(2, '0');
     if (locModalCode) {
-      locModalCode.textContent = `LOC-${seqStr} // FIELD DOSSIER`;
+      locModalCode.textContent = `LOC-${seqStr} FIELD DOSSIER`;
     }
     if (locModalName) {
       locModalName.textContent = (location.name || '未命名地点').trim();
@@ -488,7 +488,7 @@
           group.innerHTML = `
             <div class="fork-doc-stats-subhead">
               <span class="fork-doc-stats-subhead-en">GLOBAL PARAMETERS</span>
-              <span class="fork-doc-stats-subhead-zh">// 全局数值设定</span>
+              <span class="fork-doc-stats-subhead-zh">全局数值设定</span>
             </div>
           `;
           const grid = document.createElement('div');
@@ -507,7 +507,7 @@
           group.innerHTML = `
             <div class="fork-doc-stats-subhead">
               <span class="fork-doc-stats-subhead-en">PERSONNEL METRICS</span>
-              <span class="fork-doc-stats-subhead-zh">// 角色数值设定</span>
+              <span class="fork-doc-stats-subhead-zh">角色数值设定</span>
             </div>
           `;
           const grid = document.createElement('div');
@@ -641,7 +641,7 @@
     if (!targetFork) {
       if (window.RetroToast) {
         window.RetroToast.show({
-          tag: 'DOSSIER // 读取失败',
+          tag: 'DOSSIER 读取失败',
           message: '未能检索到对应副本档案',
           type: 'error'
         });

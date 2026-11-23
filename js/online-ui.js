@@ -298,7 +298,7 @@ const OnlineUI = (() => {
 
     const picked = await SelectModal.pick({
       title: '选择马甲身份',
-      tag: 'MASK VAULT // 身份指派',
+      tag: 'MASK VAULT 身份指派',
       options,
       value: selectedMaskId || available[0].id
     });
@@ -580,7 +580,7 @@ const OnlineUI = (() => {
 
     const picked = await SelectModal.pick({
       title: '切换登录账号',
-      tag: 'ONLINE // 账号指派',
+      tag: 'ONLINE 账号指派',
       options,
       value: selectedAccountId || registeredAccounts[0].id
     });
@@ -1348,7 +1348,7 @@ const OnlineUI = (() => {
     if (envoySectionEn) envoySectionEn.textContent = 'SUGGESTED ENVOYS';
     renderEnvoyList(
       suggestedPool,
-      'NO DATA // 档案库为空',
+      'NO DATA 档案库为空',
       '角色、NPC 与官方角色档案都还没有建档，先去共鸣模块录入人物档案。'
     );
   }
@@ -1363,7 +1363,7 @@ const OnlineUI = (() => {
       if (envoySectionEn) envoySectionEn.textContent = 'SUGGESTED ENVOYS';
       renderEnvoyList(
         suggestedPool,
-        'NO DATA // 档案库为空',
+        'NO DATA 档案库为空',
         '角色、NPC 与官方角色档案都还没有建档，先去共鸣模块录入人物档案。'
       );
       return;
@@ -1383,7 +1383,7 @@ const OnlineUI = (() => {
     if (envoySectionEn) envoySectionEn.textContent = 'SEARCH RESULTS';
     renderEnvoyList(
       hits,
-      'NO MATCH // 无匹配档案',
+      'NO MATCH 无匹配档案',
       `没有找到与「${keyword}」匹配的执行员，可换用名字或 NO. 编号重试。`
     );
   }
@@ -1518,7 +1518,7 @@ const OnlineUI = (() => {
     const serial = normalizeSerialForSearch(contact.serial);
     // 副本阵营角色不在溯流编制内，没有编号，显示副本频段标识
     const statusCode = (contact.camp === 'instance' || !serial)
-      ? 'FORK LINK // 副本频段'
+      ? 'FORK LINK 副本频段'
       : `NO.${serial}`;
 
     card.innerHTML = `

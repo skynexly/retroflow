@@ -94,7 +94,7 @@
   /**
    * 打开多字段编辑弹窗
    * @param {Object} options
-   * @param {string} options.tag 顶栏战术英文标签，如 'SKILL // 技能登记'
+   * @param {string} options.tag 顶栏战术英文标签，如 'SKILL 技能登记'
    * @param {string} options.title 弹窗大标题，如 '生活技能'
    * @param {Array} options.fields 字段列表 [{ key, label, type, placeholder, value, rows, maxLength, required }]
    * @param {string} options.confirmText 确认按钮文案
@@ -108,7 +108,7 @@
     }
 
     const opts = Object.assign({
-      tag: 'FORM // 数据录入',
+      tag: 'FORM 数据录入',
       title: '编辑信息',
       fields: [],
       confirmText: '确认保存',

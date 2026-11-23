@@ -235,7 +235,7 @@
               <line x1="12" y1="16" x2="12" y2="12"/>
               <line x1="12" y1="8" x2="12.01" y2="8"/>
             </svg>
-            <span class="manual-summary-tag">SUMMARY // 核心概要</span>
+            <span class="manual-summary-tag">SUMMARY 核心概要</span>
           </div>
           <p class="manual-summary-text">${escapeHtml(item.summary)}</p>
         </div>
@@ -255,7 +255,7 @@
       // 4. 关键词胶囊流 (Keywords Row)
       const keywordsHtml = Array.isArray(item.keywords) && item.keywords.length > 0 ? `
         <div class="manual-keywords-row">
-          <span class="manual-keywords-label">KEYWORDS //</span>
+          <span class="manual-keywords-label">KEYWORDS</span>
           <div class="manual-keywords-list">
             ${item.keywords.map(kw => `
               <button type="button" class="manual-keyword-pill" data-keyword="${escapeHtml(kw)}" title="点击快速检索 #${escapeHtml(kw)}">

@@ -62,7 +62,7 @@ const ForkTransitionUI = (() => {
         <header class="fork-transition-header">
           <div class="fork-transition-signal">
             <span class="signal-dot"></span>
-            <span class="signal-text">TACTICAL TRANSIT // DIVE_LINK</span>
+            <span class="signal-text">TACTICAL TRANSIT DIVE_LINK</span>
           </div>
           <button type="button" class="fork-transition-skip-btn" id="forkTransitionSkipBtn" aria-label="跳过跃迁动画" title="跳过">
             <span class="skip-text">SKIP</span>
@@ -92,7 +92,7 @@ const ForkTransitionUI = (() => {
               <div class="fork-transit-bar" id="forkTransitBar"></div>
             </div>
             <div class="fork-transit-meter">
-              <span class="meter-code">PROTOCOL // SYNC</span>
+              <span class="meter-code">PROTOCOL SYNC</span>
               <span class="meter-percent" id="forkTransitPercent">20.0%</span>
             </div>
           </div>

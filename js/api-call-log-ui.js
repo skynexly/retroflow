@@ -72,7 +72,7 @@ window.ApiCallLogUI = (() => {
     // 端点与模型
     sections.push(`
       <div>
-        <div class="api-log-field-label">ENDPOINT // 端点</div>
+        <div class="api-log-field-label">ENDPOINT 端点</div>
         <div class="api-log-well">${escapeHtml(entry.url || '')}${entry.model ? `<div class="api-log-model-tag">MODEL: ${escapeHtml(entry.model)}</div>` : ''}</div>
       </div>`);
 
@@ -81,14 +81,14 @@ window.ApiCallLogUI = (() => {
       if (entry.errorMessage) {
         sections.push(`
           <div>
-            <div class="api-log-field-label">ERROR // 报错</div>
+            <div class="api-log-field-label">ERROR 报错</div>
             <div class="api-log-error-text">${escapeHtml(entry.errorMessage)}</div>
           </div>`);
       }
       if (Array.isArray(entry.causes) && entry.causes.length) {
         sections.push(`
           <div>
-            <div class="api-log-field-label">DIAGNOSIS // 可能原因</div>
+            <div class="api-log-field-label">DIAGNOSIS 可能原因</div>
             <div class="api-log-causes">
               ${entry.causes.map((c) => `
                 <div class="api-log-cause-item">
@@ -104,14 +104,14 @@ window.ApiCallLogUI = (() => {
     if (entry.reqSummary) {
       sections.push(`
         <div>
-          <div class="api-log-field-label">REQUEST // 请求摘要</div>
+          <div class="api-log-field-label">REQUEST 请求摘要</div>
           <div class="api-log-pre">${escapeHtml(entry.reqSummary)}</div>
         </div>`);
     }
     if (entry.reqMeta) {
       sections.push(`
         <div>
-          <div class="api-log-field-label">PARAMS // 附加参数</div>
+          <div class="api-log-field-label">PARAMS 附加参数</div>
           <div class="api-log-field-value">${escapeHtml(entry.reqMeta)}</div>
         </div>`);
     }
@@ -120,7 +120,7 @@ window.ApiCallLogUI = (() => {
     if (entry.respBody) {
       sections.push(`
         <div>
-          <div class="api-log-field-label">RESPONSE // 响应原文${entry.ok ? '' : '（报错体）'}</div>
+          <div class="api-log-field-label">RESPONSE 响应原文${entry.ok ? '' : '（报错体）'}</div>
           <div class="api-log-pre">${escapeHtml(entry.respBody)}</div>
         </div>`);
     }
@@ -163,10 +163,10 @@ window.ApiCallLogUI = (() => {
         const emptyDesc = emptyEl.querySelector('.api-log-empty-desc');
         if (cachedEntries.length === 0) {
           if (emptyTitle) emptyTitle.textContent = '尚无调用记录';
-          if (emptyDesc) emptyDesc.textContent = 'NO RECORD // 发起任意推演、对话或生图后自动收录';
+          if (emptyDesc) emptyDesc.textContent = 'NO RECORD 发起任意推演、对话或生图后自动收录';
         } else {
           if (emptyTitle) emptyTitle.textContent = '该筛选下暂无记录';
-          if (emptyDesc) emptyDesc.textContent = 'NO MATCH // 换个筛选条件看看';
+          if (emptyDesc) emptyDesc.textContent = 'NO MATCH 换个筛选条件看看';
         }
       }
       return;
@@ -225,11 +225,11 @@ window.ApiCallLogUI = (() => {
         setTimeout(() => URL.revokeObjectURL(url), 4000);
       }
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'LOG // EXPORT', message: '调用日志已导出为 JSON', type: 'success' });
+        RetroToast.show({ tag: 'LOG EXPORT', message: '调用日志已导出为 JSON', type: 'success' });
       }
     } catch (err) {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'LOG // EXPORT', message: '导出失败，请重试', type: 'error' });
+        RetroToast.show({ tag: 'LOG EXPORT', message: '导出失败，请重试', type: 'error' });
       }
     }
   }
@@ -240,7 +240,7 @@ window.ApiCallLogUI = (() => {
     await ApiCallLog.clear();
     await refresh();
     if (window.RetroToast) {
-      RetroToast.show({ tag: 'LOG // PURGE', message: '调用日志已清空', type: 'info' });
+      RetroToast.show({ tag: 'LOG PURGE', message: '调用日志已清空', type: 'info' });
     }
   }
 
@@ -251,7 +251,7 @@ window.ApiCallLogUI = (() => {
     await refreshPauseBtn();
     if (window.RetroToast) {
       RetroToast.show({
-        tag: 'LOG // RECORDER',
+        tag: 'LOG RECORDER',
         message: next ? '已暂停记录（本次会话内的调用不再入册）' : '已恢复记录',
         type: 'info'
       });

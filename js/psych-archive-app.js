@@ -297,7 +297,7 @@
 
     if (clearedList) {
       if (list.length === 0) {
-        clearedList.innerHTML = '<div class="psych-cleared-empty">// 暂无近期通关记录</div>';
+        clearedList.innerHTML = '<div class="psych-cleared-empty"> 暂无近期通关记录</div>';
       } else {
         // 仅截取展示最新的 3 条近期通关记录
         const recentList = list.slice(0, 3);
@@ -307,7 +307,7 @@
           return '<div class="psych-cleared-item">' +
             '<div class="psych-cleared-item-left">' +
               '<span class="psych-cleared-name">' + esc(item.name) + '</span>' +
-              '<span class="psych-cleared-time">' + fmtDate(item.clearedAt) + ' // ' + turns + '</span>' +
+              '<span class="psych-cleared-time">' + fmtDate(item.clearedAt) + ' ' + turns + '</span>' +
             '</div>' +
             '<span class="psych-cleared-level">' + lvl + '</span>' +
           '</div>';
@@ -342,7 +342,7 @@
     }
 
     if (desireText) {
-      desireText.textContent = currentProfile.coreDesire || '// 尚未定义核心欲望与时空执念。';
+      desireText.textContent = currentProfile.coreDesire || '尚未定义核心欲望与时空执念。';
     }
   }
 
@@ -350,7 +350,7 @@
   function renderTalent() {
     const talent = currentProfile.talent || {};
     if (talentName) talentName.textContent = esc(talent.name || '待解析');
-    if (talentDesc) talentDesc.textContent = esc(talent.desc || '// 灵魂特质解析中，专属天赋将于入役仪式完成时正式赋予。');
+    if (talentDesc) talentDesc.textContent = esc(talent.desc || '灵魂特质解析中，专属天赋将于入役仪式完成时正式赋予。');
   }
 
   /** 板块 03：自生技能池（卡片流排版，支持点击编辑与删除） */
@@ -358,7 +358,7 @@
     if (!skillsPool) return;
     const skills = Array.isArray(currentProfile.skills) ? currentProfile.skills : [];
     if (skills.length === 0) {
-      skillsPool.innerHTML = '<div class="psych-cleared-empty">// 暂无登记的生活技能</div>';
+      skillsPool.innerHTML = '<div class="psych-cleared-empty"> 暂无登记的生活技能</div>';
     } else {
       skillsPool.innerHTML = skills.map(function (s, idx) {
         const sName = typeof s === 'string' ? s : (s.name || '');
@@ -398,9 +398,9 @@
   /** 板块 04：AI 深度演化侧写 */
   function renderSynthesis() {
     const synth = currentProfile.synthesis || {};
-    if (synthStyle) synthStyle.textContent = synth.style || '// 待演化解析';
-    if (synthSocial) synthSocial.textContent = synth.social || '// 待演化解析';
-    if (synthPersonality) synthPersonality.textContent = synth.personality || '// 待演化解析';
+    if (synthStyle) synthStyle.textContent = synth.style || '待演化解析';
+    if (synthSocial) synthSocial.textContent = synth.social || '待演化解析';
+    if (synthPersonality) synthPersonality.textContent = synth.personality || '待演化解析';
     if (synthTimeEl) synthTimeEl.textContent = fmtDateTime(synth.lastSynthesizedAt);
   }
 
@@ -421,7 +421,7 @@
     // 核心欲望摘录：未填写时给出待录入占位，不留空白
     if (previewDesire) {
       const desire = String(currentProfile.coreDesire || '').trim();
-      previewDesire.textContent = desire || '// 尚未录入核心欲望，等待执行员自陈。';
+      previewDesire.textContent = desire || '尚未录入核心欲望，等待执行员自陈。';
     }
   }
 
@@ -511,7 +511,7 @@
     if (!window.TextEditorModal || typeof TextEditorModal.edit !== 'function') return;
     const updated = await TextEditorModal.edit({
       title: '核心欲望',
-      tag: 'PSYCH // 核心欲望',
+      tag: 'PSYCH 核心欲望',
       value: currentProfile.coreDesire || '',
       placeholder: '写下在无尽副本轮回中不可动摇的核心欲望与终极追寻...',
       maxLength: 300
@@ -587,7 +587,7 @@
     if (key === 'mbti') {
       selectedValue = await SelectModal.pick({
         title: '选择 MBTI 心理类型',
-        tag: 'MATRIX // MBTI',
+        tag: 'MATRIX MBTI',
         options: MBTI_OPTIONS,
         value: currentProfile.matrix.mbti || 'INTJ 战略家'
       });
@@ -601,7 +601,7 @@
 
       const pickedCore = await SelectModal.pick({
         title: '第一步：选择核心主型 (1~9)',
-        tag: 'MATRIX // ENNEAGRAM CORE',
+        tag: 'MATRIX ENNEAGRAM CORE',
         options: coreOpts,
         value: (currentProfile.matrix.enneagram || '').charAt(0) || '5'
       });
@@ -620,7 +620,7 @@
 
       const pickedWing = await SelectModal.pick({
         title: `第二步：选择 ${typeObj.type}型 侧翼 (Wing)`,
-        tag: 'MATRIX // ENNEAGRAM WING',
+        tag: 'MATRIX ENNEAGRAM WING',
         options: wingOpts,
         value: currentProfile.matrix.enneagram || wingOpts[0].value
       });
@@ -630,19 +630,19 @@
     } else if (key === 'alignment') {
       selectedValue = await SelectModal.pick({
         title: '选择阵营倾向',
-        tag: 'MATRIX // ALIGNMENT',
+        tag: 'MATRIX ALIGNMENT',
         options: ALIGNMENT_OPTIONS,
         value: currentProfile.matrix.alignment || '混乱中立'
       });
     } else if (key === 'attachment') {
       selectedValue = await SelectModal.pick({
         title: '选择依恋类型',
-        tag: 'MATRIX // ATTACHMENT',
+        tag: 'MATRIX ATTACHMENT',
         options: ATTACHMENT_OPTIONS,
         value: currentProfile.matrix.attachment || '安全型'
       });
     } else if (key === 'instinct') {
-      toast('INSTINCT // 分院协议', '下潜本能情境测评模块接入中...', 'info');
+      toast('INSTINCT 分院协议', '下潜本能情境测评模块接入中...', 'info');
       return;
     }
 
@@ -660,7 +660,7 @@
     if (pill.dataset.matrixKey) {
       handleEditMatrixField(pill.dataset.matrixKey);
     } else if (pill.classList.contains('is-auto')) {
-      toast('ZODIAC // 固化锚点', '星座由执行员初始生日时空坐标自动推算', 'info');
+      toast('ZODIAC 固化锚点', '星座由执行员初始生日时空坐标自动推算', 'info');
     }
   }
 
@@ -669,12 +669,12 @@
     if (!window.FormEditorModal || typeof FormEditorModal.open !== 'function') return;
 
     const res = await FormEditorModal.open({
-      tag: 'SKILL // 技能登记',
+      tag: 'SKILL 技能登记',
       title: '添加生活技能',
       fields: [
         {
           key: 'name',
-          label: 'NAME // 技能名称',
+          label: 'NAME 技能名称',
           type: 'input',
           placeholder: '例如：野外急救 / 神经接驳黑客',
           maxLength: 24,
@@ -682,7 +682,7 @@
         },
         {
           key: 'desc',
-          label: 'EFFECT // 技能效果',
+          label: 'EFFECT 技能效果',
           type: 'textarea',
           placeholder: '详细描述该技能在因果剧本与时空观测中的具体运用与效果...',
           rows: 3,
@@ -717,12 +717,12 @@
     const sDesc = typeof item === 'object' && item.desc ? item.desc : '';
 
     const res = await FormEditorModal.open({
-      tag: 'SKILL // 技能档案',
+      tag: 'SKILL 技能档案',
       title: '编辑生活技能',
       fields: [
         {
           key: 'name',
-          label: 'NAME // 技能名称',
+          label: 'NAME 技能名称',
           type: 'input',
           value: sName,
           placeholder: '例如：野外急救 / 神经接驳黑客',
@@ -731,7 +731,7 @@
         },
         {
           key: 'desc',
-          label: 'EFFECT // 技能效果',
+          label: 'EFFECT 技能效果',
           type: 'textarea',
           value: sDesc,
           placeholder: '详细描述该技能在因果剧本与时空观测中的具体运用与效果...',
@@ -783,7 +783,7 @@
   function handleSynthesize() {
     if (!synthBtn) return;
     synthBtn.disabled = true;
-    toast('SYNTHESIS // 演化中', '正在提取副本抉择与交互记录...', 'info');
+    toast('SYNTHESIS 演化中', '正在提取副本抉择与交互记录...', 'info');
 
     setTimeout(function () {
       synthBtn.disabled = false;
@@ -791,7 +791,7 @@
       currentProfile.synthesis.lastSynthesizedAt = Date.now();
       PsychStore.save(currentProfile);
       renderSynthesis();
-      toast('SYNTHESIS // 演算完成', '心智侧写已同步更新', 'success');
+      toast('SYNTHESIS 演算完成', '心智侧写已同步更新', 'success');
     }, 800);
   }
 

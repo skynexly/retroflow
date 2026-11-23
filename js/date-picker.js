@@ -140,7 +140,7 @@ const DatePickerModal = (() => {
         }
         const picked = await SelectModal.pick({
           title: curMode === 'date' ? '选择年份' : '选择出生年份',
-          tag: curMode === 'date' ? 'CALENDAR 年份校准' : 'CALENDAR // 年份校准',
+          tag: curMode === 'date' ? 'CALENDAR 年份校准' : 'CALENDAR 年份校准',
           options: opts,
           value: selYear
         });
@@ -162,7 +162,7 @@ const DatePickerModal = (() => {
         }
         const picked = await SelectModal.pick({
           title: '选择月份',
-          tag: curMode === 'date' ? 'CALENDAR 月份校准' : 'CALENDAR // 月份校准',
+          tag: curMode === 'date' ? 'CALENDAR 月份校准' : 'CALENDAR 月份校准',
           options: opts,
           value: selMonth,
           searchable: false
@@ -186,7 +186,7 @@ const DatePickerModal = (() => {
         }
         const picked = await SelectModal.pick({
           title: '选择日期',
-          tag: curMode === 'date' ? `CALENDAR 当月共 ${maxDays} 天` : `CALENDAR // 当月共 ${maxDays} 天`,
+          tag: curMode === 'date' ? `CALENDAR 当月共 ${maxDays} 天` : `CALENDAR 当月共 ${maxDays} 天`,
           options: opts,
           value: selDay
         });
@@ -369,7 +369,7 @@ const DatePickerModal = (() => {
     const {
       value = '',
       title = options.mode === 'date' ? '选择日期' : '选择诞生日',
-      tag = options.mode === 'date' ? 'CALENDAR 日期校准' : 'CALENDAR // 星历校准',
+      tag = options.mode === 'date' ? 'CALENDAR 日期校准' : 'CALENDAR 星历校准',
       mode = 'birthday',
       allowClear = mode !== 'date'
     } = options;

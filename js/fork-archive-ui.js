@@ -255,7 +255,6 @@
             <div class="fork-caption-title">${title}</div>
             <div class="fork-caption-meta">
               <span class="fork-caption-code">${code}</span>
-              <span class="fork-caption-sep">//</span>
               <span class="fork-caption-spec">${lvl.enName}</span>
             </div>
           </div>
@@ -761,7 +760,7 @@
               console.warn('[ForkArchive] 打开副本编纂器失败：', forkId, err);
               if (window.RetroToast) {
                 window.RetroToast.show({
-                  tag: 'FORK // 打开失败',
+                  tag: 'FORK 打开失败',
                   message: `无法打开：${item.title}`,
                   detail: String(err && err.message ? err.message : err),
                   type: 'error'
@@ -771,7 +770,7 @@
           } else {
             if (window.RetroToast) {
               window.RetroToast.show({
-                tag: 'FORK // 副本编纂',
+                tag: 'FORK 副本编纂',
                 message: `打开副本：${item.title}`,
                 detail: '编纂模块装载中，请稍候…',
                 type: 'info'
@@ -795,7 +794,7 @@
               console.warn('[ForkArchive] 进入副本失败：', item.id, err);
               if (window.RetroToast) {
                 window.RetroToast.show({
-                  tag: 'FORK // 接入失败',
+                  tag: 'FORK 接入失败',
                   message: `无法进入：${item.title}`,
                   detail: String(err && err.message ? err.message : err),
                   type: 'error'
@@ -807,7 +806,7 @@
 
           if (window.RetroToast) {
             window.RetroToast.show({
-              tag: 'FORK // 因果接入',
+              tag: 'FORK 因果接入',
               message: `进入副本：${item.title}`,
               detail: `${item.code} · 推演模块装载中，请稍候…`,
               type: 'info'
@@ -829,7 +828,7 @@
           }
           if (window.RetroToast) {
             window.RetroToast.show({
-              tag: 'DIVE LOG // 下潜记录',
+              tag: 'DIVE LOG 下潜记录',
               message: `${item.title} 的下潜记录`,
               detail: `${item.code} · 记录模块待建`,
               type: 'info'

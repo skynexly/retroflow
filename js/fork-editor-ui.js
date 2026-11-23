@@ -786,7 +786,7 @@
       // 这是对用户选择的实质性修正，即便 silent 保存也照常告知
       if (window.RetroToast) {
         window.RetroToast.show({
-          tag: 'EDITOR // 身份回落',
+          tag: 'EDITOR 身份回落',
           message: '未指派预设角色，已自动切换为自由身份',
           detail: '锁定身份需至少配置一个预设角色供执行员接入',
           type: 'warn'
@@ -848,7 +848,7 @@
 
       if (!silent && window.RetroToast) {
         window.RetroToast.show({
-          tag: 'EDITOR // 档案同步',
+          tag: 'EDITOR 档案同步',
           message: '副本卷宗已成功归档',
           detail: `${currentData.code || '未编号'} · ${currentData.title || '未命名副本'}`,
           type: 'success'
@@ -858,7 +858,7 @@
     } catch (e) {
       if (window.RetroToast) {
         window.RetroToast.show({
-          tag: 'EDITOR // 写入异常',
+          tag: 'EDITOR 写入异常',
           message: '卷宗归档失败',
           detail: String(e.message || e),
           type: 'error'
@@ -931,8 +931,8 @@
 
     if (statusTag) {
       statusTag.textContent = charIds.length === 0
-        ? 'UNLINKED // 暂无介入'
-        : `CONTAINMENT // ${charIds.length} 位介入`;
+        ? 'UNLINKED 暂无介入'
+        : `CONTAINMENT ${charIds.length} 位介入`;
       statusTag.classList.toggle('is-linked', charIds.length > 0);
     }
 
@@ -953,7 +953,7 @@
               </svg>
             </div>
             <div class="fork-hazard-desc-meta">
-              <span class="fork-hazard-desc-code">BEACON // 副本阵营角色联动</span>
+              <span class="fork-hazard-desc-code">BEACON 副本阵营角色联动</span>
               <p class="fork-hazard-desc-text">从同调档案中选择副本阵营角色加入副本。觉醒者将视为副本原生角色，漫游者将视为外来介入角色。</p>
             </div>
           </div>
@@ -991,7 +991,7 @@
         <div class="fork-hazard-cards-list">
           ${targets.map((target, idx) => {
             const isAwakened = target.rank === 'awakened';
-            const roleTag = isAwakened ? 'AWAKENED // 觉醒者' : 'DRIFTER // 漫游者';
+            const roleTag = isAwakened ? 'AWAKENED 觉醒者' : 'DRIFTER 漫游者';
             const rankClass = isAwakened ? 'is-awakened' : 'is-drifter';
             return `
               <div class="fork-hazard-card ${rankClass}" data-char-id="${target.id}">
@@ -1093,7 +1093,7 @@
 
     const picked = await window.SelectModal.pickMulti({
       title: '指派高危角色',
-      tag: 'RESONANCE // 副本阵营',
+      tag: 'RESONANCE 副本阵营',
       options: chars.map((c) => {
         const isAwk = c.rank === 'awakened';
         const tag = isAwk ? '觉醒者 (原生)' : '漫游者 (介入)';
@@ -1123,7 +1123,7 @@
   function renderEmptySlot(wrapEl, options) {
     if (!wrapEl) return;
     const {
-      slotCode = 'STANDBY // 00',
+      slotCode = 'STANDBY 00',
       title = '暂无档案装填',
       hint = '点击此处或右上角「添加」进行首项编纂',
       iconSvg = ICONS.emptyBeacon,
@@ -1204,7 +1204,7 @@
 
     if (!Array.isArray(currentData.npcs) || currentData.npcs.length === 0) {
       renderEmptySlot(listWrap, {
-        slotCode: 'AGENT // NPC-00',
+        slotCode: 'AGENT NPC-00',
         title: '未载入剧情角色',
         hint: '点击此处或右上角「添加」指派此副本常驻或过客 NPC',
         iconSvg: ICONS.user,
@@ -1305,7 +1305,7 @@
           if (!window.ImagePicker || typeof window.ImagePicker.open !== 'function') {
             if (window.RetroToast) {
               window.RetroToast.show({
-                tag: 'AGENT // 拾取异常',
+                tag: 'AGENT 拾取异常',
                 message: '通用图片选择器尚未就绪',
                 type: 'warn'
               });
@@ -1331,7 +1331,7 @@
                 console.error('[ForkEditor] NPC 头像处理失败', err);
                 if (window.RetroToast) {
                   window.RetroToast.show({
-                    tag: 'AGENT // 读取失败',
+                    tag: 'AGENT 读取失败',
                     message: '头像读取失败',
                     detail: String(err && err.message ? err.message : err),
                     type: 'error'
@@ -1357,7 +1357,7 @@
 
     if (!Array.isArray(currentData.locations) || currentData.locations.length === 0) {
       renderEmptySlot(listWrap, {
-        slotCode: 'LOCUS // LOC-00',
+        slotCode: 'LOCUS LOC-00',
         title: '沙盘坐标未定锚',
         hint: '点击此处或右上角「添加」建立首个地点与环境情报',
         iconSvg: ICONS.condLocation,
@@ -1380,15 +1380,15 @@
         </div>
         <div class="fork-accordion-body">
           <div class="fork-field-block">
-            <label class="fork-field-label">LOCUS NAME // 地点名称</label>
+            <label class="fork-field-label">LOCUS NAME 地点名称</label>
             <input type="text" class="fork-input-text loc-name-input" value="${escapeHtml(loc.name || '')}" placeholder="如：倒悬钟楼 / 核心控制室 / 荒废地铁站">
           </div>
           <div class="fork-field-block" style="margin-top: 10px;">
-            <label class="fork-field-label">COORDINATES // 详细位置</label>
+            <label class="fork-field-label">COORDINATES 详细位置</label>
             <input type="text" class="fork-input-text loc-pos-input" value="${escapeHtml(loc.position || '')}" placeholder="如：核心城区东侧三号塔负二层 / A区中央回廊">
           </div>
           <div class="fork-field-block" style="margin-top: 10px;">
-            <label class="fork-field-label">ENVIRONMENT // 详情设定</label>
+            <label class="fork-field-label">ENVIRONMENT 详情设定</label>
             <textarea class="fork-textarea loc-desc-input" rows="3" placeholder="设定该地点的环境特征、异常现象、隐藏机关或探索要素...">${escapeHtml(loc.desc || '')}</textarea>
           </div>
         </div>
@@ -1431,7 +1431,7 @@
 
     if (!Array.isArray(currentData.stats) || currentData.stats.length === 0) {
       renderEmptySlot(listWrap, {
-        slotCode: 'METRIC // VAL-00',
+        slotCode: 'METRIC VAL-00',
         title: '量程体系未初始化',
         hint: '点击此处或右上角「添加」设定体力值、饱食度等数值约束',
         iconSvg: ICONS.condStat,
@@ -1459,14 +1459,14 @@
           <div class="fork-stat-editor-layout">
             <!-- 名称行 -->
             <div class="fork-field-block">
-              <label class="fork-field-label">METRIC NAME // 数值名称</label>
+              <label class="fork-field-label">METRIC NAME 数值名称</label>
               <input type="text" class="fork-input-text stat-name-input" value="${escapeHtml(stat.name || '')}" placeholder="如：体力值 / 饱食度 / 生命值 / 行动力">
             </div>
 
             <!-- 一体化战术量程区间胶囊 -->
             <div class="fork-field-block">
               <div class="fork-stat-range-label-row">
-                <label class="fork-field-label">RANGE // 数值范围</label>
+                <label class="fork-field-label">RANGE 数值范围</label>
               </div>
               <div class="fork-stat-range-capsule">
                 <div class="fork-range-cell is-min">
@@ -1488,7 +1488,7 @@
 <!-- 进本初始值（留空自动取 MAX 满状态） -->
             <div class="fork-field-block">
               <div class="fork-stat-range-label-row">
-                <label class="fork-field-label">INITIAL // 初始值</label>
+                <label class="fork-field-label">INITIAL 初始值</label>
                 <span class="fork-stat-range-hint">留空默认 MAX</span>
               </div>
               <div class="fork-stat-init-capsule">
@@ -1500,7 +1500,7 @@
               </div>
             </div>
             <div class="fork-field-block">
-              <label class="fork-field-label">RULE // 规则说明</label>
+              <label class="fork-field-label">RULE 规则说明</label>
               <textarea class="fork-textarea stat-desc-input" rows="2" placeholder="设定该数值在推演中的增减机制，以及达到极值或突破特定阈值时触发的剧本事件...">${escapeHtml(stat.desc || '')}</textarea>
             </div>
           </div>
@@ -1673,7 +1673,7 @@
 
     if (!Array.isArray(currentData.charStats) || currentData.charStats.length === 0) {
       renderEmptySlot(listWrap, {
-        slotCode: 'ROLE // TPL-00',
+        slotCode: 'ROLE TPL-00',
         title: '未建立角色数值模板',
         hint: '点击此处或右上角「添加」为高危角色与 NPC 配置专属数值',
         iconSvg: ICONS.user,
@@ -1699,7 +1699,7 @@
 
         <div class="fork-field-block">
           <div class="fork-stat-range-label-row">
-            <label class="fork-field-label">BOUND // 绑定角色</label>
+            <label class="fork-field-label">BOUND 绑定角色</label>
             <span class="fork-stat-range-hint">同一角色只能绑一个模板</span>
           </div>
           <div class="fork-cstat-bind-tray" data-bind-tray></div>
@@ -1707,7 +1707,7 @@
 
         <div class="fork-field-block">
           <div class="fork-stat-range-label-row">
-            <label class="fork-field-label">METRICS // 数值项</label>
+            <label class="fork-field-label">METRICS 数值项</label>
             <button type="button" class="fork-cstat-add-metric-btn" data-add-metric>
               ${ICONS.add}<span>添加数值</span>
             </button>
@@ -1819,7 +1819,7 @@
     });
 
     if (options.length === 0) {
-      toastMenu('ROLE // 无可绑定角色', '候选池已空', '所有高危角色与 NPC 都已绑定到其他模板', 'warn');
+      toastMenu('ROLE 无可绑定角色', '候选池已空', '所有高危角色与 NPC 都已绑定到其他模板', 'warn');
       return;
     }
 
@@ -1830,7 +1830,7 @@
 
     const picked = await window.SelectModal.pickMulti({
       title: '绑定角色',
-      tag: 'ROLE // 数值归属',
+      tag: 'ROLE 数值归属',
       options,
       values: current,
       confirmText: '确认绑定',
@@ -1877,13 +1877,13 @@
         <div class="fork-accordion-body">
           <div class="fork-stat-editor-layout">
             <div class="fork-field-block">
-              <label class="fork-field-label">METRIC NAME // 数值名称</label>
+              <label class="fork-field-label">METRIC NAME 数值名称</label>
               <input type="text" class="fork-input-text m-name-input" value="${escapeHtml(m.name || '')}" placeholder="如：理智值 / 侵蚀度 / 体力值">
             </div>
 
             <div class="fork-field-block">
               <div class="fork-stat-range-label-row">
-                <label class="fork-field-label">RANGE // 数值范围</label>
+                <label class="fork-field-label">RANGE 数值范围</label>
               </div>
               <div class="fork-stat-range-capsule">
                 <div class="fork-range-cell is-min">
@@ -1904,7 +1904,7 @@
 
             <div class="fork-field-block">
               <div class="fork-stat-range-label-row">
-                <label class="fork-field-label">INITIAL // 初始值</label>
+                <label class="fork-field-label">INITIAL 初始值</label>
                 <span class="fork-stat-range-hint">留空默认 MAX</span>
               </div>
               <div class="fork-stat-init-capsule">
@@ -1917,7 +1917,7 @@
             </div>
 
             <div class="fork-field-block">
-              <label class="fork-field-label">RULE // 规则说明</label>
+              <label class="fork-field-label">RULE 规则说明</label>
               <textarea class="fork-textarea m-desc-input" rows="2" placeholder="设定该数值在推演中的增减机制，以及达到极值时触发的剧本事件...">${escapeHtml(m.desc || '')}</textarea>
             </div>
           </div>
@@ -2171,7 +2171,7 @@
       locWrap.innerHTML = `
         <div class="fork-clue-loc-picker-trigger" role="button" tabindex="0">
           <div class="fork-loc-picker-left">
-            <span class="fork-loc-picker-badge">LOCUS // 空间锚定</span>
+            <span class="fork-loc-picker-badge">LOCUS 空间锚定</span>
             <div class="fork-loc-pills-row">${tagsHtml}</div>
           </div>
           <div class="fork-loc-picker-arrow">${ICONS.chevronDown}</div>
@@ -2183,7 +2183,7 @@
         if (allLocs.length === 0) {
           if (window.RetroToast) {
             RetroToast.show({
-              tag: 'LOCUS // 空间锚定',
+              tag: 'LOCUS 空间锚定',
               message: '暂无可用地点',
               detail: '请先在上方「地点设定」中创建地点档案。',
               type: 'warn'
@@ -2196,7 +2196,7 @@
 
         const picked = await SelectModal.pickMulti({
           title: copy.locTitle,
-          tag: 'LOCUS // 空间锚定',
+          tag: 'LOCUS 空间锚定',
           options: allLocs.map((l) => ({
             value: l.id,
             label: l.name || '未命名地点',
@@ -2228,7 +2228,7 @@
       kwWrap.innerHTML = `
         <div class="fork-clue-keyword-block">
           <div class="fork-field-label-row">
-            <label class="fork-field-label">KEYWORDS // 触发关键词</label>
+            <label class="fork-field-label">KEYWORDS 触发关键词</label>
             <button type="button" class="fork-keys-help-btn" aria-label="查看关键词填写说明" title="查看关键词填写说明">
               ${ICONS.help}
             </button>
@@ -2339,7 +2339,7 @@
       timeWrap.innerHTML = `
         <div class="fork-clue-time-block">
           <div class="fork-field-label-row">
-            <label class="fork-field-label">CHRONO // 触发时刻</label>
+            <label class="fork-field-label">CHRONO 触发时刻</label>
             <button type="button" class="fork-keys-help-btn clue-time-help-btn" aria-label="查看时间填写说明" title="查看时间填写说明">
               ${ICONS.help}
             </button>
@@ -2469,7 +2469,7 @@
       statWrap.innerHTML = `
         <div class="fork-clue-stat-block">
           <div class="fork-field-label-row">
-            <label class="fork-field-label">STAT GATE // 数值门槛</label>
+            <label class="fork-field-label">STAT GATE 数值门槛</label>
             ${logicSegHtml}
           </div>
           <div class="fork-stat-cond-list">${rowsHtml}</div>
@@ -2497,7 +2497,7 @@
         if (statCandidates.length === 0) {
           if (window.RetroToast) {
             RetroToast.show({
-              tag: 'METRICS // 数值门槛',
+              tag: 'METRICS 数值门槛',
               message: '暂无可用数值指标',
               detail: '请先在上方「数值设定」或「角色数值」中建立数值指标。',
               type: 'warn'
@@ -2532,7 +2532,7 @@
           if (!window.SelectModal || typeof SelectModal.pick !== 'function') return;
           const picked = await SelectModal.pick({
             title: '选择数值指标',
-            tag: 'METRICS // 指标锚定',
+            tag: 'METRICS 指标锚定',
             options: statCandidates.map((c) => ({
               value: c.key,
               label: c.scope === 'char' ? `${c.ownerName} · ${c.name}` : c.name,
@@ -2646,7 +2646,7 @@
       preWrap.innerHTML = `
         <div class="fork-clue-prereq-block">
           <div class="fork-field-label-row">
-            <label class="fork-field-label">PREREQ // 前置线索</label>
+            <label class="fork-field-label">PREREQ 前置线索</label>
             ${logicSegHtml}
           </div>
           <div class="fork-clue-loc-picker-trigger" role="button" tabindex="0">
@@ -2675,7 +2675,7 @@
         if (others.length === 0) {
           if (window.RetroToast) {
             RetroToast.show({
-              tag: 'PREREQ // 前置线索',
+              tag: 'PREREQ 前置线索',
               message: selfId ? '暂无其他线索可作为前置' : '暂无可用线索作为前置',
               detail: '请先在「可用线索」中建立至少一条线索。',
               type: 'warn'
@@ -2687,7 +2687,7 @@
 
         const nextPicked = await SelectModal.pickMulti({
           title: copy.prereqTitle,
-          tag: 'PREREQ // 认知门槛',
+          tag: 'PREREQ 认知门槛',
           options: others.map((c) => {
             const i = allClues.indexOf(c);
             const code = `CLUE-${String(i + 1).padStart(2, '0')}`;
@@ -2755,7 +2755,7 @@
 
     if (!Array.isArray(currentData.clues) || currentData.clues.length === 0) {
       renderEmptySlot(listWrap, {
-        slotCode: 'INTEL // CLUE-00',
+        slotCode: 'INTEL CLUE-00',
         title: '线索网格未激活',
         hint: '点击此处或右上角「添加」布设第一条解谜情报与触发条件',
         iconSvg: ICONS.condClue,
@@ -2785,16 +2785,16 @@
       body.className = 'fork-accordion-body';
       body.innerHTML = `
         <div class="fork-field-block">
-          <label class="fork-field-label">CLUE NAME // 线索名称</label>
+          <label class="fork-field-label">CLUE NAME 线索名称</label>
           <input type="text" class="fork-input-text clue-name-input" value="${clue.name || ''}" placeholder="如：染血的日记残页">
         </div>
         <div class="fork-field-block" style="margin-top: 10px;">
-          <label class="fork-field-label">INTEL CONTENT // 线索内容</label>
+          <label class="fork-field-label">INTEL CONTENT 线索内容</label>
           <textarea class="fork-textarea clue-desc-input" rows="3" placeholder="线索所记录的具体文字、暗号或因果破局提示...">${clue.desc || ''}</textarea>
         </div>
         <div class="fork-field-block" style="margin-top: 10px;">
           <div class="fork-field-label-row">
-            <label class="fork-field-label">TRIGGER MATRIX // 触发解锁条件</label>
+            <label class="fork-field-label">TRIGGER MATRIX 触发解锁条件</label>
             <div class="clue-logic-segment-wrap"></div>
           </div>
           <div class="clue-triggers-container"></div>
@@ -2876,7 +2876,7 @@
         if (!window.TextEditorModal || typeof window.TextEditorModal.open !== 'function') return;
         const updated = await window.TextEditorModal.open({
           title: '核心真相编辑',
-          tag: 'CORE TRUTH // 核心真相',
+          tag: 'CORE TRUTH 核心真相',
           value: descInput.value || '',
           placeholder: '输入副本最底层的暗线秘密、幕后真凶、隐藏真相与颠覆性事实...',
           maxLength: 8000
@@ -2906,7 +2906,7 @@
 
     if (!Array.isArray(currentData.endings) || currentData.endings.length === 0) {
       renderEmptySlot(listWrap, {
-        slotCode: 'TERMINAL // END-00',
+        slotCode: 'TERMINAL END-00',
         title: '结局分流未构建',
         hint: '点击此处或右上角「添加」开辟首个因果走向与通关结局',
         iconSvg: ICONS.condEnding,
@@ -2936,12 +2936,12 @@
       body.className = 'fork-accordion-body';
       body.innerHTML = `
         <div class="fork-field-block">
-          <label class="fork-field-label">ENDING NAME // 结局名称</label>
-          <input type="text" class="fork-input-text ending-name-input" value="${escapeHtml(ending.name || '')}" placeholder="如：黎明突围 // 幸存者报告">
+          <label class="fork-field-label">ENDING NAME 结局名称</label>
+          <input type="text" class="fork-input-text ending-name-input" value="${escapeHtml(ending.name || '')}" placeholder="如：黎明突围 幸存者报告">
         </div>
         <div class="fork-field-block" style="margin-top: 10px;">
           <div class="fork-field-label-row">
-            <label class="fork-field-label">NARRATIVE // 结局详情</label>
+            <label class="fork-field-label">NARRATIVE 结局详情</label>
             <div class="api-field-actions">
               <button type="button" class="field-expand-btn ending-desc-expand-btn" title="全屏沉浸编辑" aria-label="全屏编辑结局详情">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -2954,7 +2954,7 @@
           <textarea class="fork-textarea ending-desc-input" rows="3" placeholder="达成此结局时的演出剧本、落幕文字与结算叙事...">${escapeHtml(ending.desc || '')}</textarea>
         </div>
         <div class="fork-field-block" style="margin-top: 10px;">
-          <label class="fork-field-label">RESOLUTION GRADE // 探索揭示度</label>
+          <label class="fork-field-label">RESOLUTION GRADE 探索揭示度</label>
           <div class="fork-ending-grade-seg">
             <button type="button" class="fork-ending-grade-btn ${ending.grade === 'full' ? 'is-active' : ''}" data-grade="full">完全揭示<em>100%</em></button>
             <button type="button" class="fork-ending-grade-btn ${ending.grade === 'major' ? 'is-active' : ''}" data-grade="major">拨云见日<em>80%</em></button>
@@ -2965,7 +2965,7 @@
         </div>
         <div class="fork-field-block" style="margin-top: 10px;">
           <div class="fork-field-label-row">
-            <label class="fork-field-label">TRIGGER MATRIX // 触发解锁条件</label>
+            <label class="fork-field-label">TRIGGER MATRIX 触发解锁条件</label>
             <div class="clue-logic-segment-wrap"></div>
           </div>
           <div class="clue-triggers-container"></div>
@@ -2984,8 +2984,8 @@
         descExpandBtn.onclick = async () => {
           if (!window.TextEditorModal || typeof window.TextEditorModal.open !== 'function') return;
           const updated = await window.TextEditorModal.open({
-            title: 'ENDING // 结局详情',
-            tag: 'NARRATIVE // 结局剧本叙事',
+            title: 'ENDING 结局详情',
+            tag: 'NARRATIVE 结局剧本叙事',
             value: descInput.value || '',
             placeholder: '达成此结局时的演出剧本、落幕文字与结算叙事...',
             maxLength: 8000
@@ -3071,7 +3071,7 @@
 
     if (!Array.isArray(currentData.clearConditions) || currentData.clearConditions.length === 0) {
       renderEmptySlot(listWrap, {
-        slotCode: 'OBJECTIVE // MISSION-00',
+        slotCode: 'OBJECTIVE MISSION-00',
         title: '主线任务未配置',
         hint: '点击此处或右上角「添加任务」设定通关主线任务',
         iconSvg: ICONS.emptyBeacon,
@@ -3088,7 +3088,7 @@
         <div class="fork-mission-card-head">
           <div class="fork-mission-head-left">
             <span class="fork-mission-code-badge">${missionCode}</span>
-            <span class="fork-mission-type-tag">OBJECTIVE // 核心目标</span>
+            <span class="fork-mission-type-tag">OBJECTIVE 核心目标</span>
           </div>
           <button type="button" class="fork-btn-icon-del fork-mission-del-btn" title="删除任务" aria-label="删除任务 ${missionCode}">
             ${ICONS.trash}
@@ -3097,7 +3097,7 @@
         <div class="fork-mission-card-body">
           <div class="fork-field-block">
             <div class="fork-field-label-row">
-              <label class="fork-field-label">MISSION // 任务内容</label>
+              <label class="fork-field-label">MISSION 任务内容</label>
               <div class="api-field-actions">
                 <button type="button" class="field-expand-btn mission-goal-expand-btn" title="全屏沉浸编辑" aria-label="全屏编辑任务内容">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -3111,7 +3111,7 @@
           </div>
           <div class="fork-field-block">
             <div class="fork-field-label-row">
-              <label class="fork-field-label">CRITERIA // 达成判定</label>
+              <label class="fork-field-label">CRITERIA 达成判定</label>
               <div class="api-field-actions">
                 <button type="button" class="field-expand-btn mission-criteria-expand-btn" title="全屏沉浸编辑" aria-label="全屏编辑达成判定">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -3159,8 +3159,8 @@
       }
 
       bindExpand(card.querySelector('.mission-goal-expand-btn'), goalInput, {
-        title: `${missionCode} // 任务内容`,
-        tag: 'MISSION // 任务内容',
+        title: `${missionCode} 任务内容`,
+        tag: 'MISSION 任务内容',
         onSave: (val) => {
           item.goal = val;
           item.text = val;
@@ -3168,8 +3168,8 @@
       });
 
       bindExpand(card.querySelector('.mission-criteria-expand-btn'), criteriaInput, {
-        title: `${missionCode} // 达成判定`,
-        tag: 'CRITERIA // 达成判定',
+        title: `${missionCode} 达成判定`,
+        tag: 'CRITERIA 达成判定',
         onSave: (val) => {
           item.criteria = val;
         }
@@ -3230,7 +3230,7 @@
         preWrap.innerHTML = `
           <div class="fork-clue-prereq-block">
             <div class="fork-field-label-row">
-              <label class="fork-field-label">PREREQ // 前置任务</label>
+              <label class="fork-field-label">PREREQ 前置任务</label>
               ${logicSegHtml}
             </div>
             <div class="fork-clue-loc-picker-trigger" role="button" tabindex="0">
@@ -3259,7 +3259,7 @@
           if (others.length === 0) {
             if (window.RetroToast) {
               RetroToast.show({
-                tag: 'PREREQ // 前置任务',
+                tag: 'PREREQ 前置任务',
                 message: '暂无其他任务可作为前置',
                 detail: '请先添加至少两项主线任务，再设定解锁顺序。',
                 type: 'warn'
@@ -3269,8 +3269,8 @@
           }
           if (!window.SelectModal || typeof SelectModal.pickMulti !== 'function') return;
           const nextPicked = await SelectModal.pickMulti({
-            title: `${missionCode} // 前置任务`,
-            tag: 'PREREQ // 阶段门槛',
+            title: `${missionCode} 前置任务`,
+            tag: 'PREREQ 阶段门槛',
             options: others.map((m) => {
               const brief = String(m.goal || m.text || '').replace(/\s+/g, ' ').trim().slice(0, 40);
               return {
@@ -3371,7 +3371,7 @@
       if (!window.ImagePicker || typeof window.ImagePicker.open !== 'function') {
         if (window.RetroToast) {
           window.RetroToast.show({
-            tag: 'COVER // 拾取异常',
+            tag: 'COVER 拾取异常',
             message: '通用图片选择器尚未就绪',
             type: 'warn'
           });
@@ -3457,7 +3457,7 @@
         if (!window.SelectModal || typeof window.SelectModal.pick !== 'function') return;
         const picked = await window.SelectModal.pick({
           title: '选择副本等级',
-          tag: 'LEVEL // 阶位评定',
+          tag: 'LEVEL 阶位评定',
           options: LEVEL_OPTIONS,
           value: currentData.levelKey || DEFAULT_LEVEL_KEY,
           searchable: false
@@ -3498,7 +3498,7 @@
       const current = bgInput ? bgInput.value : (currentData.background || '');
       const updated = await TextEditorModal.open({
         title: '背景信息编辑',
-        tag: 'LORE // 背景信息',
+        tag: 'LORE 背景信息',
         value: current,
         placeholder: '世界观、大背景、基础信息、常识性知识等',
         maxLength: 10000
@@ -3616,7 +3616,7 @@
         if (!window.ImagePicker || typeof window.ImagePicker.open !== 'function') {
           if (window.RetroToast) {
             window.RetroToast.show({
-              tag: 'VESSEL // 拾取异常',
+              tag: 'VESSEL 拾取异常',
               message: '通用图片选择器尚未就绪',
               type: 'warn'
             });
@@ -3646,7 +3646,7 @@
               console.error('[ForkEditor] 角色头像处理失败', err);
               if (window.RetroToast) {
                 window.RetroToast.show({
-                  tag: 'VESSEL // 读取失败',
+                  tag: 'VESSEL 读取失败',
                   message: '头像读取失败',
                   detail: String(err && err.message ? err.message : err),
                   type: 'error'
@@ -3667,7 +3667,7 @@
         if (!window.TextEditorModal || typeof window.TextEditorModal.open !== 'function') return;
         const updated = await window.TextEditorModal.open({
           title: '角色设定编辑',
-          tag: 'PROFILE // 角色设定与原生背景',
+          tag: 'PROFILE 角色设定与原生背景',
           value: roleModalProfileInput.value || '',
           placeholder: '详细输入该预设角色的身世背景、性格特征与剧本设定...',
           maxLength: 5000
@@ -3836,7 +3836,7 @@
         identityCard.classList.toggle('locked-active', !isFree);
       }
       if (identStatusTag) {
-        identStatusTag.textContent = isFree ? 'FREE // 角色追加' : 'LOCKED // 既定角色';
+        identStatusTag.textContent = isFree ? 'FREE 角色追加' : 'LOCKED 既定角色';
       }
       if (identValveTrack) {
         identValveTrack.classList.toggle('locked-selected', !isFree);
@@ -3853,7 +3853,7 @@
         identDescSvg.innerHTML = `<path d="${isFree ? FREE_SVG_PATH : LOCKED_SVG_PATH}"/>`;
       }
       if (identDescCode) {
-        identDescCode.textContent = isFree ? 'MODE_FREE // 角色追加' : 'MODE_LOCKED // 既定角色';
+        identDescCode.textContent = isFree ? 'MODE_FREE 角色追加' : 'MODE_LOCKED 既定角色';
       }
       if (identDescContent) {
         identDescContent.textContent = isFree
@@ -3956,7 +3956,7 @@
         if (!window.TextEditorModal || typeof window.TextEditorModal.open !== 'function') return;
         const updated = await window.TextEditorModal.open({
           title: '开场首帧编辑',
-          tag: 'OPENING // 开场首帧',
+          tag: 'OPENING 开场首帧',
           value: openingInput.value || '',
           placeholder: '进入副本后直接显示的第一段叙事，原样上屏、不经模型改写。空行分段。',
           maxLength: 8000
@@ -3984,7 +3984,7 @@
         if (!window.TextEditorModal || typeof window.TextEditorModal.open !== 'function') return;
         const updated = await window.TextEditorModal.open({
           title: '开场情节编辑',
-          tag: 'PROLOGUE // 开场情节',
+          tag: 'PROLOGUE 开场情节',
           value: prologueInput.value || '',
           placeholder: '描述执行员刚进入副本、降临现场时的第一幕场景、气氛描写与迫近的初始危机...',
           maxLength: 8000
@@ -4063,7 +4063,7 @@
         if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) {
           if (window.RetroToast) {
             window.RetroToast.show({
-              tag: 'OPENING // 星期',
+              tag: 'OPENING 星期',
               message: '需先填全年、月、日',
               detail: '星期按年月日推算，缺一项算不出',
               type: 'info'
@@ -4077,7 +4077,7 @@
         if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) {
           if (window.RetroToast) {
             window.RetroToast.show({
-              tag: 'OPENING // 星期',
+              tag: 'OPENING 星期',
               message: '日期不存在',
               detail: '请检查年月日填写是否正确',
               type: 'info'
@@ -4109,7 +4109,7 @@
           if (name) options.push({ value: name, label: name });
         });
         const picked = await window.SelectModal.pick({
-          tag: 'OPENING // 开场地点',
+          tag: 'OPENING 开场地点',
           title: '选择开场地点',
           options,
           value: trim(scene.locName)
@@ -4132,7 +4132,7 @@
         if (!window.TextEditorModal || typeof window.TextEditorModal.open !== 'function') return;
         const updated = await window.TextEditorModal.open({
           title: '开场场景编辑',
-          tag: 'SCENE // 开场场景',
+          tag: 'SCENE 开场场景',
           value: sceneInput.value || '',
           placeholder: '开场时执行员所处环境的速写：光线、气味、声响、氛围。留空则暂无场景信息。',
           maxLength: 8000
@@ -4289,7 +4289,7 @@
 
         if (window.RetroModal && typeof RetroModal.confirm === 'function') {
           const ok = await RetroModal.confirm({
-            tag: 'PURGE // 抹除开场',
+            tag: 'PURGE 抹除开场',
             message: `确认要删除开场 ${numLabel} 吗？`,
             detail: '该套开场首帧、情节剧本及场景舞台配置将被彻底移除，无法撤销。',
             confirmText: '确认删除',
@@ -4316,7 +4316,7 @@
         if (roles.length === 0) {
           if (window.RetroToast) {
             window.RetroToast.show({
-              tag: 'OPENING // 绑定身份',
+              tag: 'OPENING 绑定身份',
               message: '暂无可绑定的预设角色',
               detail: '请先在人物维度添加锁定身份的预设角色',
               type: 'info'
@@ -4329,7 +4329,7 @@
           label: r.name || '未命名角色'
         }));
         const picked = await window.SelectModal.pickMulti({
-          tag: 'OPENING // 绑定身份',
+          tag: 'OPENING 绑定身份',
           title: '选择绑定身份',
           options,
           values: Array.isArray(op.bindRoleIds) ? op.bindRoleIds : [],
@@ -4493,7 +4493,7 @@
       currentData = createDefaultForkData(currentForkId);
       if (window.RetroToast) {
         window.RetroToast.show({
-          tag: 'EDITOR // 读取异常',
+          tag: 'EDITOR 读取异常',
           message: '卷宗读取失败',
           detail: '已载入空白模板，请谨慎保存以免覆盖原档',
           type: 'error'
@@ -4559,7 +4559,7 @@
         // 失败时留在页面：封面 objectURL 不能释放，否则预览会变白框
         if (window.RetroToast) {
           window.RetroToast.show({
-            tag: 'EDITOR // 退出中止',
+            tag: 'EDITOR 退出中止',
             message: '归档未完成，已留在编纂器',
             detail: '请检查后重试保存，避免本次编纂内容丢失',
             type: 'error'
@@ -4653,7 +4653,7 @@
    */
   async function exportForkJson() {
     if (!currentData) {
-      toastMenu('IO // 导出失败', '当前没有可导出的卷宗', '请先打开或新建一个副本', 'error');
+      toastMenu('IO 导出失败', '当前没有可导出的卷宗', '请先打开或新建一个副本', 'error');
       return;
     }
 
@@ -4686,10 +4686,10 @@
 
       const sizeText = formatBytes(blob.size);
       const coverText = cover ? '含封面' : '无封面';
-      toastMenu('IO // 导出副本', '卷宗已导出', `${name}｜${coverText} · ${sizeText}`, 'success');
+      toastMenu('IO 导出副本', '卷宗已导出', `${name}｜${coverText} · ${sizeText}`, 'success');
     } catch (err) {
       console.warn('[ForkEditor] 导出卷宗失败：', err);
-      toastMenu('IO // 导出失败', '卷宗导出失败', String(err && err.message ? err.message : err), 'error');
+      toastMenu('IO 导出失败', '卷宗导出失败', String(err && err.message ? err.message : err), 'error');
     }
   }
 
@@ -4758,13 +4758,13 @@
     try {
       text = await file.text();
     } catch (_) {
-      toastMenu('IO // 读取失败', '无法读取所选文件', '请确认文件未被占用后重试', 'error');
+      toastMenu('IO 读取失败', '无法读取所选文件', '请确认文件未被占用后重试', 'error');
       return;
     }
 
     const parsed = parseForkPackage(text);
     if (!parsed) {
-      toastMenu('IO // 格式错误', '这不是有效的副本卷宗文件', '请选择由「导出JSON」生成的 .json 文件', 'warning');
+      toastMenu('IO 格式错误', '这不是有效的副本卷宗文件', '请选择由「导出JSON」生成的 .json 文件', 'warning');
       return;
     }
 
@@ -4811,14 +4811,14 @@
       syncCodeDisplay();
 
       if (!saved) {
-        toastMenu('IO // 导入未落库', '内容已载入但归档失败', '请用「保存副本」重试，否则退出后会丢失', 'error');
+        toastMenu('IO 导入未落库', '内容已载入但归档失败', '请用「保存副本」重试，否则退出后会丢失', 'error');
         return;
       }
       const coverText = incomingCover ? '含封面' : '未含封面';
-      toastMenu('IO // 导入覆盖', '卷宗已导入并归档', `${keep.code || '未编号'} · ${incomingTitle}｜${coverText}`, 'success');
+      toastMenu('IO 导入覆盖', '卷宗已导入并归档', `${keep.code || '未编号'} · ${incomingTitle}｜${coverText}`, 'success');
     } catch (err) {
       console.warn('[ForkEditor] 导入卷宗失败：', err);
-      toastMenu('IO // 导入失败', '卷宗导入失败', String(err && err.message ? err.message : err), 'error');
+      toastMenu('IO 导入失败', '卷宗导入失败', String(err && err.message ? err.message : err), 'error');
     }
   }
 
@@ -4828,7 +4828,7 @@
    */
   async function destroyFork() {
     if (!currentForkId || !currentData) {
-      toastMenu('DANGER // 销毁失败', '当前没有可销毁的副本', '', 'error');
+      toastMenu('DANGER 销毁失败', '当前没有可销毁的副本', '', 'error');
       return;
     }
 
@@ -4869,10 +4869,10 @@
         window.ForkArchiveUI.buildCurrentSalon();
       }
 
-      toastMenu('DANGER // 销毁完成', '副本已彻底销毁', `${code} · ${title}`, 'success');
+      toastMenu('DANGER 销毁完成', '副本已彻底销毁', `${code} · ${title}`, 'success');
     } catch (err) {
       console.warn('[ForkEditor] 销毁副本失败：', err);
-      toastMenu('DANGER // 销毁失败', '副本销毁失败', String(err && err.message ? err.message : err), 'error');
+      toastMenu('DANGER 销毁失败', '副本销毁失败', String(err && err.message ? err.message : err), 'error');
     }
   }
 
@@ -4948,7 +4948,7 @@
           console.warn('[ForkEditor] 退出归档异常：', err);
           if (window.RetroToast) {
             window.RetroToast.show({
-              tag: 'EDITOR // 退出异常',
+              tag: 'EDITOR 退出异常',
               message: '退出流程出错',
               detail: String(err && err.message ? err.message : err),
               type: 'error'
@@ -5008,7 +5008,7 @@
             });
             break;
           case 'ai-assist':
-            toastMenu('AI // 写作助手', '智能推演准备中', 'AI 辅助生成人物背景与副本主线功能即将接入', 'info');
+            toastMenu('AI 写作助手', '智能推演准备中', 'AI 辅助生成人物背景与副本主线功能即将接入', 'info');
             break;
           case 'export-json':
             Promise.resolve(exportForkJson()).catch((err) => {
@@ -5041,7 +5041,7 @@
         Promise.resolve(importForkJson(file))
           .catch((err) => {
             console.warn('[ForkEditor] 导入覆盖异常：', err);
-            toastMenu('IO // 导入失败', '导入流程出错', String(err && err.message ? err.message : err), 'error');
+            toastMenu('IO 导入失败', '导入流程出错', String(err && err.message ? err.message : err), 'error');
           })
           .finally(() => {
             // 用完即清，保证下次选同一个文件仍能触发 change

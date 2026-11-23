@@ -301,7 +301,7 @@ window.ForkRunUI = (() => {
 
     if (!cleanText) {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'COPY // 空内容', message: '当前叙事无有效正文可复制', type: 'info' });
+        RetroToast.show({ tag: 'COPY 空内容', message: '当前叙事无有效正文可复制', type: 'info' });
       }
       return;
     }
@@ -335,14 +335,14 @@ window.ForkRunUI = (() => {
     if (window.RetroToast) {
       if (copied) {
         RetroToast.show({
-          tag: 'COPY // 复制成功',
+          tag: 'COPY 复制成功',
           message: '纯正文已复制到剪贴板',
           detail: `已剥离标记，共 ${cleanText.length} 字`,
           type: 'info'
         });
       } else {
         RetroToast.show({
-          tag: 'COPY // 复制失败',
+          tag: 'COPY 复制失败',
           message: '未能写入剪贴板，请检查权限',
           type: 'warning'
         });
@@ -360,19 +360,19 @@ window.ForkRunUI = (() => {
   async function handleRewriteNarration(targetEl, rec) {
     if (isReadonly) return;
     if (currentInference) {
-      toast('REWRITE // 推演进行中', '当前已有推演在运行', '请等待本轮结束或点击终止后再重写', 'info');
+      toast('REWRITE 推演进行中', '当前已有推演在运行', '请等待本轮结束或点击终止后再重写', 'info');
       return;
     }
 
     const recordId = (targetEl && targetEl.dataset && targetEl.dataset.recordId) ||
       (rec && rec.recordId) || '';
     if (!recordId) {
-      toast('REWRITE // 无法重写', '目标记录缺少持久化标识', '无法为临时条目生成分支', 'warning');
+      toast('REWRITE 无法重写', '目标记录缺少持久化标识', '无法为临时条目生成分支', 'warning');
       return;
     }
 
     if (!window.ForkRunApi || typeof ForkRunApi.requestInference !== 'function') {
-      toast('REWRITE // 链路异常', '推演请求模块未就绪', '无法启动模型推理', 'error');
+      toast('REWRITE 链路异常', '推演请求模块未就绪', '无法启动模型推理', 'error');
       return;
     }
 
@@ -382,7 +382,7 @@ window.ForkRunUI = (() => {
     if (window.TextEditorModal && typeof TextEditorModal.open === 'function') {
       const hintInput = await TextEditorModal.open({
         title: '重写引导',
-        tag: 'REWRITE // 重写引导',
+        tag: 'REWRITE 重写引导',
         value: '',
         placeholder: '告诉系统你期望的方向，留空则直接重新推演。',
         maxLength: 2000
@@ -404,7 +404,7 @@ window.ForkRunUI = (() => {
 
     const targetRec = Array.isArray(allRecords) ? allRecords.find((r) => r && r.id === recordId) : null;
     if (!targetRec) {
-      toast('REWRITE // 记录丢失', '未在存档中找到目标叙事', '可能已被删除', 'warning');
+      toast('REWRITE 记录丢失', '未在存档中找到目标叙事', '可能已被删除', 'warning');
       return;
     }
 
@@ -477,7 +477,7 @@ endingCtx: buildEndingCtx(),
 
     const isAbortErr = !!(failed && failed.name === 'AbortError');
     if (failed && !isAbortErr && !wasAborted) {
-      toast('REWRITE // 重写失败', '新分支推演没能完成', trimStr(failed.message) || '链路异常', 'error');
+      toast('REWRITE 重写失败', '新分支推演没能完成', trimStr(failed.message) || '链路异常', 'error');
       await renderRunRecords();
       return;
     }
@@ -485,7 +485,7 @@ endingCtx: buildEndingCtx(),
     const newContent = trimStr(full);
     if (!newContent) {
       if (!wasAborted && !isAbortErr) {
-        toast('REWRITE // 空回复', '模型没有输出有效内容', '保留原有版本不作修改', 'warning');
+        toast('REWRITE 空回复', '模型没有输出有效内容', '保留原有版本不作修改', 'warning');
       }
       await renderRunRecords();
       return;
@@ -520,11 +520,11 @@ endingCtx: buildEndingCtx(),
         activeVariantIndex: newActiveIndex
       });
       if (!ok) {
-        toast('REWRITE // 保存失败', '新分支未能写入存档', '请检查存储空间', 'error');
+        toast('REWRITE 保存失败', '新分支未能写入存档', '请检查存储空间', 'error');
       } else {
         if (window.RetroToast) {
           RetroToast.show({
-            tag: 'REWRITE // 分支生成完毕',
+            tag: 'REWRITE 分支生成完毕',
             message: `已切换至分支 ${String(newActiveIndex + 1).padStart(2, '0')} / ${String(existingVariants.length).padStart(2, '0')}`,
             type: 'info'
           });
@@ -607,7 +607,7 @@ endingCtx: buildEndingCtx(),
 
     // 推演进行中禁止删：正在流式写入时抽掉记录，收尾落库会错位
     if (currentInference) {
-      toast('PURGE // 推演中', '当前正在推演', '请先等本轮结束或点击终止，再删除流水', 'info');
+      toast('PURGE 推演中', '当前正在推演', '请先等本轮结束或点击终止，再删除流水', 'info');
       return;
     }
 
@@ -616,7 +616,7 @@ endingCtx: buildEndingCtx(),
 
     // 没有 recordId 的是落库失败的临时条目，库里本就没有，删不了也不必删
     if (!recordId) {
-      toast('PURGE // 无法抹除', '这条记录未能存入存档', '它只存在于当前画面，退出本页即会消失', 'warning');
+      toast('PURGE 无法抹除', '这条记录未能存入存档', '它只存在于当前画面，退出本页即会消失', 'warning');
       return;
     }
 
@@ -625,7 +625,7 @@ endingCtx: buildEndingCtx(),
     let confirmed = true;
     if (window.RetroModal && typeof RetroModal.confirm === 'function') {
       confirmed = await RetroModal.confirm({
-        tag: 'PURGE // 抹除流水',
+        tag: 'PURGE 抹除流水',
         message: isNarration ? '确认抹除这段推演叙事吗？' : '确认抹除这条执行员行动吗？',
         detail: '该记录将从这条世界线中彻底移除，且不再进入后续推演的上下文，无法撤销。同一轮的另一条记录会保留。',
         confirmText: '确认抹除',
@@ -639,7 +639,7 @@ endingCtx: buildEndingCtx(),
     if (window.ForkRunStore && typeof ForkRunStore.deleteRunRecord === 'function') {
       const ok = await ForkRunStore.deleteRunRecord(currentRunId, recordId);
       if (!ok) {
-        toast('PURGE // 抹除失败', '这条记录没能删掉', '存档未被改动，可稍后重试', 'error');
+        toast('PURGE 抹除失败', '这条记录没能删掉', '存档未被改动，可稍后重试', 'error');
         return;
       }
     }
@@ -656,7 +656,7 @@ endingCtx: buildEndingCtx(),
     if (isReadonly) return;
 
     if (currentInference) {
-      toast('REWIND // 推演中', '当前正在推演', '请先等本轮结束或点击终止，再执行回溯', 'info');
+      toast('REWIND 推演中', '当前正在推演', '请先等本轮结束或点击终止，再执行回溯', 'info');
       return;
     }
 
@@ -675,7 +675,7 @@ endingCtx: buildEndingCtx(),
 
     if (!rowsToDelete.length) {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'REWIND // NO OPERATION', message: '当前内容已经位于推演末端。', type: 'info' });
+        RetroToast.show({ tag: 'REWIND NO OPERATION', message: '当前内容已经位于推演末端。', type: 'info' });
       }
       return;
     }
@@ -705,7 +705,7 @@ endingCtx: buildEndingCtx(),
 
     if (!skipConfirm && window.RetroModal && typeof RetroModal.confirm === 'function') {
       const confirmed = await RetroModal.confirm({
-        tag: 'REWIND // 回溯世界线',
+        tag: 'REWIND 回溯世界线',
         message: '确认回溯到此节点吗？',
         detail: isActRow
           ? `将删除此条行动及后续共 ${rowsToDelete.length} 条流水，此条行动会退回输入框。这些剧情中解锁的线索、解明的真相与命中的结局会一并退回未达成状态。`
@@ -745,7 +745,7 @@ endingCtx: buildEndingCtx(),
         }
       }
       if (failCount > 0 && window.RetroToast) {
-        RetroToast.show({ tag: 'REWIND // PARTIAL', message: `有 ${failCount} 条后续记录未能清除`, type: 'warning' });
+        RetroToast.show({ tag: 'REWIND PARTIAL', message: `有 ${failCount} 条后续记录未能清除`, type: 'warning' });
       }
 
       // 回溯世界线状态：线索解锁 / 真相解明 / 结局命中这些持久标记必须随剧情一起退回，
@@ -800,7 +800,7 @@ endingCtx: buildEndingCtx(),
 
     const updated = await TextEditorModal.open({
       title: isNarration ? '编辑推演' : '编辑行动',
-      tag: isNarration ? 'RECORD // 修改流水' : 'ACTION // 修改行动',
+      tag: isNarration ? 'RECORD 修改流水' : 'ACTION 修改行动',
       value: rawValue,
       // AI 输出可能超过一万字；null 会启用 TextEditorModal 的不限长模式。
       // 用户行动维持宽松上限，避免误粘贴极端大文本。
@@ -836,7 +836,7 @@ endingCtx: buildEndingCtx(),
       const ok = await ForkRunStore.updateRunRecord(currentRunId, recordId, patch);
       if (!ok) {
         if (window.RetroToast) {
-          RetroToast.show({ tag: 'RECORD // WRITE FAILED', message: '推演流水修改未能写入存档。', type: 'warning' });
+          RetroToast.show({ tag: 'RECORD WRITE FAILED', message: '推演流水修改未能写入存档。', type: 'warning' });
         }
         return;
       }
@@ -1246,7 +1246,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
           '<path d="M15 9H9v6h6V9zm-2 4h-2v-2h2v2zm8-2V9h-2V7c0-1.1-.9-2-2-2h-2V3h-2v2h-2V3H9v2H7c-1.1 0-2 .9-2 2v2H3v2h2v2H3v2h2v2c0 1.1.9 2 2 2h2v2h2v-2h2v2h2v-2h2c1.1 0 2-.9 2-2v-2h2v-2h-2v-2h2zm-4 6H7V7h10v10z"/>' +
         '</svg>' +
         '<span class="fork-run-think-tag-wrap">' +
-          '<span class="fork-run-think-tag-code">THINK //</span>' +
+          '<span class="fork-run-think-tag-code">THINK</span>' +
           '<span class="fork-run-think-tag-label">思维推演</span>' +
         '</span>' +
       '</span>' +
@@ -1546,7 +1546,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
       deckEditForkBtn.addEventListener('click', () => {
         if (!currentForkId || !window.ForkEditorUI || typeof ForkEditorUI.open !== 'function') {
           if (window.RetroToast) {
-            RetroToast.show({ tag: 'DOSSIER // 不可用', message: '副本编纂器未就绪', type: 'warning' });
+            RetroToast.show({ tag: 'DOSSIER 不可用', message: '副本编纂器未就绪', type: 'warning' });
           }
           return;
         }
@@ -1796,7 +1796,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
    */
   async function saveIdentityEdit() {
     if (!window.Store) {
-      if (window.RetroToast) RetroToast.show({ tag: 'IDENTITY // 不可用', message: '档案库未就绪', type: 'warning' });
+      if (window.RetroToast) RetroToast.show({ tag: 'IDENTITY 不可用', message: '档案库未就绪', type: 'warning' });
       return;
     }
     const type = trimStr(currentRun && currentRun.identityType);
@@ -1856,13 +1856,13 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
       renderIdentityEdit();
 
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'IDENTITY // 已提交', message: '身份档案已保存', type: 'info' });
+        RetroToast.show({ tag: 'IDENTITY 已提交', message: '身份档案已保存', type: 'info' });
       }
       closeIdentityEdit();
     } catch (err) {
       console.warn('[ForkRun] 身份保存失败：', err);
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'IDENTITY // 失败', message: '保存未完成，请重试', type: 'error' });
+        RetroToast.show({ tag: 'IDENTITY 失败', message: '保存未完成，请重试', type: 'error' });
       }
     } finally {
       if (idnSaveBtnEl) idnSaveBtnEl.disabled = false;
@@ -2061,7 +2061,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
   function openAsstSettings() {
     if (!window.SystemChatSettings || typeof SystemChatSettings.open !== 'function') {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'SETTINGS // 不可用', message: '对话设置模块未就绪', type: 'warning' });
+        RetroToast.show({ tag: 'SETTINGS 不可用', message: '对话设置模块未就绪', type: 'warning' });
       }
       return;
     }
@@ -2302,7 +2302,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
       emptyText.setAttribute('font-family', 'var(--mono-font, monospace)');
       emptyText.setAttribute('font-size', '11');
       emptyText.setAttribute('fill', 'rgba(237, 235, 221, 0.4)');
-      emptyText.textContent = 'NO LOCUS DATA // 暂无空间测绘坐标';
+      emptyText.textContent = 'NO LOCUS DATA 暂无空间测绘坐标';
       resMapSvgEl.appendChild(emptyText);
       return;
     }
@@ -2902,7 +2902,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
     // 4. 身份信息
     const type = trimStr(currentRun && currentRun.identityType);
     if (deckIdentityTypeEl) {
-      deckIdentityTypeEl.textContent = (type === 'preset' || type === 'locked') ? 'IDENTITY // LOCKED' : 'IDENTITY // FREE';
+      deckIdentityTypeEl.textContent = (type === 'preset' || type === 'locked') ? 'IDENTITY LOCKED' : 'IDENTITY FREE';
     }
     if (deckIdentityNameEl) {
       deckIdentityNameEl.textContent = `${idInfo.name} · ${idInfo.serial ? 'NO.' + idInfo.serial : '执行员'}`;
@@ -2977,7 +2977,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
     }
     if (deckMissionCardEl) deckMissionCardEl.classList.toggle('is-ready', !!canSettle);
     if (deckMissionNoteEl) {
-      deckMissionNoteEl.textContent = canSettle ? '可结算 // READY' : (totalMissions > 0 ? '推进中' : '本副本无主线任务');
+      deckMissionNoteEl.textContent = canSettle ? '可结算 READY' : (totalMissions > 0 ? '推进中' : '本副本无主线任务');
     }
 
     // 5.2 精神值（缺省回落档案 psych.sanity 当前值；再无则显示等待接入）
@@ -3248,7 +3248,6 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
       attireBlock.innerHTML = `
         <div class="fork-run-vitals-field-head">
           <span class="fork-run-vitals-field-en">ATTIRE</span>
-          <span class="fork-run-vitals-field-slash">//</span>
           <span class="fork-run-vitals-field-zh">着装</span>
         </div>
         <div class="fork-run-vitals-field-body">${escapeHtml(attireText)}</div>
@@ -3262,7 +3261,6 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
       postureBlock.innerHTML = `
         <div class="fork-run-vitals-field-head">
           <span class="fork-run-vitals-field-en">POSTURE</span>
-          <span class="fork-run-vitals-field-slash">//</span>
           <span class="fork-run-vitals-field-zh">姿态</span>
         </div>
         <div class="fork-run-vitals-field-body">${escapeHtml(postureText)}</div>
@@ -3410,7 +3408,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
             </svg>
           </span>
           <div class="fork-run-allies-trigger-info">
-            <span class="fork-run-allies-trigger-tag">TAC-UNIT // FIELD ALLIES</span>
+            <span class="fork-run-allies-trigger-tag">TAC-UNIT FIELD ALLIES</span>
             <span class="fork-run-allies-trigger-heading">队友状态</span>
           </div>
         </div>
@@ -3538,7 +3536,6 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
         attireBlock.innerHTML = `
           <div class="fork-run-vitals-field-head">
             <span class="fork-run-vitals-field-en">ATTIRE</span>
-            <span class="fork-run-vitals-field-slash">//</span>
             <span class="fork-run-vitals-field-zh">着装</span>
           </div>
           <div class="fork-run-vitals-field-body">${escapeHtml(attireText)}</div>
@@ -3552,7 +3549,6 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
         postureBlock.innerHTML = `
           <div class="fork-run-vitals-field-head">
             <span class="fork-run-vitals-field-en">POSTURE</span>
-            <span class="fork-run-vitals-field-slash">//</span>
             <span class="fork-run-vitals-field-zh">姿态</span>
           </div>
           <div class="fork-run-vitals-field-body">${escapeHtml(postureText)}</div>
@@ -3708,7 +3704,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
     const labelWrap = document.createElement('div');
     labelWrap.className = 'fork-run-npc-radar-label';
     labelWrap.innerHTML = `
-      <span class="fork-run-npc-radar-tag">SURV // OBS</span>
+      <span class="fork-run-npc-radar-tag">SURV OBS</span>
       <span class="fork-run-npc-radar-hint">目标侦测</span>
     `;
 
@@ -3767,7 +3763,6 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
         attireBlock.innerHTML = `
           <div class="fork-run-vitals-field-head">
             <span class="fork-run-vitals-field-en">ATTIRE</span>
-            <span class="fork-run-vitals-field-slash">//</span>
             <span class="fork-run-vitals-field-zh">着装</span>
           </div>
           <div class="fork-run-vitals-field-body">${escapeHtml(attireText)}</div>
@@ -3781,7 +3776,6 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
         postureBlock.innerHTML = `
           <div class="fork-run-vitals-field-head">
             <span class="fork-run-vitals-field-en">POSTURE</span>
-            <span class="fork-run-vitals-field-slash">//</span>
             <span class="fork-run-vitals-field-zh">姿态</span>
           </div>
           <div class="fork-run-vitals-field-body">${escapeHtml(postureText)}</div>
@@ -3967,7 +3961,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
           </svg>
         </span>
         <div class="fork-run-mission-trigger-info">
-          <span class="fork-run-mission-trigger-tag">OBJECTIVES // MISSION-LOG</span>
+          <span class="fork-run-mission-trigger-tag">OBJECTIVES MISSION-LOG</span>
           <div class="fork-run-mission-heading-row">
             <span class="fork-run-mission-trigger-heading">任务进度</span>
             <span class="fork-run-mission-counter-val">${achievedCount}/${totalCount}</span>
@@ -4304,7 +4298,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
           let confirmed = true;
           if (window.RetroModal && typeof RetroModal.confirm === 'function') {
             confirmed = await RetroModal.confirm({
-              tag: 'BRANCH // 抹除分支',
+              tag: 'BRANCH 抹除分支',
               message: '确认删除当前分支回复吗？',
               detail: `将移除当前选中的分支（${String(currentVariantIdx + 1).padStart(2, '0')} / ${String(totalVariants).padStart(2, '0')}），保留其余分支。此操作无法撤销。`,
               confirmText: '确认删除',
@@ -4318,10 +4312,10 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
           if (window.ForkRunStore && typeof ForkRunStore.deleteRunRecordVariant === 'function') {
             const res = await ForkRunStore.deleteRunRecordVariant(currentRunId, seg.recordId, currentVariantIdx);
             if (res) {
-              toast('BRANCH // 已抹除', '分支已移除', '当前视角已自动切换至相邻分支', 'success');
+              toast('BRANCH 已抹除', '分支已移除', '当前视角已自动切换至相邻分支', 'success');
               await renderRunRecords();
             } else {
-              toast('BRANCH // 失败', '分支删除未完成', '请稍后重试', 'warning');
+              toast('BRANCH 失败', '分支删除未完成', '请稍后重试', 'warning');
             }
           }
         });
@@ -4358,7 +4352,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
       </span>
       <span class="fork-run-clue-notice-text">
         <span class="fork-run-clue-notice-zh">获得新线索 · ${escapeHtml(trimStr(clueName) || '未命名线索')}</span>
-        <span class="fork-run-clue-notice-en">CLUE UNLOCKED // ARCHIVED</span>
+        <span class="fork-run-clue-notice-en">CLUE UNLOCKED ARCHIVED</span>
       </span>
     `;
     // 追加在叙事块末尾（telemetry 之前更贴正文；简起见挂末尾，视觉在遥测下方也成立）
@@ -4381,7 +4375,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
       </span>
       <span class="fork-run-clue-notice-text">
         <span class="fork-run-clue-notice-zh">核心真相解明</span>
-        <span class="fork-run-clue-notice-en">CORE TRUTH UNVEILED // SEALED</span>
+        <span class="fork-run-clue-notice-en">CORE TRUTH UNVEILED SEALED</span>
       </span>
     `;
     block.appendChild(notice);
@@ -4405,7 +4399,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
       </span>
       <span class="fork-run-clue-notice-text">
         <span class="fork-run-clue-notice-zh">故事进入尾声 · ${escapeHtml(trimStr(endingName) || '未命名结局')}</span>
-        <span class="fork-run-clue-notice-en">ENDING APPROACHING // CONVERGING</span>
+        <span class="fork-run-clue-notice-en">ENDING APPROACHING CONVERGING</span>
       </span>
     `;
     block.appendChild(notice);
@@ -5493,7 +5487,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
     const turnEl = document.createElement('span');
     turnEl.className = 'fork-run-act-turn';
     const turnVal = Math.max(1, Number(act && act.turn) || 1);
-    turnEl.textContent = `TURN // ${String(turnVal).padStart(2, '0')}`;
+    turnEl.textContent = `TURN ${String(turnVal).padStart(2, '0')}`;
 
     metaRow.append(barcodeEl, turnEl);
 
@@ -5545,7 +5539,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
 
     const label = list.length === 1
       ? (list[0].name || '战术文档')
-      : `战术档案 // ${list.length}`;
+      : `战术档案 ${list.length}`;
 
     pill.innerHTML = `${DOC_PILL_SVG}<span class="fork-run-act-file-pill-text">${escapeHtml(label)}</span>`
       + '<span class="fork-run-act-file-pill-arrow" aria-hidden="true">'
@@ -5569,12 +5563,12 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
 
   async function previewSingleFile(file) {
     if (!file || !file.id || !window.FileStore || typeof FileStore.getText !== 'function') {
-      toast('FILE // 读取失败', '文件档案未命中或模块未就绪', '无法读取内容', 'warning');
+      toast('FILE 读取失败', '文件档案未命中或模块未就绪', '无法读取内容', 'warning');
       return;
     }
     const text = await FileStore.getText(file.id, getForkFileScope());
     if (text == null) {
-      toast('FILE // 已失效', '该文件已从副本文件区移除', '无法打开预览', 'warning');
+      toast('FILE 已失效', '该文件已从副本文件区移除', '无法打开预览', 'warning');
       return;
     }
     // 派发通用预览事件（FileVaultUI 内置监听，自动弹出只读机能预览模态框）
@@ -5590,7 +5584,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
         options: files.map((f) => ({
           value: f.id,
           label: f.name || '未命名文档',
-          meta: `${f.sizeText || ''} // ${f.charCount || 0} 字符`
+          meta: `${f.sizeText || ''} ${f.charCount || 0} 字符`
         })),
         onSelect: async (fileId) => {
           const target = files.find((f) => f.id === fileId);
@@ -5687,8 +5681,8 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
     if (state) pill.dataset.visionState = state;
 
     const label = state === 'pending'
-      ? 'VISION // 识别中'
-      : (state === 'failed' ? `现场影像 // ${list.length}` : `现场影像 // ${list.length}`);
+      ? 'VISION 识别中'
+      : (state === 'failed' ? `现场影像 ${list.length}` : `现场影像 ${list.length}`);
 
     pill.innerHTML = `${VISION_PILL_SVG}<span class="fork-run-act-image-pill-text">${escapeHtml(iconOnly ? String(list.length) : label)}</span>`
       + (iconOnly ? '' : '<span class="fork-run-act-image-pill-arrow" aria-hidden="true">'
@@ -5786,7 +5780,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
     const resolved = await resolveActImageSrcList(images);
     const srcList = resolved.filter((r) => r.src);
     if (!srcList.length) {
-      toast('VISION // 影像缺失', '这批影像已不可读', '原图可能已在视界档案中被清理', 'warning');
+      toast('VISION 影像缺失', '这批影像已不可读', '原图可能已在视界档案中被清理', 'warning');
       return;
     }
 
@@ -5916,9 +5910,9 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
               throw new Error('下载模块尚未加载');
             }
             const saved = await Downloader.saveImage(srcList[index].src, `副本影像-${pad(index + 1)}`, 'png');
-            toast('VISION // 已导出', '影像已保存', (saved && saved.album) ? `已存入相册「${saved.album}」` : '文件已写入设备存储', 'success');
+            toast('VISION 已导出', '影像已保存', (saved && saved.album) ? `已存入相册「${saved.album}」` : '文件已写入设备存储', 'success');
           } catch (_) {
-            toast('VISION // 导出失败', '影像保存未完成', '可长按图片使用系统菜单保存', 'warning');
+            toast('VISION 导出失败', '影像保存未完成', '可长按图片使用系统菜单保存', 'warning');
           }
         })();
       });
@@ -6483,7 +6477,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
       const statusMap = window.ForkRunStore ? ForkRunStore.RUN_STATUS : null;
       const stKey = currentRun && currentRun.status ? currentRun.status : 'active';
       const stEn = statusMap && statusMap[stKey] ? statusMap[stKey].en : 'ACTIVE';
-      headerMeta.textContent = `${code} // ${stEn}`;
+      headerMeta.textContent = `${code} ${stEn}`;
     }
 
     if (turnCodeEl) {
@@ -6660,7 +6654,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
 
   function selectForkFile() {
     if (!window.FileVaultUI || typeof FileVaultUI.openForPick !== 'function') {
-      toast('FILE // 无法开启', '文件区模块尚未就绪', '请稍后重试', 'warning');
+      toast('FILE 无法开启', '文件区模块尚未就绪', '请稍后重试', 'warning');
       return;
     }
     toggleDockPanel(false);
@@ -6732,7 +6726,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
     addCard.addEventListener('click', (e) => {
       e.stopPropagation();
       selectForkImage().catch((err) => {
-        toast('VISION // 失败', '图片选取失败', err.message || '无法打开图片选择器', 'warning');
+        toast('VISION 失败', '图片选取失败', err.message || '无法打开图片选择器', 'warning');
       });
     });
     imagePreviewBar.appendChild(addCard);
@@ -6780,7 +6774,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
           }
           toggleDockPanel(false);
         } catch (err) {
-          toast('VISION // 失败', '图片载入失败', err.message || '无法读取图片', 'warning');
+          toast('VISION 失败', '图片载入失败', err.message || '无法读取图片', 'warning');
         }
       }
     });
@@ -6895,7 +6889,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
     // 单条重试也在进行中则同理挡住：它正在改这条行动的图元数据，此时发车会读到半新半旧的流水
     if (currentInference || currentVision) return;
     if (forkVisionInFlight.size) {
-      toast('VISION // 稍候', '影像还在重新识别', '等这一条补完再提交行动', 'info');
+      toast('VISION 稍候', '影像还在重新识别', '等这一条补完再提交行动', 'info');
       return;
     }
     const text = trimStr(textarea.value);
@@ -6967,7 +6961,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
         visionState: hasVision ? 'pending' : ''
       });
       if (!saved) {
-        toast('DECK // 落库失败', '这条行动没能存上', '内容仍在屏上，但重进本页会丢失', 'error');
+        toast('DECK 落库失败', '这条行动没能存上', '内容仍在屏上，但重进本页会丢失', 'error');
       } else {
         savedRecordId = saved.id;
         if (actRow) actRow.dataset.recordId = saved.id;
@@ -7013,7 +7007,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
     const id = trimStr(recordId);
     const meta = group ? visionGroupMeta.get(group) : null;
     const warn = (message) => {
-      if (typeof toast === 'function') toast('VISION // 重试失败', message, '', 'warning');
+      if (typeof toast === 'function') toast('VISION 重试失败', message, '', 'warning');
     };
     if (!id) {
       warn('这条行动没有可回写的流水编号');
@@ -7109,7 +7103,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
     }
 
     if (okCount) {
-      toast('VISION // 已归档', '影像记忆已补回', '描述会随下一次推演进入上下文', 'success');
+      toast('VISION 已归档', '影像记忆已补回', '描述会随下一次推演进入上下文', 'success');
     } else {
       warn('影像仍未解析出来，可稍后再试或检查视觉模型节点');
     }
@@ -7240,7 +7234,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
     }
 
     if (!okCount) {
-      toast('VISION // 识别失败', '影像未能解析', '本轮推演将不带视觉信息发出', 'warning');
+      toast('VISION 识别失败', '影像未能解析', '本轮推演将不带视觉信息发出', 'warning');
     }
 
     setSendButtonState(false);
@@ -7307,7 +7301,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
     }
 
     setSendButtonState(false);
-    toast('VISION // 已终止', '本轮行动已撤回', '行动文字与影像已退回输入台，可修改后重发', 'info');
+    toast('VISION 已终止', '本轮行动已撤回', '行动文字与影像已退回输入台，可修改后重发', 'info');
   }
 
   /**
@@ -7317,7 +7311,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
    */
   async function runInference(turn) {
     if (!window.ForkRunApi || typeof ForkRunApi.requestInference !== 'function') {
-      toast('DIVE // 推演链路', '请求模块未加载', '推演请求模块缺席，本轮未发出', 'error');
+      toast('DIVE 推演链路', '请求模块未加载', '推演请求模块缺席，本轮未发出', 'error');
       return;
     }
 
@@ -7383,7 +7377,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
     // 用户主动中断：已流出的部分照常落库，不当失败处理（AbortError 不弹错）
     const isAbortErr = !!(failed && failed.name === 'AbortError');
     if (failed && !isAbortErr && !wasAborted) {
-      toast('DIVE // 推演失败', '本轮推演没能完成', trimStr(failed.message) || '链路异常', 'error');
+      toast('DIVE 推演失败', '本轮推演没能完成', trimStr(failed.message) || '链路异常', 'error');
       if (streamEl && streamEl.children.length === 0) renderEmptyState();
       return;
     }
@@ -7391,7 +7385,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
     const content = trimStr(full);
     if (!content) {
       if (!wasAborted && !isAbortErr) {
-        toast('DIVE // 空回复', '模型没有输出内容', '可尝试重新提交本轮行动', 'warning');
+        toast('DIVE 空回复', '模型没有输出内容', '可尝试重新提交本轮行动', 'warning');
       }
       if (streamEl && streamEl.children.length === 0) renderEmptyState();
       return;
@@ -7406,7 +7400,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
         turn
       });
       if (!saved) {
-        toast('DECK // 落库失败', '这段叙事没能存上', '内容仍在屏上，但重进本页会丢失', 'error');
+        toast('DECK 落库失败', '这段叙事没能存上', '内容仍在屏上，但重进本页会丢失', 'error');
       }
     }
 
@@ -7462,11 +7456,11 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
   async function handleContinueNarration(targetEl, rec) {
     if (isReadonly) return;
     if (currentInference) {
-      toast('CONTINUE // 推演进行中', '当前已有推演在运行', '请等待本轮结束或点击终止后再继续', 'info');
+      toast('CONTINUE 推演进行中', '当前已有推演在运行', '请等待本轮结束或点击终止后再继续', 'info');
       return;
     }
     if (!window.ForkRunApi || typeof ForkRunApi.requestInference !== 'function') {
-      toast('CONTINUE // 链路异常', '推演请求模块未就绪', '无法启动模型推理', 'error');
+      toast('CONTINUE 链路异常', '推演请求模块未就绪', '无法启动模型推理', 'error');
       return;
     }
 
@@ -7543,7 +7537,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
 
     const isAbortErr = !!(failed && failed.name === 'AbortError');
     if (failed && !isAbortErr && !wasAborted) {
-      toast('CONTINUE // 推演失败', '续写没能完成', trimStr(failed.message) || '链路异常', 'error');
+      toast('CONTINUE 推演失败', '续写没能完成', trimStr(failed.message) || '链路异常', 'error');
       if (streamEl && streamEl.children.length === 0) renderEmptyState();
       return;
     }
@@ -7551,7 +7545,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
     const content = trimStr(full);
     if (!content) {
       if (!wasAborted && !isAbortErr) {
-        toast('CONTINUE // 空回复', '模型没有输出内容', '可再点一次继续', 'warning');
+        toast('CONTINUE 空回复', '模型没有输出内容', '可再点一次继续', 'warning');
       }
       if (streamEl && streamEl.children.length === 0) renderEmptyState();
       return;
@@ -7566,7 +7560,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
         turn: nextTurn
       });
       if (!saved) {
-        toast('DECK // 落库失败', '这段叙事没能存上', '内容仍在屏上，但重进本页会丢失', 'error');
+        toast('DECK 落库失败', '这段叙事没能存上', '内容仍在屏上，但重进本页会丢失', 'error');
       }
     }
 
@@ -7617,7 +7611,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
     if (!window.TextEditorModal || typeof TextEditorModal.open !== 'function') return;
     const updated = await TextEditorModal.open({
       title: '行动描述',
-      tag: 'DIVE // 执行员行动',
+      tag: 'DIVE 执行员行动',
       value: textarea ? textarea.value : '',
       placeholder: '详细描述你的行动、话语与判断…',
       maxLength: 4000
@@ -7635,7 +7629,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
     if (window.ForkRunSettingsUI && typeof ForkRunSettingsUI.open === 'function') {
       ForkRunSettingsUI.open(currentForkId, currentRunId);
     } else {
-      toast('SETTINGS // 副本设置', '模块加载中', '推演设置面板初始化中，请稍候', 'info');
+      toast('SETTINGS 副本设置', '模块加载中', '推演设置面板初始化中，请稍候', 'info');
     }
   }
 
@@ -7910,7 +7904,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
 
     const run = await resolveRun(fid, opts && opts.runId, opts);
     if (!run) {
-      toast('DIVE // 接入失败', '无法建立下潜存档', '存储层未就绪或写入被拒绝', 'error');
+      toast('DIVE 接入失败', '无法建立下潜存档', '存储层未就绪或写入被拒绝', 'error');
       // 页面已亮且历史桩已压，接入失败时收起并消费桩，退回上一级
       close();
       return false;
@@ -8142,7 +8136,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
       batchDeleteBtn.addEventListener('click', async () => {
         if (isReadonly) return;
         if (currentInference) {
-          toast('PURGE // 推演中', '当前正在推演', '请先等本轮结束或点击终止，再删除流水', 'info');
+          toast('PURGE 推演中', '当前正在推演', '请先等本轮结束或点击终止，再删除流水', 'info');
           return;
         }
 
@@ -8152,7 +8146,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
         let confirmed = true;
         if (window.RetroModal && typeof RetroModal.confirm === 'function') {
           confirmed = await RetroModal.confirm({
-            tag: `PURGE // 批量抹除 (${count})`,
+            tag: `PURGE 批量抹除 (${count})`,
             message: `确认要彻底抹除选中的 ${count} 条流水吗？`,
             detail: '选中的推演记录与行动卡将从本世界线中彻底移除，无法撤销。',
             confirmText: `删除 (${count})`,
@@ -8182,7 +8176,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
             }
           }
           if (failCount > 0 && window.RetroToast) {
-            RetroToast.show({ tag: 'PURGE // PARTIAL', message: `有 ${failCount} 条记录删除失败`, type: 'warning' });
+            RetroToast.show({ tag: 'PURGE PARTIAL', message: `有 ${failCount} 条记录删除失败`, type: 'warning' });
           }
         }
 
@@ -8202,7 +8196,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
         if (count > limit) {
           if (window.RetroToast) {
             RetroToast.show({
-              tag: 'CAPTURE // OVERFLOW',
+              tag: 'CAPTURE OVERFLOW',
               message: `长图截图单次最多支持 ${limit} 条流水`,
               type: 'warning'
             });
@@ -8213,7 +8207,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
         if (!window.ChatShot || typeof ChatShot.captureForkNovel !== 'function') {
           if (window.RetroToast) {
             RetroToast.show({
-              tag: 'CAPTURE // ERROR',
+              tag: 'CAPTURE ERROR',
               message: '截图引擎未就绪',
               type: 'error'
             });
@@ -8243,7 +8237,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
 
         if (window.RetroToast) {
           RetroToast.show({
-            tag: 'CAPTURE // GENERATING',
+            tag: 'CAPTURE GENERATING',
             message: '正在排版高清推演长图...',
             type: 'info'
           });
@@ -8261,7 +8255,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
         if (res && res.ok) {
           if (window.RetroToast) {
             RetroToast.show({
-              tag: 'CAPTURE // SAVED',
+              tag: 'CAPTURE SAVED',
               message: `推演长图已保存：${res.name || '推演纪要.png'}`,
               type: 'info'
             });
@@ -8270,7 +8264,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
         } else {
           if (window.RetroToast) {
             RetroToast.show({
-              tag: 'CAPTURE // FAILED',
+              tag: 'CAPTURE FAILED',
               message: '长图生成失败，请重试',
               type: 'warning'
             });
@@ -8455,7 +8449,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
         if (panelType === 'image') {
           toggleDockPanel(false);
           selectForkImage().catch((err) => {
-            toast('VISION // 失败', '图片选取失败', err.message || '无法打开图片选择器', 'warning');
+            toast('VISION 失败', '图片选取失败', err.message || '无法打开图片选择器', 'warning');
           });
           return;
         }
@@ -8559,7 +8553,7 @@ const EMPTY_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11
       const row = streamEl.querySelector(`[data-record-id="${safeId}"]`);
       if (!row) {
         if (window.RetroToast) {
-          RetroToast.show({ tag: 'SEARCH // 定位失败', message: '这条记录已不在当前世界线中', type: 'warning' });
+          RetroToast.show({ tag: 'SEARCH 定位失败', message: '这条记录已不在当前世界线中', type: 'warning' });
         }
         return false;
       }

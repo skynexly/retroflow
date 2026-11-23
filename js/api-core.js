@@ -763,7 +763,7 @@ window.RetroflowAPI = (() => {
         n: 1,
         response_format: 'b64_json',
         negative_prompt: (config && config.negativePrompt) || undefined
-      }), `请求 size: ${opts.size || '（未传，服务端默认）'}${ratioHint ? ' · ratioHint: ' + ratioHint : ''}`)
+      }), `请求 size: ${opts.size || '（未传，服务端默认）'}${ratioHint ? ' · ratioHint: '+ ratioHint : ''}`)
     };
     // 网络层失败（三处 send 的 catch 共用）：主动取消不进日志
     const logNetFail = (err) => {
@@ -934,7 +934,7 @@ window.RetroflowAPI = (() => {
         prompt: finalPrompt,
         n: 1,
         response_format: 'b64_json'
-      }), `参考图 ${refs.length} 张（multipart 上传）· size: ${usedSize}${ratioHint ? ' · ratioHint: ' + ratioHint : ''}${opts.faceLock === false ? ' · faceLock: off（调用方自带锁脸指令）' : ' · faceLock: on（内置锁脸句前置）'}`)
+      }), `参考图 ${refs.length} 张（multipart 上传）· size: ${usedSize}${ratioHint ? ' · ratioHint: '+ ratioHint : ''}${opts.faceLock === false ? ' · faceLock: off（调用方自带锁脸指令）' : ' · faceLock: on（内置锁脸句前置）'}`)
     };
 
     try {

@@ -5,7 +5,7 @@
  * 1. 零分割线，零 emoji，全部状态指示采用纯矢量 SVG
  * 2. 顶部悬浮机能指令条（z-index: 15000），无论在主屏、全屏编辑器或二级弹窗皆清晰可见
  * 3. 色彩体系：底色 var(--bg-color)、反色正文 var(--secondary-color)、重点色标题 var(--primary-color)
- * 4. 丝滑弹性进出场、底部微细倒计时能量条、点击即退场、连续触发自平滑替换
+ * 4. 丝滑弹性进出场、点击即退场、连续触发自平滑替换
  */
 
 (function () {
@@ -91,7 +91,7 @@
     const opts = Object.assign({
       message: '',
       detail: '',
-      tag: 'SYSTEM // 提示',
+      tag: 'SYSTEM 提示',
       type: 'warn',
       duration: 2800
     }, options || {});
@@ -136,12 +136,6 @@
     }
     toast.appendChild(body);
 
-    // 底部倒计时能量条
-    const progress = document.createElement('div');
-    progress.className = 'retro-toast-progress';
-    progress.style.transitionDuration = `${opts.duration}ms`;
-    toast.appendChild(progress);
-
     // 右侧纯 SVG 透明底即时关闭按钮
     const closeBtn = document.createElement('button');
     closeBtn.type = 'button';
@@ -166,12 +160,9 @@
     cont.appendChild(toast);
     activeToastEl = toast;
 
-    // 下一帧触发入场与进度条动画
+    // 下一帧触发入场动画
     requestAnimationFrame(() => {
       toast.classList.add('is-entering');
-      requestAnimationFrame(() => {
-        progress.classList.add('is-depleting');
-      });
     });
 
     // 自动消退
@@ -180,19 +171,19 @@
     }, opts.duration);
   }
 
-  function warn(message, detail = '', tag = 'CAUSAL NOTICE // 提示') {
+  function warn(message, detail = '', tag = 'CAUSAL NOTICE 提示') {
     show({ message, detail, tag, type: 'warn' });
   }
 
-  function info(message, detail = '', tag = 'SYSTEM LOG // 讯息') {
+  function info(message, detail = '', tag = 'SYSTEM LOG 讯息') {
     show({ message, detail, tag, type: 'info' });
   }
 
-  function danger(message, detail = '', tag = 'ERROR // 阻断') {
+  function danger(message, detail = '', tag = 'ERROR 阻断') {
     show({ message, detail, tag, type: 'danger' });
   }
 
-  function success(message, detail = '', tag = 'SYNC // 已就绪') {
+  function success(message, detail = '', tag = 'SYNC 已就绪') {
     show({ message, detail, tag, type: 'success' });
   }
 

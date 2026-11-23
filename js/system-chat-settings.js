@@ -164,14 +164,14 @@
         if (slotCfg && (slotCfg.modelId || slotCfg.baseUrl)) {
           return {
             name: slotCfg.modelId || slotCfg.baseUrl || '自定义端点',
-            type: 'MODEL // SYSTEM SLOT'
+            type: 'MODEL SYSTEM SLOT'
           };
         }
         const activeNode = window.RetroflowApiUI.getActiveNode ? window.RetroflowApiUI.getActiveNode() : null;
         if (activeNode && activeNode.modelId) {
           return {
             name: activeNode.modelId,
-            type: 'MODEL // MAIN'
+            type: 'MODEL MAIN'
           };
         }
       }
@@ -182,7 +182,7 @@
         if (slots.system && (slots.system.modelId || slots.system.baseUrl)) {
           return {
             name: slots.system.modelId || slots.system.baseUrl,
-            type: 'MODEL // SYSTEM SLOT'
+            type: 'MODEL SYSTEM SLOT'
           };
         }
         const nodes = Store.config.apiNodes || [];
@@ -191,14 +191,14 @@
         if (activeNode && activeNode.modelId) {
           return {
             name: activeNode.modelId,
-            type: 'MODEL // MAIN'
+            type: 'MODEL MAIN'
           };
         }
       }
     } catch (e) {
       console.warn('[SystemChatSettings] 解析算力模型失败', e);
     }
-    return { name: '未配置算力节点', type: 'MODEL // UNSET' };
+    return { name: '未配置算力节点', type: 'MODEL UNSET' };
   }
   function initDOM() {
     settingsPage = document.getElementById('systemChatSettingsPage');
@@ -281,7 +281,7 @@ memoryIntervalInput = document.getElementById('systemChatMemoryIntervalInput');
       searchBtn.addEventListener('click', () => {
         if (!window.ChatHistorySearchUI || typeof ChatHistorySearchUI.open !== 'function') {
           if (window.RetroToast) {
-            RetroToast.show({ tag: 'SEARCH // 不可用', message: '检索模块未就绪', type: 'warning' });
+            RetroToast.show({ tag: 'SEARCH 不可用', message: '检索模块未就绪', type: 'warning' });
           }
           return;
         }
@@ -309,7 +309,7 @@ memoryIntervalInput = document.getElementById('systemChatMemoryIntervalInput');
       contextRow.addEventListener('click', () => {
         if (!window.ForkRunContextInspector || typeof ForkRunContextInspector.open !== 'function') {
           if (window.RetroToast) {
-            RetroToast.show({ tag: 'CONTEXT // 不可用', message: '上下文查看模块未就绪', type: 'warning' });
+            RetroToast.show({ tag: 'CONTEXT 不可用', message: '上下文查看模块未就绪', type: 'warning' });
           }
           return;
         }
@@ -398,11 +398,11 @@ memoryIntervalInput = document.getElementById('systemChatMemoryIntervalInput');
       extractMemoryNowBtn.addEventListener('click', async () => {
         const extractor = window.AssistantMemoryExtractor;
         if (!extractor || typeof extractor.extractOnce !== 'function') {
-          toast({ tag: 'MEMORY // 不可用', message: '记忆提取模块未就绪', type: 'warn' });
+          toast({ tag: 'MEMORY 不可用', message: '记忆提取模块未就绪', type: 'warn' });
           return;
         }
         if (extractor.isRunning()) {
-          toast({ tag: 'MEMORY // 手动提取', message: '正在提取记忆，请稍后', type: 'info' });
+          toast({ tag: 'MEMORY 手动提取', message: '正在提取记忆，请稍后', type: 'info' });
           return;
         }
         setExtractButtonBusy(true);
@@ -410,7 +410,7 @@ memoryIntervalInput = document.getElementById('systemChatMemoryIntervalInput');
           const res = await extractor.extractOnce();
           if (res && res.ok) {
             toast({
-              tag: 'MEMORY // 手动提取',
+              tag: 'MEMORY 手动提取',
               message: res.added
                 ? `已整理 ${res.messages} 条消息，新增 ${res.added} 条记忆`
                 : `已整理 ${res.messages} 条消息，没有需要记住的内容`,
@@ -419,7 +419,7 @@ memoryIntervalInput = document.getElementById('systemChatMemoryIntervalInput');
           } else {
             const quiet = res && (res.reason === 'empty' || res.reason === 'waiting' || res.reason === 'locked' || res.reason === 'replying');
             toast({
-              tag: quiet ? 'MEMORY // 手动提取' : 'MEMORY // 提取失败',
+              tag: quiet ? 'MEMORY 手动提取' : 'MEMORY 提取失败',
               message: (res && res.message) || '提取失败',
               type: quiet ? 'info' : 'warn',
               duration: quiet ? 2800 : 4200
@@ -427,7 +427,7 @@ memoryIntervalInput = document.getElementById('systemChatMemoryIntervalInput');
           }
         } catch (err) {
           console.warn('[SystemChatSettings] 手动提取异常', err);
-          toast({ tag: 'MEMORY // 提取失败', message: '提取过程出错，请稍后重试', type: 'warn' });
+          toast({ tag: 'MEMORY 提取失败', message: '提取过程出错，请稍后重试', type: 'warn' });
         } finally {
           setExtractButtonBusy(false);
           refreshMemoryStats();

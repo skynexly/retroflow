@@ -959,7 +959,7 @@ ${entries.join('\n\n')}
     const hint = String(rewriteHint == null ? '' : rewriteHint).trim();
     if (!hint) return '';
 
-    return `[重写指令 // REWRITE DIRECTIVE]
+    return `[重写指令 REWRITE DIRECTIVE]
 执行员对上一次回复不满意，要求重新调整。本轮演算请重点按以下方向调整展开，同时严格遵循所有格式契约与角色世界观：
 ${hint}`;
   }

@@ -114,9 +114,9 @@ const LifeStore = (() => {
     valueCards: [],
     // 药盒常备方案清单
     medPlans: [
-      { id: 'med_default_1', name: '复合维生素 B 族', dose: '1 粒', slot: 'MORNING // 晨间', active: true },
-      { id: 'med_default_2', name: '深海鱼油 Omega-3', dose: '2 粒', slot: 'NOON // 午后', active: true },
-      { id: 'med_default_3', name: '镁剂缓释片', dose: '1 片', slot: 'NIGHT // 睡前', active: true }
+      { id: 'med_default_1', name: '复合维生素 B 族', dose: '1 粒', slot: 'MORNING 晨间', active: true },
+      { id: 'med_default_2', name: '深海鱼油 Omega-3', dose: '2 粒', slot: 'NOON 午后', active: true },
+      { id: 'med_default_3', name: '镁剂缓释片', dose: '1 片', slot: 'NIGHT 睡前', active: true }
     ],
     // 订阅协议常驻清单（支持 recurring 周期续费 / onetime 一次性限时 / lifetime 买断摊销）
     subscriptions: [],
@@ -543,7 +543,7 @@ const LifeStore = (() => {
           id: String(m.id || `med_${Date.now()}_${idx}`),
           name: String(m.name || '').trim(),
           dose: String(m.dose || '1 份').trim(),
-          slot: String(m.slot || 'DAILY // 日常').trim(),
+          slot: String(m.slot || 'DAILY 日常').trim(),
           active: m.active !== false
         }));
     }

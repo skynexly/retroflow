@@ -207,7 +207,7 @@ const SelectModal = (() => {
         if (isDisabled) {
           if (window.RetroToast) {
             window.RetroToast.show({
-              tag: 'LOCKED // 条件未满足',
+              tag: 'LOCKED 条件未满足',
               message: `「${opt.label !== undefined ? opt.label : opt.value}」当前不可选`,
               detail: opt.disabledReason || '该选项的启用条件尚未满足',
               type: 'info'
@@ -257,7 +257,7 @@ const SelectModal = (() => {
 
     const {
       title = '请选择',
-      tag = 'SELECTION // 选项指派',
+      tag = 'SELECTION 选项指派',
       options: optList = [],
       value = '',
       values = null,        // 多选初始已选值数组

@@ -51,7 +51,7 @@ const DataVault = (() => {
   const BLOCKS = {
     profile: {
       zh: '档案',
-      en: 'PROFILE // AGENT & ROSTER',
+      en: 'PROFILE AGENT & ROSTER',
       desc: '执行员身份、马甲、角色/NPC/助手、关系与心智档案',
       docKeys: [
         K.envoyIdentity, K.envoyMasks, K.envoyPsych,
@@ -68,7 +68,7 @@ const DataVault = (() => {
     },
     worldbook: {
       zh: '世界书',
-      en: 'WORLDBOOK // DIRECTIVES',
+      en: 'WORLDBOOK DIRECTIVES',
       desc: '全局/助手/线上/副本/生成五大分类的设定注入库',
       docKeys: [K.worldbookBooks, K.worldbookSeeded],
       // 播种标记随包导出（新设备导入后不会再被塞一本预设「破限」），
@@ -81,7 +81,7 @@ const DataVault = (() => {
     },
     chat: {
       zh: '聊天记录',
-      en: 'CHAT // CONVERSATION LOG',
+      en: 'CHAT CONVERSATION LOG',
       desc: '系统助手与私聊角色的全部对话流水及各自会话设置',
       docKeys: [],
       // 助手多窗口的元信息：sysChat/index（窗口列表 + 当前活跃窗口）
@@ -105,7 +105,7 @@ const DataVault = (() => {
     },
     online: {
       zh: '线上联络',
-      en: 'ONLINE // CONTACTS & FEED',
+      en: 'ONLINE CONTACTS & FEED',
       desc: '线上账号、通讯录、会话元数据与朋友圈，含头像与配图资产',
       docKeys: [K.onlineAccounts, K.onlineContacts, K.onlineSessions, K.onlineFeed],
       assetPrefixes: ['online/'],
@@ -119,7 +119,7 @@ const DataVault = (() => {
     },
     decor: {
       zh: '美化资源',
-      en: 'DECOR // THEME & SKIN',
+      en: 'DECOR THEME & SKIN',
       desc: '红卡文本、主题配色、壁纸（含私聊专属）、封面与自定义字体',
       docKeys: [
         K.decorCardName, K.decorCardBio, K.decorThemeColors,
@@ -136,7 +136,7 @@ const DataVault = (() => {
     },
     config: {
       zh: '系统配置',
-      en: 'CONFIG // API NODES',
+      en: 'CONFIG API NODES',
       desc: 'API 节点、算力槽位与外部服务接入配置',
       docKeys: [K.configApiNodes, K.configApiActiveNodeId, K.configApiSlots, K.configExternalServices],
       assetPrefixes: [],
@@ -145,7 +145,7 @@ const DataVault = (() => {
     },
     gallery: {
       zh: '图片',
-      en: 'GALLERY // GENERATED IMAGES',
+      en: 'GALLERY GENERATED IMAGES',
       desc: 'AI 生图历史归档与图库索引',
       docKeys: [K.metaGalleryIndex],
       assetPrefixes: ['gen/'],
@@ -154,7 +154,7 @@ const DataVault = (() => {
     },
     files: {
       zh: '文件',
-      en: 'FILES // DOCUMENT VAULT',
+      en: 'FILES DOCUMENT VAULT',
       desc: '文件区上传的文本文件本体与索引',
       docKeys: [K.metaFileIndex],
       assetPrefixes: ['doc/'],
@@ -163,7 +163,7 @@ const DataVault = (() => {
     },
     fork: {
       zh: '副本库',
-      en: 'FORK // INSTANCE ARCHIVE',
+      en: 'FORK INSTANCE ARCHIVE',
       desc: '副本卷宗、油画墙索引与副本封面',
       docKeys: [K.forkIndex],
       // 卷宗是动态键（fork/dossier.<id>），条数随副本增长，靠前缀扫描收全
@@ -174,7 +174,7 @@ const DataVault = (() => {
     },
     run: {
       zh: '副本记录',
-      en: 'FORK RUN // DIVE LOG',
+      en: 'FORK RUN DIVE LOG',
       desc: '副本下潜存档：各世界线的进度、状态、结算与正史指针，以及推演对话流水',
       // 全局活跃现场指针是固定单键；下潜索引与存档本体是动态键，靠前缀扫全。
       docKeys: ['run/activeForkRef'],
@@ -191,7 +191,7 @@ const DataVault = (() => {
     },
     memory: {
       zh: '记忆',
-      en: 'MEMORY // ARCHIVE',
+      en: 'MEMORY ARCHIVE',
       desc: '副本记忆、助手记忆与记忆提取进度。向量不备份，导入后在记忆库点「向量化」重新生成',
       docKeys: [],
       // 记忆提取进度点：与记忆同进同出（聊天记录块已排除）
@@ -206,7 +206,7 @@ const DataVault = (() => {
     },
     misc: {
       zh: '终端应用',
-      en: 'TERMINAL // APPS',
+      en: 'TERMINAL APPS',
       desc: '随身便笺、系统商城、溯流论坛等终端功能模块的零散数据',
       // 聚合块：往后系统商城、溯流论坛等小功能都塞进来（各自域前缀往下面加），
       // 不再为单个小功能新开块，避免块列表无限增殖。存储仍各是各的。
@@ -218,7 +218,7 @@ const DataVault = (() => {
     },
     life: {
       zh: '生活服务',
-      en: 'LIFE // LOGISTICS DECK',
+      en: 'LIFE LOGISTICS DECK',
       desc: '记账流水、运动打卡、体重管理、经期管理、药盒方案、睡眠作息与订阅管理',
       docKeys: ['life/config'],
       docPrefixes: ['life/'],

@@ -852,7 +852,7 @@
           renderTilePicker();
           if (window.RetroToast) {
             RetroToast.show({
-              tag: 'DECOR // 背景同步',
+              tag: 'DECOR 背景同步',
               message: `已将「${def.name}」背景应用至全部卡片`,
               type: 'success'
             });
@@ -883,7 +883,7 @@
         renderTilePicker();
         if (window.RetroToast) {
           RetroToast.show({
-            tag: 'DECOR // 恢复默认',
+            tag: 'DECOR 恢复默认',
             message: '已恢复图标美化默认状态',
             type: 'success'
           });
@@ -964,7 +964,7 @@
   function updateFontPreview() {
     if (!fontPreviewText) return;
     const serialId = Store.getSerialNo();
-    fontPreviewText.textContent = `RETROFLOW // 溯流计划 · ${serialId}`;
+    fontPreviewText.textContent = `RETROFLOW 溯流计划 · ${serialId}`;
   }
 
   window.addEventListener('retroflow:serial-changed', updateFontPreview);
@@ -1082,7 +1082,7 @@
           await renderOrbSkinWorkbench();
           if (window.RetroToast) {
             RetroToast.show({
-              tag: 'DECOR // 悬浮球美化',
+              tag: 'DECOR 悬浮球美化',
               message: isNormal ? '常态皮肤已换装' : '拖拽皮肤已换装',
               type: 'success'
             });
@@ -1103,7 +1103,7 @@
       await renderOrbSkinWorkbench();
       if (window.RetroToast) {
         RetroToast.show({
-          tag: 'DECOR // 悬浮球美化',
+          tag: 'DECOR 悬浮球美化',
           message: which === 'normal' ? '常态皮肤已清除，回到罗盘芯' : '拖拽皮肤已清除',
           type: 'info'
         });
@@ -1184,7 +1184,7 @@
         await renderOrbSkinWorkbench();
         if (window.RetroToast) {
           RetroToast.show({
-            tag: 'DECOR // 恢复默认',
+            tag: 'DECOR 恢复默认',
             message: '悬浮球已恢复罗盘芯默认外观',
             type: 'success'
           });
@@ -1256,14 +1256,14 @@
 
   async function doExportTheme() {
     if (!window.DataVault || typeof DataVault.exportTheme !== 'function') {
-      themeToast('THEME // 导出', '主题导出模块未就绪', 'warning');
+      themeToast('THEME 导出', '主题导出模块未就绪', 'warning');
       return;
     }
     try {
       await DataVault.exportTheme();
-      themeToast('THEME // 导出主题包', '主题包已导出保存', 'info');
+      themeToast('THEME 导出主题包', '主题包已导出保存', 'info');
     } catch (_) {
-      themeToast('THEME // 导出失败', '主题包生成过程出错', 'warning');
+      themeToast('THEME 导出失败', '主题包生成过程出错', 'warning');
     }
   }
 
@@ -1280,7 +1280,7 @@
     try {
       text = await file.text();
     } catch (_) {
-      themeToast('THEME // 读取失败', '无法读取所选文件', 'warning');
+      themeToast('THEME 读取失败', '无法读取所选文件', 'warning');
       return;
     }
 
@@ -1288,14 +1288,14 @@
       ? DataVault.parsePackage(text)
       : null;
     if (!pkg) {
-      themeToast('THEME // 格式错误', '这不是有效的溯流数据/主题包文件', 'warning');
+      themeToast('THEME 格式错误', '这不是有效的溯流数据/主题包文件', 'warning');
       return;
     }
 
     let confirmed = true;
     if (window.RetroModal && typeof RetroModal.confirm === 'function') {
       confirmed = await RetroModal.confirm({
-        tag: 'THEME // 导入主题包',
+        tag: 'THEME 导入主题包',
         message: '确认导入这份主题包吗？',
         detail: '将以主题包内容覆盖当前的配色、色卡、字体、壁纸（含遮罩与磨砂）、以及卡片背景与图标（含底座配置）。此操作无法撤销，完成后页面会自动重载。',
         confirmText: '确认导入',
@@ -1305,23 +1305,23 @@
     }
     if (!confirmed) return;
 
-    themeToast('THEME // 写入中', '正在应用主题，请稍候…', 'info');
+    themeToast('THEME 写入中', '正在应用主题，请稍候…', 'info');
     let result;
     try {
       result = await DataVault.applyThemeImport(pkg);
     } catch (_) {
-      themeToast('THEME // 导入失败', '写入过程出错，主题可能不完整', 'warning');
+      themeToast('THEME 导入失败', '写入过程出错，主题可能不完整', 'warning');
       return;
     }
 
     if (!result || !result.ok) {
-      themeToast('THEME // 导入失败', '主题包内容无法应用', 'warning');
+      themeToast('THEME 导入失败', '主题包内容无法应用', 'warning');
       return;
     }
 
     if (window.RetroModal && typeof RetroModal.alert === 'function') {
       await RetroModal.alert({
-        tag: 'THEME // 导入完成',
+        tag: 'THEME 导入完成',
         message: '主题已写入本地存储',
         detail: '页面将重新载入以应用导入的主题外观。',
         confirmText: '立即重载'

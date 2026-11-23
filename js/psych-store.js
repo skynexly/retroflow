@@ -96,19 +96,19 @@
     if (isNaN(month) || isNaN(day)) return '未知星座';
 
     const zodiacMap = [
-      { name: '摩羯座 // CAPRICORN', start: [1, 1], end: [1, 19] },
-      { name: '水瓶座 // AQUARIUS', start: [1, 20], end: [2, 18] },
-      { name: '双鱼座 // PISCES', start: [2, 19], end: [3, 20] },
-      { name: '白羊座 // ARIES', start: [3, 21], end: [4, 19] },
-      { name: '金牛座 // TAURUS', start: [4, 20], end: [5, 20] },
-      { name: '双子座 // GEMINI', start: [5, 21], end: [6, 21] },
-      { name: '巨蟹座 // CANCER', start: [6, 22], end: [7, 22] },
-      { name: '狮子座 // LEO', start: [7, 23], end: [8, 22] },
-      { name: '处女座 // VIRGO', start: [8, 23], end: [9, 22] },
-      { name: '天秤座 // LIBRA', start: [9, 23], end: [10, 23] },
-      { name: '天蝎座 // SCORPIO', start: [10, 24], end: [11, 22] },
-      { name: '射手座 // SAGITTARIUS', start: [11, 23], end: [12, 21] },
-      { name: '摩羯座 // CAPRICORN', start: [12, 22], end: [12, 31] }
+      { name: '摩羯座 CAPRICORN', start: [1, 1], end: [1, 19] },
+      { name: '水瓶座 AQUARIUS', start: [1, 20], end: [2, 18] },
+      { name: '双鱼座 PISCES', start: [2, 19], end: [3, 20] },
+      { name: '白羊座 ARIES', start: [3, 21], end: [4, 19] },
+      { name: '金牛座 TAURUS', start: [4, 20], end: [5, 20] },
+      { name: '双子座 GEMINI', start: [5, 21], end: [6, 21] },
+      { name: '巨蟹座 CANCER', start: [6, 22], end: [7, 22] },
+      { name: '狮子座 LEO', start: [7, 23], end: [8, 22] },
+      { name: '处女座 VIRGO', start: [8, 23], end: [9, 22] },
+      { name: '天秤座 LIBRA', start: [9, 23], end: [10, 23] },
+      { name: '天蝎座 SCORPIO', start: [10, 24], end: [11, 22] },
+      { name: '射手座 SAGITTARIUS', start: [11, 23], end: [12, 21] },
+      { name: '摩羯座 CAPRICORN', start: [12, 22], end: [12, 31] }
     ];
 
     for (const z of zodiacMap) {

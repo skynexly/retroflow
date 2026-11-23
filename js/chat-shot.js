@@ -243,7 +243,7 @@ window.ChatShot = (() => {
     ctx.textAlign = 'left';
     ctx.fillStyle = theme.secondary;
     ctx.font = `800 22px ${theme.font}`;
-    ctx.fillText('溯流终端 // 对话存档', PADDING_X, y + 54);
+    ctx.fillText('溯流终端 对话存档', PADDING_X, y + 54);
 
     // 场景名（对方 / 助手名）
     ctx.fillStyle = rgba('--secondary-color-rgb', 0.62, theme.secondaryRgb);
@@ -593,13 +593,13 @@ window.ChatShot = (() => {
     ctx.fillStyle = rgba('--secondary-color-rgb', 0.62, theme.secondaryRgb);
     ctx.font = `600 13px ${theme.font}`;
     const branchLabel = trimStr(meta && meta.branchLabel) || 'DIVE RECORD';
-    ctx.fillText(`世界线推演记录 // ${branchLabel}`, PADDING_X, y + 84);
+    ctx.fillText(`世界线推演记录 ${branchLabel}`, PADDING_X, y + 84);
 
     // 右上机能标识
     ctx.textAlign = 'right';
     ctx.fillStyle = theme.primary;
     ctx.font = `700 11px ${theme.font}`;
-    ctx.fillText('FORK // TRANSCEND', CANVAS_WIDTH - PADDING_X, y + 56);
+    ctx.fillText('FORK TRANSCEND', CANVAS_WIDTH - PADDING_X, y + 56);
 
     ctx.textAlign = 'left';
   }

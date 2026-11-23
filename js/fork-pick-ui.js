@@ -155,7 +155,7 @@ const ForkPickUI = (() => {
           ForkArchiveUI.openDossier(fork.id);
         } else if (window.RetroToast) {
           window.RetroToast.show({
-            tag: 'FORK // 副本详情',
+            tag: 'FORK 副本详情',
             message: fork.title || '卷宗详情',
             detail: `${fork.code || 'FORK'} · 等级 ${fork.levelKey || 'E'}`,
             type: 'info'
@@ -414,7 +414,7 @@ const ForkPickUI = (() => {
         descEl.textContent = overview;
         descEl.classList.remove('is-empty');
       } else {
-        descEl.textContent = '// 副本接入准备中，等待执行员下潜干涉。';
+        descEl.textContent = '副本接入准备中，等待执行员下潜干涉。';
         descEl.classList.add('is-empty');
       }
     }
@@ -452,7 +452,7 @@ const ForkPickUI = (() => {
     if (window.RetroToast) {
       if (hasCandidates) {
         window.RetroToast.show({
-          tag: 'DIVE // 因果雷达',
+          tag: 'DIVE 因果雷达',
           message: '世界线频段已重新调谐',
           detail: `符合 ${level} 权限等级的 ${candidateForks.length} 份卷宗已推演成形`,
           type: 'info'
@@ -460,7 +460,7 @@ const ForkPickUI = (() => {
       } else {
         const allowed = LEVEL_PERMISSIONS[level] || LEVEL_PERMISSIONS['LV.1'];
         window.RetroToast.show({
-          tag: 'DENIED // 权限管制',
+          tag: 'DENIED 权限管制',
           message: '未检索到符合权限的时空分支',
           detail: `${level} 仅可接入 ${formatAllowedLevels(allowed)} 级副本，禁止越级下潜`,
           type: 'warning'

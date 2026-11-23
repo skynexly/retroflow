@@ -565,7 +565,7 @@
 
     if (window.RetroToast && typeof RetroToast.show === 'function') {
       RetroToast.show({
-        tag: 'ASSISTANT // 智脑同调',
+        tag: 'ASSISTANT 智脑同调',
         message: `已装载助手拟态模组：${active.name}`,
         type: 'success'
       });
@@ -710,7 +710,6 @@
       standbyWrap.innerHTML = `
         <div class="asst-standby-header">
           <span class="asst-standby-tag">STANDBY</span>
-          <span class="asst-standby-slash">//</span>
           <span class="asst-standby-label">待命拟态模组</span>
           <span class="asst-standby-count">${standbyList.length}</span>
         </div>
@@ -923,7 +922,7 @@
       // RetroModal 只导出 confirm/alert/close，没有 toast —— 原先写成
       // `RetroModal.toast` 的条件永远为假，这三处提示从来没弹过。
       // 本页统一走 toastResonance（内部用 RetroToast）。
-      toastResonance('VALIDATION // 校验未通过', '请为助手填写代号或名称', '', 'warning');
+      toastResonance('VALIDATION 校验未通过', '请为助手填写代号或名称', '', 'warning');
       return false;
     }
 
@@ -993,7 +992,7 @@
     if (!verified) {
       assistants = previousAssistants;
       await Store.save('roster.assistants', previousAssistants);
-      toastResonance('SAVE ERROR // 落盘失败', '助手档案未能写入本地数据库', '请保留当前页面并重试', 'error');
+      toastResonance('SAVE ERROR 落盘失败', '助手档案未能写入本地数据库', '请保留当前页面并重试', 'error');
       // 必须显式返回 false：调用方 saveActiveEditor 判的是 `!== false`，
       // 裸 return（undefined）会让这次「回滚」被当成保存成功，
       // 于是编辑器照常退回列表、不报错，用户看到的就是「改了但没生效」。
@@ -1017,7 +1016,7 @@
       }));
     }
 
-    toastResonance('SAVED // 拟态已保存', `助手档案「${target.name}」已更新`, '', 'success');
+    toastResonance('SAVED 拟态已保存', `助手档案「${target.name}」已更新`, '', 'success');
 
     // 不在此处跳转：调用方自行决定是否退回列表
     return true;
@@ -1205,8 +1204,8 @@
           value: c.id,
           label: c.name || '未命名角色',
           hint: c.camp === 'instance'
-            ? 'SRC.FORK // 副本'
-            : `SRC.SYS // ${c.serial ? 'NO.' + c.serial : '无编号'}`
+            ? 'SRC.FORK 副本'
+            : `SRC.SYS ${c.serial ? 'NO.' + c.serial : '无编号'}`
         }));
     }
     if (scope === 'npc') {
@@ -1217,8 +1216,8 @@
           value: n.id,
           label: n.name || '未命名NPC',
           hint: n.camp === 'instance'
-            ? 'NPC.FORK // 副本'
-            : `NPC.SYS // ${n.serial ? 'NO.' + n.serial : '无编号'}`
+            ? 'NPC.FORK 副本'
+            : `NPC.SYS ${n.serial ? 'NO.' + n.serial : '无编号'}`
         }));
     }
     // 官方角色维次尚未落地，先返回空
@@ -1259,14 +1258,14 @@
       if (window.RetroToast) {
         if (isGlobal) {
           RetroToast.show({
-            tag: 'NEXUS // 关系对象',
+            tag: 'NEXUS 关系对象',
             message: '没有可建立关系的对象',
             detail: '角色与 NPC 档案尚未建档，或已全部登记过关系。',
             type: 'warn'
           });
         } else {
           RetroToast.show({
-            tag: `NEXUS // ${scopeLabel}`,
+            tag: `NEXUS ${scopeLabel}`,
             message: currentScope === 'char' ? '没有可建立关系的角色' : `${scopeLabel}档案还没有数据`,
             detail: currentScope === 'char'
               ? '其他角色尚未建档，或已全部登记过关系。'
@@ -1280,7 +1279,7 @@
 
     const picked = await SelectModal.pick({
       title: isGlobal ? '选择关系对象' : `选择${scopeLabel}`,
-      tag: 'NEXUS // 关系对象',
+      tag: 'NEXUS 关系对象',
       options: opts,
       value: nexusTargetId || ''
     });
@@ -1390,7 +1389,7 @@
     if (opts.length === 0) {
       if (window.RetroToast) {
         RetroToast.show({
-          tag: 'NEXUS // 主体人物',
+          tag: 'NEXUS 主体人物',
           message: '没有可选择的主体人物',
           detail: '请先录入角色或 NPC 档案。',
           type: 'warn'
@@ -1401,7 +1400,7 @@
 
     const picked = await SelectModal.pick({
       title: '选择主体人物',
-      tag: 'NEXUS // 关系发起方',
+      tag: 'NEXUS 关系发起方',
       options: opts,
       value: nexusSelfId || ''
     });
@@ -1450,7 +1449,7 @@
       if (relInput) relInput.value = rec ? (rec.relation || '') : '';
       if (descInput) descInput.value = rec ? (rec.desc || '') : '';
       if (titleEl) titleEl.textContent = '编辑人际关系';
-      if (tagEl) tagEl.textContent = 'NEXUS // 关系修订';
+      if (tagEl) tagEl.textContent = 'NEXUS 关系修订';
       if (saveBtn) saveBtn.textContent = '保存修改';
       // 编辑既有关系时不允许换人，避免语义漂移；要换人请移除后重建
       if (selfAvatarBtn) {
@@ -1466,7 +1465,7 @@
       if (relInput) relInput.value = '';
       if (descInput) descInput.value = '';
       if (titleEl) titleEl.textContent = '添加人际关系';
-      if (tagEl) tagEl.textContent = 'NEXUS // 关系登记';
+      if (tagEl) tagEl.textContent = 'NEXUS 关系登记';
       if (saveBtn) saveBtn.textContent = '登记关系';
       if (selfAvatarBtn) {
         selfAvatarBtn.classList.add('is-pickable');
@@ -1519,7 +1518,7 @@
     if (!nexusEditingRelId && hasRelationBetween(nexusSelfId, nexusTargetId)) {
       if (window.RetroToast) {
         RetroToast.show({
-          tag: 'NEXUS // 羁绊冲突',
+          tag: 'NEXUS 羁绊冲突',
           message: '这两人之间已有关系记录',
           detail: '一对角色之间只保留一条关系。回到列表里编辑那一条即可。',
           type: 'warn'
@@ -1828,11 +1827,11 @@ function resolveFactionTag(char) {
         ? `<img class="resonance-card-img" src="${escapeHtml(avatarSrc)}" alt="${escapeHtml(nameText)}" loading="lazy">`
         : `
           <div class="resonance-card-placeholder">
-            <span class="resonance-ph-tag">RETROFLOW // CHAR</span>
+            <span class="resonance-ph-tag">RETROFLOW CHAR</span>
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
             </svg>
-            <span class="resonance-ph-tip">STANDBY // 待接入头像</span>
+            <span class="resonance-ph-tip">STANDBY 待接入头像</span>
           </div>
         `;
 
@@ -1903,13 +1902,13 @@ function resolveFactionTag(char) {
 
   const CAMP_CONFIG = {
     operative: {
-      tag: 'OPERATIVE // 执行员',
-      code: 'SYS_OPERATIVE // 溯流员工编制',
+      tag: 'OPERATIVE 执行员',
+      code: 'SYS_OPERATIVE 溯流员工编制',
       desc: '溯流计划员工，进入不同副本执行任务。'
     },
     instance: {
-      tag: 'INSTANCE // 副本高位',
-      code: 'ANOMALY_CORE // 副本世界知情者',
+      tag: 'INSTANCE 副本高位',
+      code: 'ANOMALY_CORE 副本世界知情者',
       desc: '副本世界中的高位存在，知晓执行员的来历，亦知晓自身所处的世界是副本。'
     }
   };
@@ -2468,7 +2467,7 @@ function resolveFactionTag(char) {
 
       const saved = await saveActiveEditor();
       if (!saved) {
-        toastResonance('EDITOR // 退出中止', '归档未完成，已留在编辑页', '请按提示修正后重试，避免本次编辑内容丢失', 'error');
+        toastResonance('EDITOR 退出中止', '归档未完成，已留在编辑页', '请按提示修正后重试，避免本次编辑内容丢失', 'error');
         return;
       }
 
@@ -2478,7 +2477,7 @@ function resolveFactionTag(char) {
       if (activeEditor !== 'asst') {
         const meta = EDITOR_META[activeEditor] || { zh: '档案' };
         const name = meta.nameOf ? meta.nameOf() : '';
-        toastResonance('SAVED // 档案归档', `${meta.zh}「${name || '未命名'}」已保存`, '', 'success');
+        toastResonance('SAVED 档案归档', `${meta.zh}「${name || '未命名'}」已保存`, '', 'success');
       }
       backToActiveList();
     } finally {
@@ -2512,20 +2511,20 @@ function resolveFactionTag(char) {
             // 保存留在原地，不自动跳走：菜单点完页面自己跳会很突兀。
             // 助手维度的 saveAsstEditor 自带 Toast，跳过免得连弹两个。
             if (okSaved && activeEditor !== 'asst') {
-              toastResonance('SAVED // 档案归档', `${meta.zh}档案已保存`, '', 'success');
+              toastResonance('SAVED 档案归档', `${meta.zh}档案已保存`, '', 'success');
             }
           }).catch((err) => {
             console.warn('[Resonance] 手动归档异常：', err);
           });
           break;
         case 'ai-assist':
-          toastResonance('AI // 写作助手', '智能推演准备中', `AI 辅助生成${meta.zh}设定功能即将接入`, 'info');
+          toastResonance('AI 写作助手', '智能推演准备中', `AI 辅助生成${meta.zh}设定功能即将接入`, 'info');
           break;
         case 'export-json':
-          toastResonance('IO // 导出JSON', '导出通道准备中', `${meta.zh}档案导出功能即将接入`, 'info');
+          toastResonance('IO 导出JSON', '导出通道准备中', `${meta.zh}档案导出功能即将接入`, 'info');
           break;
         case 'import-override':
-          toastResonance('IO // 导入覆盖', '导入通道准备中', `${meta.zh}档案导入功能即将接入`, 'info');
+          toastResonance('IO 导入覆盖', '导入通道准备中', `${meta.zh}档案导入功能即将接入`, 'info');
           break;
         case 'destroy':
           Promise.resolve(destroyActiveEditor()).catch((err) => {
@@ -2749,7 +2748,7 @@ function resolveFactionTag(char) {
       const current = charAppearanceInput ? charAppearanceInput.value : '';
       const updated = await TextEditorModal.edit({
         title: '外貌特征编辑',
-        tag: 'CHARACTER // 外貌设定',
+        tag: 'CHARACTER 外貌设定',
         value: current,
         placeholder: '描述角色的外貌形象、发型、着装与特征...',
         maxLength: 3000
@@ -2761,7 +2760,7 @@ function resolveFactionTag(char) {
       const current = charProfileInput ? charProfileInput.value : '';
       const updated = await TextEditorModal.edit({
         title: '核心设定编辑',
-        tag: 'CHARACTER // 核心档案',
+        tag: 'CHARACTER 核心档案',
         value: current,
         placeholder: '描述该角色的性格、背景故事、动机与核心设定...',
         maxLength: 5000
@@ -2773,7 +2772,7 @@ function resolveFactionTag(char) {
       const current = charSelfBriefInput ? charSelfBriefInput.value : '';
       const updated = await TextEditorModal.edit({
         title: '自我简介编辑',
-        tag: 'NEXUS // 自我简介',
+        tag: 'NEXUS 自我简介',
         value: current,
         placeholder: '一段话概括角色设定，用以在该角色不在场却被提及时作为说明提供给系统。',
         maxLength: 2000
@@ -2849,7 +2848,7 @@ function resolveFactionTag(char) {
       if (!window.AvatarForge || typeof AvatarForge.open !== 'function') {
         if (window.RetroToast) {
           RetroToast.show({
-            tag: 'FORGE // 模块状态',
+            tag: 'FORGE 模块状态',
             message: 'AI 绘像工坊尚未就绪',
             detail: '绘像模块尚未完全载入，请稍候再试。',
             type: 'warn'
@@ -2941,7 +2940,7 @@ function resolveFactionTag(char) {
       if (!window.AvatarForge || typeof AvatarForge.open !== 'function') {
         if (window.RetroToast) {
           RetroToast.show({
-            tag: 'FORGE // 模块状态',
+            tag: 'FORGE 模块状态',
             message: 'AI 绘像工坊尚未就绪',
             detail: '绘像模块尚未完全载入，请稍候再试。',
             type: 'warn'
@@ -3020,7 +3019,7 @@ function resolveFactionTag(char) {
       if (!window.TextEditorModal || typeof TextEditorModal.edit !== 'function') return;
       const updated = await TextEditorModal.edit({
         title: '拟态外貌特征',
-        tag: 'APPEARANCE // 提示词装配',
+        tag: 'APPEARANCE 提示词装配',
         value: asstAppearanceInput.value
       });
       // 确认返回文本、取消 / 返回手势返回 null —— null 不回写，保留原值
@@ -3033,7 +3032,7 @@ function resolveFactionTag(char) {
       if (!window.TextEditorModal || typeof TextEditorModal.edit !== 'function') return;
       const updated = await TextEditorModal.edit({
         title: '系统核心指令与人设',
-        tag: 'SYSTEM INSTRUCTIONS // 推演核心',
+        tag: 'SYSTEM INSTRUCTIONS 推演核心',
         value: asstProfileInput.value
       });
       if (updated !== null && updated !== undefined) asstProfileInput.value = updated;
@@ -3100,7 +3099,7 @@ function resolveFactionTag(char) {
       npcCampPivotCard.classList.toggle('camp-instance-active', isInstance);
     }
     if (npcCampStatusTag) {
-      npcCampStatusTag.textContent = isInstance ? 'FORK // 副本原生' : 'OPERATIVE // 执行员';
+      npcCampStatusTag.textContent = isInstance ? 'FORK 副本原生' : 'OPERATIVE 执行员';
     }
     if (npcCampValveTrack) {
       npcCampValveTrack.classList.toggle('is-instance', isInstance);
@@ -3116,8 +3115,8 @@ function resolveFactionTag(char) {
 
     if (npcCampDescCode) {
       npcCampDescCode.textContent = isInstance
-        ? 'FORK_INSTANCE // 副本原生存在'
-        : 'SYS_OPERATIVE // 溯流员工编制';
+        ? 'FORK_INSTANCE 副本原生存在'
+        : 'SYS_OPERATIVE 溯流员工编制';
     }
     if (npcCampDescContent) {
       npcCampDescContent.textContent = isInstance
@@ -3317,7 +3316,7 @@ function resolveFactionTag(char) {
       if (token !== npcListRenderToken) return;
 
       const serialDisplay = npc.camp === 'instance'
-        ? 'FORK // 副本原生'
+        ? 'FORK 副本原生'
         : `NO.${npc.serial || '000000'}`;
 
       const campLabel = npc.camp === 'instance' ? 'INSTANCE' : 'OPERATIVE';
@@ -3649,7 +3648,7 @@ function resolveFactionTag(char) {
       const current = npcAppearanceInput ? npcAppearanceInput.value : '';
       const updated = await TextEditorModal.edit({
         title: '外貌特征编辑',
-        tag: 'NPC // 外貌设定',
+        tag: 'NPC 外貌设定',
         value: current,
         placeholder: '描述NPC的外貌形象、发型、着装与特征...',
         maxLength: 3000
@@ -3666,7 +3665,7 @@ function resolveFactionTag(char) {
       const current = npcProfileInput ? npcProfileInput.value : '';
       const updated = await TextEditorModal.edit({
         title: '核心设定编辑',
-        tag: 'NPC // 核心设定',
+        tag: 'NPC 核心设定',
         value: current,
         placeholder: '描述该NPC的性格、背景故事、动机与核心设定...',
         maxLength: 5000
@@ -3683,7 +3682,7 @@ function resolveFactionTag(char) {
       const current = npcSelfBriefInput ? npcSelfBriefInput.value : '';
       const updated = await TextEditorModal.edit({
         title: '自我简介编辑',
-        tag: 'NPC // 自我简介',
+        tag: 'NPC 自我简介',
         value: current,
         placeholder: '一段话概括NPC设定，用以在该角色不在场却被提及时作为说明提供给系统。',
         maxLength: 1000
@@ -3732,7 +3731,7 @@ function resolveFactionTag(char) {
       if (!window.AvatarForge || typeof AvatarForge.open !== 'function') {
         if (window.RetroToast) {
           RetroToast.show({
-            tag: 'FORGE // 模块状态',
+            tag: 'FORGE 模块状态',
             message: 'AI 绘像工坊尚未就绪',
             detail: '绘像模块尚未完全载入，请稍候再试。',
             type: 'warn'
@@ -3805,7 +3804,7 @@ function resolveFactionTag(char) {
         opts.push({
           value: c.id,
           label: c.name || '未命名角色',
-          hint: c.camp === 'instance' ? 'SRC.FORK // 副本' : `SRC.SYS // ${c.serial ? 'NO.' + c.serial : '无编号'}`
+          hint: c.camp === 'instance' ? 'SRC.FORK 副本' : `SRC.SYS ${c.serial ? 'NO.' + c.serial : '无编号'}`
         });
       });
     }
@@ -3816,14 +3815,14 @@ function resolveFactionTag(char) {
         opts.push({
           value: n.id,
           label: n.name || '未命名NPC',
-          hint: n.camp === 'instance' ? 'NPC.FORK // 副本' : `NPC.SYS // ${n.serial ? 'NO.' + n.serial : '无编号'}`
+          hint: n.camp === 'instance' ? 'NPC.FORK 副本' : `NPC.SYS ${n.serial ? 'NO.' + n.serial : '无编号'}`
         });
       });
     }
 
     const picked = await SelectModal.pick({
       title: '按人物聚焦筛选',
-      tag: 'NEXUS // 聚焦点',
+      tag: 'NEXUS 聚焦点',
       options: opts,
       value: nexusFilterPersonId || '__ALL__'
     });

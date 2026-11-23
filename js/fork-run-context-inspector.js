@@ -132,7 +132,7 @@ window.ForkRunContextInspector = (() => {
       refreshBtn.addEventListener('click', () => {
         render();
         if (window.RetroToast) {
-          RetroToast.show({ tag: 'CONTEXT // 已刷新', message: '已拉取最新上下文快照', type: 'info' });
+          RetroToast.show({ tag: 'CONTEXT 已刷新', message: '已拉取最新上下文快照', type: 'info' });
         }
       });
     }
@@ -243,7 +243,7 @@ window.ForkRunContextInspector = (() => {
       summaryCard.innerHTML = `
         <div class="fork-ctx-summary-head">
           <div class="fork-ctx-summary-tag">
-            <span class="fork-ctx-summary-tag-code">TELEMETRY // SNAPSHOT</span>
+            <span class="fork-ctx-summary-tag-code">TELEMETRY SNAPSHOT</span>
             <span class="fork-ctx-summary-tag-title">${escapeHtml(labels.summaryTitle || DEFAULT_LABELS.summaryTitle)}</span>
           </div>
           <span class="fork-ctx-summary-stamp">${escapeHtml(stamp)}</span>

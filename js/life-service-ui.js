@@ -711,12 +711,12 @@ const LifeServiceUI = (() => {
       return {
         title: '选择每日服用时段',
         tag: 'MEDBAY SLOT 用药时段',
-        value: currentVal || 'MORNING // 晨间',
+        value: currentVal || 'MORNING 晨间',
         searchable: false,
         options: [
-          { value: 'MORNING // 晨间', label: 'MORNING · 晨间服用', displayLabel: 'MORNING 晨间', hint: '早餐随餐或晨起空腹打卡' },
-          { value: 'NOON // 午后', label: 'NOON · 午后服用', displayLabel: 'NOON 午后', hint: '午餐后或下午茶时段补给' },
-          { value: 'NIGHT // 睡前', label: 'NIGHT · 睡前服用', displayLabel: 'NIGHT 睡前', hint: '晚间洗漱后或入睡前打卡' }
+          { value: 'MORNING 晨间', label: 'MORNING · 晨间服用', displayLabel: 'MORNING 晨间', hint: '早餐随餐或晨起空腹打卡' },
+          { value: 'NOON 午后', label: 'NOON · 午后服用', displayLabel: 'NOON 午后', hint: '午餐后或下午茶时段补给' },
+          { value: 'NIGHT 睡前', label: 'NIGHT · 睡前服用', displayLabel: 'NIGHT 睡前', hint: '晚间洗漱后或入睡前打卡' }
         ]
       };
     }
@@ -725,12 +725,12 @@ const LifeServiceUI = (() => {
       return {
         title: '评估睡眠深度质量',
         tag: 'HF-SIGNAL 睡眠质量',
-        value: currentVal || 'DEEP // 深睡充沛',
+        value: currentVal || 'DEEP 深睡充沛',
         searchable: false,
         options: [
-          { value: 'DEEP // 深睡充沛', label: 'DEEP · 深睡充沛', displayLabel: 'DEEP 深睡充沛', hint: '入睡快、深睡占比高，晨醒精神饱满' },
-          { value: 'NORMAL // 平稳正常', label: 'NORMAL · 平稳正常', displayLabel: 'NORMAL 平稳正常', hint: '作息规律，整体恢复尚可' },
-          { value: 'LIGHT // 多梦浅眠', label: 'LIGHT · 多梦浅眠', displayLabel: 'LIGHT 多梦浅眠', hint: '夜间易醒或多梦，次日需注意补休' }
+          { value: 'DEEP 深睡充沛', label: 'DEEP · 深睡充沛', displayLabel: 'DEEP 深睡充沛', hint: '入睡快、深睡占比高，晨醒精神饱满' },
+          { value: 'NORMAL 平稳正常', label: 'NORMAL · 平稳正常', displayLabel: 'NORMAL 平稳正常', hint: '作息规律，整体恢复尚可' },
+          { value: 'LIGHT 多梦浅眠', label: 'LIGHT · 多梦浅眠', displayLabel: 'LIGHT 多梦浅眠', hint: '夜间易醒或多梦，次日需注意补休' }
         ]
       };
     }
@@ -2103,7 +2103,7 @@ const LifeServiceUI = (() => {
         iconKey = 'transfer';
         const fa = accMap.get(r.fromAccountId || r.accountId);
         const ta = accMap.get(r.toAccountId);
-        accDesc = `${fa ? fa.name : '转出'} -> ${ta ? ta.name : '转入'}${Number(r.fee) > 0 ? ` (手续费 ${cur}${Number(r.fee).toFixed(2)})` : ''}`;
+        accDesc = `${fa ? fa.name : '转出'} -> ${ta ? ta.name : '转入'}${Number(r.fee) > 0 ? `(手续费 ${cur}${Number(r.fee).toFixed(2)})` : ''}`;
       } else if (rType === 'adjust') {
         const d = Number(r.delta) || 0;
         sign = d >= 0 ? '+' : '-';
@@ -2630,7 +2630,7 @@ const LifeServiceUI = (() => {
           iconKey = 'transfer';
           const fa = accMap.get(r.fromAccountId || r.accountId);
           const ta = accMap.get(r.toAccountId);
-          accDesc = `${fa ? fa.name : '转出'} -> ${ta ? ta.name : '转入'}${Number(r.fee) > 0 ? ` (手续费 ${cur}${Number(r.fee).toFixed(2)})` : ''}`;
+          accDesc = `${fa ? fa.name : '转出'} -> ${ta ? ta.name : '转入'}${Number(r.fee) > 0 ? `(手续费 ${cur}${Number(r.fee).toFixed(2)})` : ''}`;
         } else if (rType === 'adjust') {
           const d = Number(r.delta) || 0;
           sign = d >= 0 ? '+' : '-';
@@ -3415,7 +3415,7 @@ const LifeServiceUI = (() => {
                   <span class="life-acc-ico">${svgLedgerIcon(c.iconKey)}</span>
                   <div>
                     <div class="life-acc-name">${esc(c.name)}</div>
-                    <div class="life-acc-meta">${ledgerCatTab === 'expense' ? `本月已支 ${cur}${spent.toFixed(2)}${subB > 0 ? ` / 子预算 ${cur}${subB.toFixed(0)} (${pct}%)` : ' · 未设限额'}` : '收入入账分类'}</div>
+                    <div class="life-acc-meta">${ledgerCatTab === 'expense' ? `本月已支 ${cur}${spent.toFixed(2)}${subB > 0 ? `/ 子预算 ${cur}${subB.toFixed(0)} (${pct}%)` : ' · 未设限额'}` : '收入入账分类'}</div>
                   </div>
                 </div>
                 <div class="life-log-right">
@@ -3532,13 +3532,13 @@ const LifeServiceUI = (() => {
                 if (s.expired) {
                   subMetaLine = `到期 ${esc(s.expireDate || '--')} · 一次性限时`;
                 } else {
-                  subMetaLine = `到期 ${esc(s.expireDate || '--')} · 折合 ${cur}${s.monthlyEquivalent}/月${acc ? ` · ${esc(acc.name)}` : ''}`;
+                  subMetaLine = `到期 ${esc(s.expireDate || '--')} · 折合 ${cur}${s.monthlyEquivalent}/月${acc ? `· ${esc(acc.name)}` : ''}`;
                 }
                 actionBtnHtml = `<button type="button" class="life-mini-act-btn primary" data-sub-renew="${esc(s.id)}">续期</button>`;
               } else {
                 const cycText = ic > 1 ? `每${ic}${cycUnit}` : `每${cycUnit}`;
                 const nextTxt = s.daysLeft <= 0 ? '今日扣费' : `${s.daysLeft}天后扣费`;
-                subMetaLine = `${cycText} · ${nextTxt}${acc ? ` · ${esc(acc.name)}` : ''}`;
+                subMetaLine = `${cycText} · ${nextTxt}${acc ? `· ${esc(acc.name)}` : ''}`;
                 actionBtnHtml = `<button type="button" class="life-mini-act-btn primary" data-sub-renew="${esc(s.id)}">续一期</button>`;
               }
 
@@ -4368,19 +4368,19 @@ const LifeServiceUI = (() => {
       // 配置参数区
       const configHtml = `
         <div class="life-form-pod">
-          <div class="life-form-pod-title"><span>CYCLE CONFIG // 周期默认参数</span><span>BIORHYTHM</span></div>
+          <div class="life-form-pod-title"><span>CYCLE CONFIG 周期默认参数</span><span>BIORHYTHM</span></div>
           <div class="life-form-grid">
             <div class="life-field">
-              <label>DURATION // 默认持续天数</label>
+              <label>DURATION 默认持续天数</label>
               <input type="number" id="lifePeriodDefaultDuration" class="life-input" min="2" max="15" value="${snap.config.periodDurationDays || 5}">
             </div>
             <div class="life-field">
-              <label>CYCLE // 默认周期长度(天)</label>
+              <label>CYCLE 默认周期长度(天)</label>
               <input type="number" id="lifePeriodDefaultCycle" class="life-input" min="15" max="60" value="${snap.config.periodCycleDays || 28}">
             </div>
           </div>
           <button type="button" class="life-submit-btn" data-life-submit="period-config">
-            <span>SAVE CONFIG // 保存默认参数</span>
+            <span>SAVE CONFIG 保存默认参数</span>
           </button>
         </div>`;
       
@@ -4395,7 +4395,7 @@ const LifeServiceUI = (() => {
         statusHtml = `
           <div class="life-period-status-card is-active">
             <div class="life-period-status-header">
-              <span class="life-period-status-badge">MENSTRUAL // 经期行进中</span>
+              <span class="life-period-status-badge">MENSTRUAL 经期行进中</span>
               <span class="life-period-status-day">DAY ${currentDay}</span>
             </div>
             <div class="life-period-status-body">
@@ -4439,7 +4439,7 @@ const LifeServiceUI = (() => {
             </div>
             <div class="life-period-status-actions">
               <button type="button" class="life-submit-btn" data-period-start="1">
-                <span>RECORD START // 记录本次经期首日</span>
+                <span>RECORD START 记录本次经期首日</span>
               </button>
             </div>
           </div>`;
@@ -4471,7 +4471,7 @@ const LifeServiceUI = (() => {
         
         dailyLogHtml = `
           <div class="life-form-pod">
-            <div class="life-form-pod-title"><span>DAILY LOG // 每日体感记录</span><span>DAY BY DAY</span></div>
+            <div class="life-form-pod-title"><span>DAILY LOG 每日体感记录</span><span>DAY BY DAY</span></div>
             <div class="life-period-daily-list">
               ${daysList.map((day) => `
                 <div class="life-period-daily-item ${day.isToday ? 'is-today' : ''}" data-period-log-day="${esc(day.dateKey)}">
@@ -4492,7 +4492,7 @@ const LifeServiceUI = (() => {
       const historyHtml = records.length
         ? `
           <div class="life-form-pod">
-            <div class="life-form-pod-title"><span>HISTORY // 历史经期记录</span><span>ARCHIVE</span></div>
+            <div class="life-form-pod-title"><span>HISTORY 历史经期记录</span><span>ARCHIVE</span></div>
             <div class="life-log-list">
               ${records.map((r) => {
                 const startDate = r.startDate || '';
@@ -4543,7 +4543,7 @@ const LifeServiceUI = (() => {
                   <div class="life-log-sub">${esc(p.slot)}</div>
                 </div>
                 <div class="life-log-right">
-                  <span class="life-med-status-pill">${isTaken ? 'TAKEN // 已服' : 'PENDING // 打卡'}</span>
+                  <span class="life-med-status-pill">${isTaken ? 'TAKEN 已服' : 'PENDING 打卡'}</span>
                   <button type="button" class="life-log-del-btn" data-med-remove="${esc(p.id)}" title="移除方案">
                     <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                   </button>
@@ -4551,29 +4551,29 @@ const LifeServiceUI = (() => {
               </div>
             `;
           }).join('')
-        : '<div class="life-empty-hint">NO MED PLANS // 药盒为空，请在下方添加日常补剂或药品</div>';
+        : '<div class="life-empty-hint">NO MED PLANS 药盒为空，请在下方添加日常补剂或药品</div>';
 
       sheetBodyEl.innerHTML = `
         <div class="life-log-list">${plansHtml}</div>
 
         <div class="life-form-pod">
-          <div class="life-form-pod-title"><span>ADD SUPPLEMENT // 新增药盒常备项</span><span>MEDBAY</span></div>
+          <div class="life-form-pod-title"><span>ADD SUPPLEMENT 新增药盒常备项</span><span>MEDBAY</span></div>
           <div class="life-form-grid">
             <div class="life-field full">
-              <label>NAME // 药品或补剂名称</label>
+              <label>NAME 药品或补剂名称</label>
               <input type="text" id="lifeMedName" class="life-input" placeholder="例如：维生素 D3 / 布洛芬">
             </div>
             <div class="life-field">
-              <label>DOSE // 单次剂量</label>
+              <label>DOSE 单次剂量</label>
               <input type="text" id="lifeMedDose" class="life-input" value="1 粒">
             </div>
             <div class="life-field">
-              <label>SLOT // 服用时段</label>
-              ${renderLifeSelectField({ id: 'lifeMedSlot', kind: 'med-slot', value: 'MORNING // 晨间' })}
+              <label>SLOT 服用时段</label>
+              ${renderLifeSelectField({ id: 'lifeMedSlot', kind: 'med-slot', value: 'MORNING 晨间' })}
             </div>
           </div>
           <button type="button" class="life-submit-btn" data-life-submit="meds">
-            <span>ADD TO PILLBOX // 装入药盒</span>
+            <span>ADD TO PILLBOX 装入药盒</span>
           </button>
         </div>
       `;
@@ -4600,31 +4600,31 @@ const LifeServiceUI = (() => {
               </div>
             </div>
           `).join('')
-        : '<div class="life-empty-hint">NO SLEEP TELEMETRY // 暂无睡眠监测流水</div>';
+        : '<div class="life-empty-hint">NO SLEEP TELEMETRY 暂无睡眠监测流水</div>';
 
       sheetBodyEl.innerHTML = `
         <div class="life-form-pod">
-          <div class="life-form-pod-title"><span>SLEEP LOG // 记录入睡与晨醒时间</span><span>HF-SIGNAL</span></div>
+          <div class="life-form-pod-title"><span>SLEEP LOG 记录入睡与晨醒时间</span><span>HF-SIGNAL</span></div>
           <div class="life-form-grid">
             <div class="life-field">
-              <label>BED TIME // 入睡时刻</label>
+              <label>BED TIME 入睡时刻</label>
               <input type="time" id="lifeSleepBed" class="life-input" value="23:30">
             </div>
             <div class="life-field">
-              <label>WAKE TIME // 醒来时刻</label>
+              <label>WAKE TIME 醒来时刻</label>
               <input type="time" id="lifeSleepWake" class="life-input" value="07:30">
             </div>
             <div class="life-field">
-              <label>QUALITY // 睡眠深度</label>
-              ${renderLifeSelectField({ id: 'lifeSleepQuality', kind: 'sleep-quality', value: 'DEEP // 深睡充沛' })}
+              <label>QUALITY 睡眠深度</label>
+              ${renderLifeSelectField({ id: 'lifeSleepQuality', kind: 'sleep-quality', value: 'DEEP 深睡充沛' })}
             </div>
             <div class="life-field">
-              <label>DATE // 记录日期</label>
+              <label>DATE 记录日期</label>
               ${renderLifeDateField({ id: 'lifeSleepDate', value: snap.todayKey, title: '选择睡眠记录日期' })}
             </div>
           </div>
           <button type="button" class="life-submit-btn" data-life-submit="sleep">
-            <span>RECORD SLEEP // 保存作息记录</span>
+            <span>RECORD SLEEP 保存作息记录</span>
           </button>
         </div>
 
@@ -4651,7 +4651,7 @@ const LifeServiceUI = (() => {
                   <span class="life-log-tag">${esc(item.tag || 'TODO')}</span>
                   <span class="life-memo-title-text">${esc(item.title)}</span>
                 </div>
-                <div class="life-log-sub">${esc(item.dateKey || '')}${item.note ? ' // ' + esc(item.note) : ''}</div>
+                <div class="life-log-sub">${esc(item.dateKey || '')}${item.note ? '' + esc(item.note) : ''}</div>
               </div>
               <div class="life-log-right">
                 <button type="button" class="life-log-del-btn" data-life-del="${esc(item.id)}" aria-label="删除待办">
@@ -4660,7 +4660,7 @@ const LifeServiceUI = (() => {
               </div>
             </div>
           `).join('')
-        : '<div class="life-empty-hint">NO TODO ITEMS // 暂无待办事项</div>';
+        : '<div class="life-empty-hint">NO TODO ITEMS 暂无待办事项</div>';
 
       const sortedWishes = snap.memo.wishes.slice().sort((a, b) => Number(Boolean(a.done)) - Number(Boolean(b.done)));
       const wishListHtml = sortedWishes.length
@@ -4684,7 +4684,7 @@ const LifeServiceUI = (() => {
               </div>
             </div>
           `).join('')
-        : '<div class="life-empty-hint">NO WISHLIST // 暂无购物草单</div>';
+        : '<div class="life-empty-hint">NO WISHLIST 暂无购物草单</div>';
 
       const noteListHtml = snap.memo.notes.length
         ? snap.memo.notes.map((item) => `
@@ -4704,85 +4704,85 @@ const LifeServiceUI = (() => {
               ${item.content ? `<div class="life-memo-note-body">${esc(item.content)}</div>` : ''}
             </div>
           `).join('')
-        : '<div class="life-empty-hint">NO FREE NOTES // 暂无自由便签</div>';
+        : '<div class="life-empty-hint">NO FREE NOTES 暂无自由便签</div>';
 
       sheetBodyEl.innerHTML = `
         <div class="life-seg-group">
-          <button type="button" class="life-seg-btn ${memoTab === 'todo' ? 'active' : ''}" data-memo-tab="todo">TODO // 待办清单</button>
-          <button type="button" class="life-seg-btn ${memoTab === 'wish' ? 'active' : ''}" data-memo-tab="wish">WISH // 购物草单</button>
-          <button type="button" class="life-seg-btn ${memoTab === 'note' ? 'active' : ''}" data-memo-tab="note">NOTE // 自由便签</button>
+          <button type="button" class="life-seg-btn ${memoTab === 'todo' ? 'active' : ''}" data-memo-tab="todo">TODO 待办清单</button>
+          <button type="button" class="life-seg-btn ${memoTab === 'wish' ? 'active' : ''}" data-memo-tab="wish">WISH 购物草单</button>
+          <button type="button" class="life-seg-btn ${memoTab === 'note' ? 'active' : ''}" data-memo-tab="note">NOTE 自由便签</button>
         </div>
 
         ${memoTab === 'todo' ? `
           <div class="life-form-pod">
-            <div class="life-form-pod-title"><span>NEW TODO // 新增待办事项</span><span>CHECKLIST</span></div>
+            <div class="life-form-pod-title"><span>NEW TODO 新增待办事项</span><span>CHECKLIST</span></div>
             <div class="life-form-grid">
               <div class="life-field full">
-                <label>TASK // 待办内容</label>
+                <label>TASK 待办内容</label>
                 <input type="text" id="lifeMemoTodoTitle" class="life-input" placeholder="例如：拿驿站快递 / 洗床单">
               </div>
               <div class="life-field">
-                <label>TAG // 优先级或分类</label>
+                <label>TAG 优先级或分类</label>
                 ${renderLifeSelectField({ id: 'lifeMemoTodoTag', kind: 'memo-todo-tag', value: 'DAILY' })}
               </div>
               <div class="life-field">
-                <label>REMARK // 补充小注</label>
+                <label>REMARK 补充小注</label>
                 <input type="text" id="lifeMemoTodoNote" class="life-input" placeholder="可选：取件码等">
               </div>
             </div>
             <button type="button" class="life-submit-btn" data-life-submit="memo-todo">
               <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-              <span>ADD TASK // 加入待办</span>
+              <span>ADD TASK 加入待办</span>
             </button>
           </div>
           <div class="life-log-list">${todoListHtml}</div>
         ` : memoTab === 'wish' ? `
           <div class="life-form-pod">
-            <div class="life-form-pod-title"><span>WISHLIST // 新增想买与补货清单</span><span>SUPPLY</span></div>
+            <div class="life-form-pod-title"><span>WISHLIST 新增想买与补货清单</span><span>SUPPLY</span></div>
             <div class="life-form-grid">
               <div class="life-field full">
-                <label>ITEM NAME // 物品名称</label>
+                <label>ITEM NAME 物品名称</label>
                 <input type="text" id="lifeMemoWishTitle" class="life-input" placeholder="例如：日抛隐形 / 秋冬外套 / 猫粮">
               </div>
               <div class="life-field">
-                <label>EST. PRICE // 预估价（可选）</label>
+                <label>EST. PRICE 预估价（可选）</label>
                 <input type="number" step="1" id="lifeMemoWishPrice" class="life-input" placeholder="0">
               </div>
               <div class="life-field">
-                <label>TAG // 分类短标</label>
+                <label>TAG 分类短标</label>
                 ${renderLifeSelectField({ id: 'lifeMemoWishTag', kind: 'memo-wish-tag', value: 'WANT' })}
               </div>
               <div class="life-field full">
-                <label>SPEC & CHANNEL // 规格色号或渠道备注</label>
+                <label>SPEC & CHANNEL 规格色号或渠道备注</label>
                 <input type="text" id="lifeMemoWishNote" class="life-input" placeholder="可选：色号 / 尺码 / 等大促凑单">
               </div>
             </div>
             <button type="button" class="life-submit-btn" data-life-submit="memo-wish">
               <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-              <span>ADD TO WISHLIST // 加入草单</span>
+              <span>ADD TO WISHLIST 加入草单</span>
             </button>
           </div>
           <div class="life-log-list">${wishListHtml}</div>
         ` : `
           <div class="life-form-pod">
-            <div class="life-form-pod-title"><span>FREE NOTE // 随手自由便签</span><span>ARCHIVE</span></div>
+            <div class="life-form-pod-title"><span>FREE NOTE 随手自由便签</span><span>ARCHIVE</span></div>
             <div class="life-form-grid">
               <div class="life-field">
-                <label>TITLE // 便签标题</label>
+                <label>TITLE 便签标题</label>
                 <input type="text" id="lifeMemoNoteTitle" class="life-input" placeholder="例如：奶茶点单红黑榜">
               </div>
               <div class="life-field">
-                <label>TAG // 便签标签</label>
+                <label>TAG 便签标签</label>
                 <input type="text" id="lifeMemoNoteTag" class="life-input" value="IDEA" placeholder="IDEA / FOOD">
               </div>
               <div class="life-field full">
-                <label>CONTENT // 正文记录</label>
+                <label>CONTENT 正文记录</label>
                 <textarea id="lifeMemoNoteBody" class="life-textarea" rows="4" placeholder="自由输入备忘内容、灵感碎片、外卖避雷或常用信息..."></textarea>
               </div>
             </div>
             <button type="button" class="life-submit-btn" data-life-submit="memo-note">
               <svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg>
-              <span>SAVE NOTE // 保存便签</span>
+              <span>SAVE NOTE 保存便签</span>
             </button>
           </div>
           <div class="life-log-list">${noteListHtml}</div>
@@ -4813,7 +4813,7 @@ const LifeServiceUI = (() => {
       const noteEl = document.getElementById('lifeLedgerNote');
       const amount = Number(amtEl && amtEl.value);
       if (!Number.isFinite(amount) || amount <= 0) {
-        if (window.RetroToast) RetroToast.show({ tag: 'LEDGER // 校验', message: '请输入有效金额（需大于 0）', type: 'warning' });
+        if (window.RetroToast) RetroToast.show({ tag: 'LEDGER 校验', message: '请输入有效金额（需大于 0）', type: 'warning' });
         return;
       }
 
@@ -4827,7 +4827,7 @@ const LifeServiceUI = (() => {
         const fromId = fromEl ? fromEl.value : '';
         const toId = toEl ? toEl.value : '';
         if (!fromId || !toId || fromId === toId) {
-          if (window.RetroToast) RetroToast.show({ tag: 'TRANSFER // 校验', message: '请选择两个不同的转出与转入账户', type: 'warning' });
+          if (window.RetroToast) RetroToast.show({ tag: 'TRANSFER 校验', message: '请选择两个不同的转出与转入账户', type: 'warning' });
           return;
         }
         const fee = Math.max(0, Number(feeEl && feeEl.value) || 0);
@@ -4872,26 +4872,26 @@ const LifeServiceUI = (() => {
         ledgerEditRecordId = null;
       }
       ledgerFormOpen = false;
-      if (window.RetroToast) RetroToast.show({ tag: 'LEDGER // OK', message: '账单流水已入库并同步账户净值', type: 'success' });
+      if (window.RetroToast) RetroToast.show({ tag: 'LEDGER OK', message: '账单流水已入库并同步账户净值', type: 'success' });
     } else if (kind === 'acc-calibrate') {
       if (!ledgerCalibrateAccId) return;
       const actualEl = document.getElementById('lifeCalibrateActual');
       const modeEl = document.getElementById('lifeCalibrateMode');
       const val = Number(actualEl && actualEl.value);
       if (!Number.isFinite(val)) {
-        if (window.RetroToast) RetroToast.show({ tag: 'CALIBRATE // 校验', message: '请输入有效的真实余额或待还欠款', type: 'warning' });
+        if (window.RetroToast) RetroToast.show({ tag: 'CALIBRATE 校验', message: '请输入有效的真实余额或待还欠款', type: 'warning' });
         return;
       }
       await LifeStore.calibrateAccountBalance(ledgerCalibrateAccId, val, modeEl ? modeEl.value : 'record');
       ledgerCalibrateAccId = null;
-      if (window.RetroToast) RetroToast.show({ tag: 'CALIBRATE // OK', message: '账户余额已完成平账校准', type: 'success' });
+      if (window.RetroToast) RetroToast.show({ tag: 'CALIBRATE OK', message: '账户余额已完成平账校准', type: 'success' });
     } else if (kind === 'account-save') {
       const nameEl = document.getElementById('lifeAccName');
       const initEl = document.getElementById('lifeAccInitBal');
       const nwEl = document.getElementById('lifeAccNetWorth');
       const name = nameEl ? nameEl.value.trim() : '';
       if (!name) {
-        if (window.RetroToast) RetroToast.show({ tag: 'ACCOUNT // 校验', message: '请输入账户名称', type: 'warning' });
+        if (window.RetroToast) RetroToast.show({ tag: 'ACCOUNT 校验', message: '请输入账户名称', type: 'warning' });
         return;
       }
       const cfg = LifeStore.getConfig();
@@ -4925,7 +4925,7 @@ const LifeServiceUI = (() => {
       }
       await LifeStore.saveConfig({ accounts: list });
       ledgerAccountEditId = null;
-      if (window.RetroToast) RetroToast.show({ tag: 'ACCOUNT // OK', message: '资金账户配置已保存', type: 'success' });
+      if (window.RetroToast) RetroToast.show({ tag: 'ACCOUNT OK', message: '资金账户配置已保存', type: 'success' });
     } else if (kind === 'installment-add') {
       const titleEl = document.getElementById('lifeInstTitle');
       const accEl = document.getElementById('lifeInstAccount');
@@ -4937,7 +4937,7 @@ const LifeServiceUI = (() => {
       const feeRate = Math.max(0, Number(rEl && rEl.value) || 0);
       const title = (titleEl && titleEl.value.trim()) || '信用卡分期消费';
       if (!Number.isFinite(principal) || principal <= 0) {
-        if (window.RetroToast) RetroToast.show({ tag: 'INSTALLMENT // 校验', message: '请输入有效的分期本金', type: 'warning' });
+        if (window.RetroToast) RetroToast.show({ tag: 'INSTALLMENT 校验', message: '请输入有效的分期本金', type: 'warning' });
         return;
       }
       const cfg = LifeStore.getConfig();
@@ -4955,29 +4955,29 @@ const LifeServiceUI = (() => {
         active: true
       });
       await LifeStore.saveConfig({ installments: nextIns });
-      if (window.RetroToast) RetroToast.show({ tag: 'INSTALLMENT // OK', message: '分期计划已建立，可逐期点击入账', type: 'success' });
+      if (window.RetroToast) RetroToast.show({ tag: 'INSTALLMENT OK', message: '分期计划已建立，可逐期点击入账', type: 'success' });
     } else if (kind === 'budget-save') {
       const bEl = document.getElementById('lifeMasterBudgetInput');
       const val = Number(bEl && bEl.value);
       if (!Number.isFinite(val) || val <= 0) {
-        if (window.RetroToast) RetroToast.show({ tag: 'BUDGET // 校验', message: '请输入大于 0 的月度总预算', type: 'warning' });
+        if (window.RetroToast) RetroToast.show({ tag: 'BUDGET 校验', message: '请输入大于 0 的月度总预算', type: 'warning' });
         return;
       }
       await LifeStore.saveConfig({ monthlyBudget: Math.round(val) });
-      if (window.RetroToast) RetroToast.show({ tag: 'BUDGET // OK', message: '月度总预算已更新', type: 'success' });
+      if (window.RetroToast) RetroToast.show({ tag: 'BUDGET OK', message: '月度总预算已更新', type: 'success' });
     } else if (kind === 'category-add') {
       const nameEl = document.getElementById('lifeNewCatName');
       const subBEl = document.getElementById('lifeNewCatBudget');
       const name = nameEl ? nameEl.value.trim() : '';
       if (!name) {
-        if (window.RetroToast) RetroToast.show({ tag: 'CATEGORY // 校验', message: '请输入新分类名称', type: 'warning' });
+        if (window.RetroToast) RetroToast.show({ tag: 'CATEGORY 校验', message: '请输入新分类名称', type: 'warning' });
         return;
       }
       const cfg = LifeStore.getConfig();
       const catsObj = JSON.parse(JSON.stringify(cfg.ledgerCategories || {}));
       const targetArr = Array.isArray(catsObj[ledgerCatTab]) ? catsObj[ledgerCatTab] : [];
       if (targetArr.some((c) => c.name === name)) {
-        if (window.RetroToast) RetroToast.show({ tag: 'CATEGORY // 重复', message: '该分类名称已存在', type: 'warning' });
+        if (window.RetroToast) RetroToast.show({ tag: 'CATEGORY 重复', message: '该分类名称已存在', type: 'warning' });
         return;
       }
       targetArr.push({
@@ -4991,7 +4991,7 @@ const LifeServiceUI = (() => {
       catsObj[ledgerCatTab] = targetArr;
       await LifeStore.saveConfig({ ledgerCategories: catsObj });
       ledgerSelectedCat = name;
-      if (window.RetroToast) RetroToast.show({ tag: 'CATEGORY // OK', message: `已添加分类「${name}」`, type: 'success' });
+      if (window.RetroToast) RetroToast.show({ tag: 'CATEGORY OK', message: `已添加分类「${name}」`, type: 'success' });
     } else if (kind === 'cat-budgets-save') {
       if (!sheetBodyEl) return;
       const cfg = LifeStore.getConfig();
@@ -5006,7 +5006,7 @@ const LifeServiceUI = (() => {
         valMap.has(c.id) ? Object.assign({}, c, { monthlyBudget: valMap.get(c.id) }) : c
       ));
       await LifeStore.saveConfig({ ledgerCategories: catsObj });
-      if (window.RetroToast) RetroToast.show({ tag: 'SUB-BUDGET // OK', message: '各支出分类月度子预算已保存', type: 'success' });
+      if (window.RetroToast) RetroToast.show({ tag: 'SUB-BUDGET OK', message: '各支出分类月度子预算已保存', type: 'success' });
     } else if (kind === 'fitness-plan') {
       const nameEl = document.getElementById('lifeFitnessPlanName');
       const descEl = document.getElementById('lifeFitnessPlanDesc');
@@ -5193,7 +5193,7 @@ const LifeServiceUI = (() => {
       const duration = Math.max(2, Math.min(15, Number(durationEl && durationEl.value) || 5));
       const cycle = Math.max(15, Math.min(60, Number(cycleEl && cycleEl.value) || 28));
       await LifeStore.saveConfig({ periodDurationDays: duration, periodCycleDays: cycle });
-      if (window.RetroToast) RetroToast.show({ tag: 'BIORHYTHM // 配置', message: '周期默认参数已保存', type: 'success' });
+      if (window.RetroToast) RetroToast.show({ tag: 'BIORHYTHM 配置', message: '周期默认参数已保存', type: 'success' });
     } else if (kind === 'period') {
       // 这个分支已废弃，保留以防万一
       const startEl = document.getElementById('lifePeriodStart');
@@ -5217,7 +5217,7 @@ const LifeServiceUI = (() => {
       const slotEl = document.getElementById('lifeMedSlot');
       const name = nameEl ? nameEl.value.trim() : '';
       if (!name) {
-        if (window.RetroToast) RetroToast.show({ tag: 'MEDBAY // 校验', message: '请输入药品或补剂名称', type: 'warning' });
+        if (window.RetroToast) RetroToast.show({ tag: 'MEDBAY 校验', message: '请输入药品或补剂名称', type: 'warning' });
         return;
       }
       const cfg = LifeStore.getConfig();
@@ -5226,7 +5226,7 @@ const LifeServiceUI = (() => {
         id: `med_${Date.now()}`,
         name,
         dose: (doseEl && doseEl.value.trim()) || '1 粒',
-        slot: (slotEl && slotEl.value) || 'MORNING // 晨间',
+        slot: (slotEl && slotEl.value) || 'MORNING 晨间',
         active: true
       });
       await LifeStore.saveConfig({ medPlans: nextPlans });
@@ -5262,7 +5262,7 @@ const LifeServiceUI = (() => {
       const name = nameEl ? nameEl.value.trim() : '';
       const price = Number(priceEl && priceEl.value);
       if (!name || !Number.isFinite(price) || price < 0) {
-        if (window.RetroToast) RetroToast.show({ tag: 'ENTITLEMENT // 校验', message: '请填写权益名称与有效价格', type: 'warning' });
+        if (window.RetroToast) RetroToast.show({ tag: 'ENTITLEMENT 校验', message: '请填写权益名称与有效价格', type: 'warning' });
         return;
       }
 
@@ -5298,7 +5298,7 @@ const LifeServiceUI = (() => {
         await LifeStore.saveConfig({ subscriptions: nextSubs });
         subEditId = null;
         subFormOpen = false;
-        if (window.RetroToast) RetroToast.show({ tag: 'ENTITLEMENT // OK', message: `已更新「${name}」权益`, type: 'success' });
+        if (window.RetroToast) RetroToast.show({ tag: 'ENTITLEMENT OK', message: `已更新「${name}」权益`, type: 'success' });
       } else {
         nextSubs.unshift({
           id: `sub_${Date.now()}`,
@@ -5329,7 +5329,7 @@ const LifeServiceUI = (() => {
         }
         subEditId = null;
         subFormOpen = false;
-        if (window.RetroToast) RetroToast.show({ tag: 'ENTITLEMENT // OK', message: `已登记「${name}」权益`, type: 'success' });
+        if (window.RetroToast) RetroToast.show({ tag: 'ENTITLEMENT OK', message: `已登记「${name}」权益`, type: 'success' });
       }
     } else if (kind === 'card-add') {
       const nameEl = document.getElementById('lifeCardName');
@@ -5344,7 +5344,7 @@ const LifeServiceUI = (() => {
       const name = nameEl ? nameEl.value.trim() : '';
       const totalVal = Number(totalEl && totalEl.value);
       if (!name || !Number.isFinite(totalVal) || totalVal <= 0) {
-        if (window.RetroToast) RetroToast.show({ tag: 'PASS VAULT // 校验', message: '请填写卡券名称与大于 0 的总额/总次数', type: 'warning' });
+        if (window.RetroToast) RetroToast.show({ tag: 'PASS VAULT 校验', message: '请填写卡券名称与大于 0 的总额/总次数', type: 'warning' });
         return;
       }
 
@@ -5373,7 +5373,7 @@ const LifeServiceUI = (() => {
         await LifeStore.saveConfig({ valueCards: nextCards });
         cardEditId = null;
         cardFormOpen = false;
-        if (window.RetroToast) RetroToast.show({ tag: 'PASS VAULT // OK', message: `已更新「${name}」卡券`, type: 'success' });
+        if (window.RetroToast) RetroToast.show({ tag: 'PASS VAULT OK', message: `已更新「${name}」卡券`, type: 'success' });
       } else {
         nextCards.unshift({
           id: `vc_${Date.now()}`,
@@ -5402,7 +5402,7 @@ const LifeServiceUI = (() => {
         }
         cardEditId = null;
         cardFormOpen = false;
-        if (window.RetroToast) RetroToast.show({ tag: 'PASS VAULT // OK', message: `「${name}」已存入卡包`, type: 'success' });
+        if (window.RetroToast) RetroToast.show({ tag: 'PASS VAULT OK', message: `「${name}」已存入卡包`, type: 'success' });
       }
     } else if (kind === 'card-redeem') {
       if (!cardActionId) return;
@@ -5410,14 +5410,14 @@ const LifeServiceUI = (() => {
       const noteEl = document.getElementById('lifeCardRedeemNote');
       const val = Number(amtEl && amtEl.value);
       if (!Number.isFinite(val) || val <= 0) {
-        if (window.RetroToast) RetroToast.show({ tag: 'REDEEM // 校验', message: '请输入大于 0 的核销数值', type: 'warning' });
+        if (window.RetroToast) RetroToast.show({ tag: 'REDEEM 校验', message: '请输入大于 0 的核销数值', type: 'warning' });
         return;
       }
       const res = await LifeStore.redeemValueCard(cardActionId, val, noteEl ? noteEl.value.trim() : '');
       cardActionId = null;
       cardActionKind = '';
       if (res && window.RetroToast) {
-        RetroToast.show({ tag: 'REDEEM // OK', message: `核销成功，卡内剩余 ${res.remainValue}${res.unit}`, type: 'success' });
+        RetroToast.show({ tag: 'REDEEM OK', message: `核销成功，卡内剩余 ${res.remainValue}${res.unit}`, type: 'success' });
       }
     } else if (kind === 'card-topup') {
       if (!cardActionId) return;
@@ -5427,7 +5427,7 @@ const LifeServiceUI = (() => {
       const recEl = document.getElementById('lifeCardTopupRecord');
       const addVal = Number(valEl && valEl.value);
       if (!Number.isFinite(addVal) || addVal <= 0) {
-        if (window.RetroToast) RetroToast.show({ tag: 'TOP-UP // 校验', message: '请输入大于 0 的增加额度或次数', type: 'warning' });
+        if (window.RetroToast) RetroToast.show({ tag: 'TOP-UP 校验', message: '请输入大于 0 的增加额度或次数', type: 'warning' });
         return;
       }
       const costPaid = Math.max(0, Number(paidEl && paidEl.value) || 0);
@@ -5441,7 +5441,7 @@ const LifeServiceUI = (() => {
       cardActionId = null;
       cardActionKind = '';
       if (res && window.RetroToast) {
-        RetroToast.show({ tag: 'TOP-UP // OK', message: `续充完成，当前余量 ${res.remainValue}${res.unit}`, type: 'success' });
+        RetroToast.show({ tag: 'TOP-UP OK', message: `续充完成，当前余量 ${res.remainValue}${res.unit}`, type: 'success' });
       }
     } else if (kind === 'memo-todo') {
       const titleEl = document.getElementById('lifeMemoTodoTitle');
@@ -5449,7 +5449,7 @@ const LifeServiceUI = (() => {
       const noteEl = document.getElementById('lifeMemoTodoNote');
       const title = titleEl ? titleEl.value.trim() : '';
       if (!title) {
-        if (window.RetroToast) RetroToast.show({ tag: 'MEMO // 校验', message: '请输入待办事项内容', type: 'warning' });
+        if (window.RetroToast) RetroToast.show({ tag: 'MEMO 校验', message: '请输入待办事项内容', type: 'warning' });
         return;
       }
       await LifeStore.addModuleRecord('memo', {
@@ -5466,7 +5466,7 @@ const LifeServiceUI = (() => {
       const noteEl = document.getElementById('lifeMemoWishNote');
       const title = titleEl ? titleEl.value.trim() : '';
       if (!title) {
-        if (window.RetroToast) RetroToast.show({ tag: 'MEMO // 校验', message: '请输入物品名称', type: 'warning' });
+        if (window.RetroToast) RetroToast.show({ tag: 'MEMO 校验', message: '请输入物品名称', type: 'warning' });
         return;
       }
       const price = Math.max(0, Number(priceEl && priceEl.value) || 0);
@@ -5485,7 +5485,7 @@ const LifeServiceUI = (() => {
       const title = titleEl ? titleEl.value.trim() : '';
       const content = bodyEl ? bodyEl.value.trim() : '';
       if (!title && !content) {
-        if (window.RetroToast) RetroToast.show({ tag: 'MEMO // 校验', message: '请填写便签标题或正文内容', type: 'warning' });
+        if (window.RetroToast) RetroToast.show({ tag: 'MEMO 校验', message: '请填写便签标题或正文内容', type: 'warning' });
         return;
       }
       await LifeStore.addModuleRecord('memo', {
@@ -6168,7 +6168,7 @@ const LifeServiceUI = (() => {
           latestSnap = await LifeStore.getFullSnapshot();
           renderModuleSheetBody('ledger');
           renderDashboard();
-          if (window.RetroToast) RetroToast.show({ tag: 'INSTALLMENT // OK', message: '本期分期本息已入账扣减', type: 'success' });
+          if (window.RetroToast) RetroToast.show({ tag: 'INSTALLMENT OK', message: '本期分期本息已入账扣减', type: 'success' });
           return;
         }
 
@@ -6215,7 +6215,7 @@ const LifeServiceUI = (() => {
           latestSnap = await LifeStore.getFullSnapshot();
           renderModuleSheetBody('ledger');
           renderDashboard();
-          if (window.RetroToast) RetroToast.show({ tag: 'REIMBURSE // OK', message: '报销款已核销入账并冲抵当月支出', type: 'success' });
+          if (window.RetroToast) RetroToast.show({ tag: 'REIMBURSE OK', message: '报销款已核销入账并冲抵当月支出', type: 'success' });
           return;
         }
 
@@ -6324,7 +6324,7 @@ const LifeServiceUI = (() => {
           renderModuleSheetBody('ledger');
           renderDashboard();
           if (res && window.RetroToast) {
-            RetroToast.show({ tag: 'RENEW // OK', message: `「${res.name}」已续期一周期并同步记入流水`, type: 'success' });
+            RetroToast.show({ tag: 'RENEW OK', message: `「${res.name}」已续期一周期并同步记入流水`, type: 'success' });
           }
           return;
         }
@@ -6337,7 +6337,7 @@ const LifeServiceUI = (() => {
           renderModuleSheetBody('ledger');
           renderDashboard();
           if (res && window.RetroToast) {
-            RetroToast.show({ tag: 'PASS -1 // OK', message: `「${res.name}」已划卡 -1${res.unit}，剩余 ${res.remainValue}${res.unit}`, type: 'success' });
+            RetroToast.show({ tag: 'PASS -1 OK', message: `「${res.name}」已划卡 -1${res.unit}，剩余 ${res.remainValue}${res.unit}`, type: 'success' });
           }
           return;
         }
@@ -6755,9 +6755,9 @@ const LifeServiceUI = (() => {
             latestSnap = await LifeStore.getFullSnapshot();
             renderModuleSheetBody('period');
             renderDashboard();
-            if (window.RetroToast) RetroToast.show({ tag: 'BIORHYTHM // 记录', message: '已记录本次经期首日', type: 'success' });
+            if (window.RetroToast) RetroToast.show({ tag: 'BIORHYTHM 记录', message: '已记录本次经期首日', type: 'success' });
           } catch (err) {
-            if (window.RetroToast) RetroToast.show({ tag: 'BIORHYTHM // 错误', message: err.message || '记录失败', type: 'error' });
+            if (window.RetroToast) RetroToast.show({ tag: 'BIORHYTHM 错误', message: err.message || '记录失败', type: 'error' });
           }
           return;
         }
@@ -6770,9 +6770,9 @@ const LifeServiceUI = (() => {
             await LifeStore.extendPeriod(recordId, { days: 1 });
             latestSnap = await LifeStore.getFullSnapshot();
             renderModuleSheetBody('period');
-            if (window.RetroToast) RetroToast.show({ tag: 'BIORHYTHM // 延长', message: '已延长一天', type: 'success' });
+            if (window.RetroToast) RetroToast.show({ tag: 'BIORHYTHM 延长', message: '已延长一天', type: 'success' });
           } catch (err) {
-            if (window.RetroToast) RetroToast.show({ tag: 'BIORHYTHM // 错误', message: err.message || '延长失败', type: 'error' });
+            if (window.RetroToast) RetroToast.show({ tag: 'BIORHYTHM 错误', message: err.message || '延长失败', type: 'error' });
           }
           return;
         }
@@ -6786,9 +6786,9 @@ const LifeServiceUI = (() => {
             latestSnap = await LifeStore.getFullSnapshot();
             renderModuleSheetBody('period');
             renderDashboard();
-            if (window.RetroToast) RetroToast.show({ tag: 'BIORHYTHM // 结束', message: '本次经期已确认结束', type: 'success' });
+            if (window.RetroToast) RetroToast.show({ tag: 'BIORHYTHM 结束', message: '本次经期已确认结束', type: 'success' });
           } catch (err) {
-            if (window.RetroToast) RetroToast.show({ tag: 'BIORHYTHM // 错误', message: err.message || '结束失败', type: 'error' });
+            if (window.RetroToast) RetroToast.show({ tag: 'BIORHYTHM 错误', message: err.message || '结束失败', type: 'error' });
           }
           return;
         }
@@ -6800,14 +6800,14 @@ const LifeServiceUI = (() => {
           const textarea = document.querySelector(`textarea[data-log-date="${dateKey}"]`);
           const note = textarea ? textarea.value.trim() : '';
           if (!note) {
-            if (window.RetroToast) RetroToast.show({ tag: 'BIORHYTHM // 提示', message: '请输入体感内容', type: 'warning' });
+            if (window.RetroToast) RetroToast.show({ tag: 'BIORHYTHM 提示', message: '请输入体感内容', type: 'warning' });
             return;
           }
           try {
             await LifeStore.savePeriodDailyLog({ dateKey, note });
-            if (window.RetroToast) RetroToast.show({ tag: 'BIORHYTHM // 保存', message: '每日体感已保存', type: 'success' });
+            if (window.RetroToast) RetroToast.show({ tag: 'BIORHYTHM 保存', message: '每日体感已保存', type: 'success' });
           } catch (err) {
-            if (window.RetroToast) RetroToast.show({ tag: 'BIORHYTHM // 错误', message: err.message || '保存失败', type: 'error' });
+            if (window.RetroToast) RetroToast.show({ tag: 'BIORHYTHM 错误', message: err.message || '保存失败', type: 'error' });
           }
           return;
         }

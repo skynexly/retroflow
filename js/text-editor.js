@@ -126,7 +126,7 @@ const TextEditorModal = (() => {
 
     const {
       title = '长文本编辑',
-      tag = 'TEXT EDITOR // 全屏输入',
+      tag = 'TEXT EDITOR 全屏输入',
       value = '',
       placeholder = '在此输入详细文本内容...',
       maxLength = 5000,

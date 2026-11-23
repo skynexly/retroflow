@@ -185,7 +185,7 @@ window.OnlineChatSettings = (() => {
         if (!currentContext || !currentContext.contactId) return;
         if (!window.ChatHistorySearchUI || typeof ChatHistorySearchUI.open !== 'function') {
           if (window.RetroToast) {
-            RetroToast.show({ tag: 'SEARCH // 不可用', message: '检索模块未就绪', type: 'warning' });
+            RetroToast.show({ tag: 'SEARCH 不可用', message: '检索模块未就绪', type: 'warning' });
           }
           return;
         }
@@ -219,7 +219,7 @@ window.OnlineChatSettings = (() => {
         if (!currentContext || !currentContext.contactId) return;
         if (!window.ImagePicker || typeof ImagePicker.open !== 'function') {
           if (window.RetroToast) {
-            RetroToast.show({ tag: 'WALLPAPER // 异常', message: '图片选择器未就绪', type: 'warning' });
+            RetroToast.show({ tag: 'WALLPAPER 异常', message: '图片选择器未就绪', type: 'warning' });
           }
           return;
         }
@@ -250,7 +250,7 @@ window.OnlineChatSettings = (() => {
               updateWallpaperStatus();
               if (window.RetroToast) {
                 RetroToast.show({
-                  tag: 'WALLPAPER // 视界壁纸',
+                  tag: 'WALLPAPER 视界壁纸',
                   message: '私聊背景已更新',
                   type: 'info'
                 });
@@ -278,7 +278,7 @@ window.OnlineChatSettings = (() => {
         updateWallpaperStatus();
         if (window.RetroToast) {
           RetroToast.show({
-            tag: 'WALLPAPER // 恢复默认',
+            tag: 'WALLPAPER 恢复默认',
             message: '已清除私聊壁纸，恢复机能底色',
             type: 'info'
           });
@@ -361,9 +361,9 @@ window.OnlineChatSettings = (() => {
     const titleEn = document.getElementById('onlineChatSettingsTitleEn');
     if (titleEn && currentContext && (currentContext.remark || currentContext.name)) {
       const displayName = currentContext.remark || currentContext.name;
-      titleEn.textContent = `SETTINGS // ${displayName.toUpperCase()}`;
+      titleEn.textContent = `SETTINGS ${displayName.toUpperCase()}`;
     } else if (titleEn) {
-      titleEn.textContent = 'SETTINGS // CONTACT';
+      titleEn.textContent = 'SETTINGS CONTACT';
     }
  // 2. 同步备注输入框
     if (remarkInput && currentContext) {

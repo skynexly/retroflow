@@ -309,7 +309,7 @@
       const innerHtml = quoteBuffer.map(l => parseInline(l)).join('<br>');
       out.push(
         `<blockquote class="chat-md-quote">` +
-          `<div class="chat-md-quote-tag" aria-hidden="true">// ARCHIVE</div>` +
+          `<div class="chat-md-quote-tag" aria-hidden="true"> ARCHIVE</div>` +
           `<div class="chat-md-quote-body">${innerHtml}</div>` +
         `</blockquote>`
       );
@@ -524,7 +524,7 @@
           inList = true;
           listType = 'ol';
           const startNum = Number(olMatch[1]);
-          out.push(`<ol class="chat-md-list chat-md-ol"${startNum !== 1 ? ` start="${startNum}"` : ''}>`);
+          out.push(`<ol class="chat-md-list chat-md-ol"${startNum !== 1 ? `start="${startNum}"` : ''}>`);
         }
         const itemText = parseInline(olMatch[2]);
         out.push(`<li class="chat-md-li">${itemText}</li>`);
@@ -569,7 +569,7 @@
           `<details class="chat-md-think-details" ${isOpen}>` +
             `<summary class="chat-md-think-summary">` +
               `<span class="chat-md-details-icon">${CHEVRON_SVG}</span>` +
-              `<span class="chat-md-think-tag">// DEEP RESONANCE // 思考过程</span>` +
+              `<span class="chat-md-think-tag"> DEEP RESONANCE 思考过程</span>` +
             `</summary>` +
             `<div class="chat-md-think-content">`
         );

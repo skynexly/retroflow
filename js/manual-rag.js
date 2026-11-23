@@ -90,7 +90,7 @@ window.ManualRag = (() => {
     const picked = scored.slice(0, MAX_INJECT_ITEMS);
 
     const bodies = picked.map(({ item }) => {
-      const head = `[${item.id}] ${item.title}（${item.categoryName} // ${item.subtitle}）`;
+      const head = `[${item.id}] ${item.title}（${item.categoryName} ${item.subtitle}）`;
       return `${head}\n${item.content}`;
     });
 
@@ -131,7 +131,7 @@ ${tail}
     }
 
     const shown = found.slice(0, MAX_SEARCH_RESULTS);
-    const lines = shown.map((item) => `- [${item.id}] ${item.title}（${item.categoryName} // ${item.subtitle}）：${item.summary}`);
+    const lines = shown.map((item) => `- [${item.id}] ${item.title}（${item.categoryName} ${item.subtitle}）：${item.summary}`);
     const more = found.length > shown.length
       ? `\n（共命中 ${found.length} 条，仅列出前 ${shown.length} 条）`
       : '';
@@ -161,7 +161,7 @@ ${tail}
       : '';
     return {
       status: 'success',
-      output: `[${item.id}] ${item.title}（${item.categoryName} // ${item.subtitle}）\n\n${item.content}${callout}`
+      output: `[${item.id}] ${item.title}（${item.categoryName} ${item.subtitle}）\n\n${item.content}${callout}`
     };
   }
 

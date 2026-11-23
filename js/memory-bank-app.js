@@ -749,7 +749,7 @@ const MemoryBankApp = (() => {
   function assistantToast(message, detail) {
     if (!window.RetroToast || typeof window.RetroToast.show !== 'function') return;
     try {
-      window.RetroToast.show({ tag: 'MEMORY // 已保存', message, detail, type: 'success' });
+      window.RetroToast.show({ tag: 'MEMORY 已保存', message, detail, type: 'success' });
     } catch (_) {}
   }
 
@@ -757,7 +757,7 @@ const MemoryBankApp = (() => {
     const detail = (err && err.message) || '写入本机记忆库失败，请重试。';
     if (!window.RetroToast || typeof window.RetroToast.show !== 'function') return;
     try {
-      window.RetroToast.show({ tag: 'MEMORY // 写入失败', message, detail, type: 'error' });
+      window.RetroToast.show({ tag: 'MEMORY 写入失败', message, detail, type: 'error' });
     } catch (_) {}
   }
 
@@ -2185,7 +2185,7 @@ const MemoryBankApp = (() => {
 
   function vectorToast(opts) {
     if (!window.RetroToast || typeof window.RetroToast.show !== 'function') return;
-    try { window.RetroToast.show(Object.assign({ tag: 'MEMORY // 向量化' }, opts)); } catch (_) {}
+    try { window.RetroToast.show(Object.assign({ tag: 'MEMORY 向量化' }, opts)); } catch (_) {}
   }
 
   /** 只更新按钮状态，不重绘顶栏（用户可能已经切走）；进度在 toast 中展示 */
@@ -2260,7 +2260,6 @@ const MemoryBankApp = (() => {
         <button class="settings-back-btn" id="memBackBtn" type="button" aria-label="返回卷宗墙">${ICONS.back}</button>
         <div class="settings-header-title">
           <span class="settings-title-en">${escapeHtml(forkCode(fork))}</span>
-          <span class="settings-title-slash">//</span>
           <span class="settings-title-zh">${escapeHtml((fork && fork.title) || '未命名副本')}</span>
           <span class="mem-header-level-tag">${lvl.letter} ${lvl.name}</span>
         </div>
@@ -2270,7 +2269,6 @@ const MemoryBankApp = (() => {
         <button class="settings-back-btn" id="memBackBtn" type="button" aria-label="返回日常">${ICONS.back}</button>
         <div class="settings-header-title">
           <span class="settings-title-en">MEMORY PRISM</span>
-          <span class="settings-title-slash">//</span>
           <span class="settings-title-zh">助手记忆</span>
         </div>
         <button class="mem-audit-btn" id="memAuditBtn" type="button"
@@ -2299,7 +2297,6 @@ const MemoryBankApp = (() => {
         <button class="settings-back-btn" id="memBackBtn" type="button" aria-label="返回助手记忆">${ICONS.back}</button>
         <div class="settings-header-title">
           <span class="settings-title-en">${escapeHtml(cat.number)} / ${escapeHtml(cat.en)}</span>
-          <span class="settings-title-slash">//</span>
           <span class="settings-title-zh">${escapeHtml(cat.name)}</span>
         </div>
       `;
@@ -2310,7 +2307,6 @@ const MemoryBankApp = (() => {
         <button class="settings-back-btn" id="memBackBtn" type="button" aria-label="返回桌面">${ICONS.back}</button>
         <div class="settings-header-title">
           <span class="settings-title-en">MEMORY BANK</span>
-          <span class="settings-title-slash">//</span>
           <span class="settings-title-zh">数据归档</span>
         </div>
         <button class="mem-vectorize-btn${busy ? ' is-busy' : ''}" id="memVectorizeBtn" type="button"

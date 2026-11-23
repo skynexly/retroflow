@@ -375,7 +375,7 @@ window.ForkDeckAsst = (() => {
 
     if (!clean) {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'COPY // 空内容', message: '当前消息无有效纯文本可复制', type: 'info' });
+        RetroToast.show({ tag: 'COPY 空内容', message: '当前消息无有效纯文本可复制', type: 'info' });
       }
       return;
     }
@@ -402,8 +402,8 @@ window.ForkDeckAsst = (() => {
 
     if (window.RetroToast) {
       RetroToast.show(copied
-        ? { tag: 'COPY // 复制成功', message: '纯文本已复制到剪贴板', type: 'info' }
-        : { tag: 'COPY // 复制失败', message: '未能写入剪贴板，请检查权限', type: 'warning' });
+        ? { tag: 'COPY 复制成功', message: '纯文本已复制到剪贴板', type: 'info' }
+        : { tag: 'COPY 复制失败', message: '未能写入剪贴板，请检查权限', type: 'warning' });
     }
   }
 
@@ -414,14 +414,14 @@ window.ForkDeckAsst = (() => {
   async function actionEdit(row, bubble, content, rawText) {
     if (!window.TextEditorModal || typeof TextEditorModal.open !== 'function') {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'EDIT // 不可用', message: '文本编辑器模块未就绪', type: 'warning' });
+        RetroToast.show({ tag: 'EDIT 不可用', message: '文本编辑器模块未就绪', type: 'warning' });
       }
       return;
     }
 
     const updated = await TextEditorModal.open({
       title: '编辑消息',
-      tag: 'MESSAGE // 修改记忆',
+      tag: 'MESSAGE 修改记忆',
       value: rawText,
       maxLength: 8000
     });
@@ -434,7 +434,7 @@ window.ForkDeckAsst = (() => {
       const ok = await SystemChatUI.updateChatRecordContent(recordId, newText);
       if (!ok) {
         if (window.RetroToast) {
-          RetroToast.show({ tag: 'MEMORY // WRITE FAILED', message: '消息修改未能写入上下文记录。', type: 'warning' });
+          RetroToast.show({ tag: 'MEMORY WRITE FAILED', message: '消息修改未能写入上下文记录。', type: 'warning' });
         }
         return;
       }
@@ -454,7 +454,7 @@ window.ForkDeckAsst = (() => {
   function actionViewImageMeta(row, isGenImg) {
     if (!window.TextEditorModal || typeof TextEditorModal.open !== 'function') {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'VIEW // 不可用', message: '文本查看器模块未就绪', type: 'warning' });
+        RetroToast.show({ tag: 'VIEW 不可用', message: '文本查看器模块未就绪', type: 'warning' });
       }
       return;
     }
@@ -464,7 +464,7 @@ window.ForkDeckAsst = (() => {
       : String(ds.visionDescription || '').trim();
     TextEditorModal.open({
       title: isGenImg ? '生图提示词' : '识图结果',
-      tag: isGenImg ? 'IMAGE // 生成提示词' : 'VISION // 识别结果',
+      tag: isGenImg ? 'IMAGE 生成提示词' : 'VISION 识别结果',
       value: value || (isGenImg ? '（无生图提示词记录）' : '（暂无识图结果）'),
       readOnly: true
     });
@@ -479,7 +479,7 @@ window.ForkDeckAsst = (() => {
   async function actionDelete(row, confirmDetail) {
     if (window.RetroModal && typeof RetroModal.confirm === 'function') {
       const ok = await RetroModal.confirm({
-        tag: 'PURGE // 抹除记录',
+        tag: 'PURGE 抹除记录',
         message: '确认要彻底删除此条记录吗？',
         detail: confirmDetail || '该记录将从当前会话中永久清除，无法撤销。',
         confirmText: '确认删除',
@@ -496,7 +496,7 @@ window.ForkDeckAsst = (() => {
         removedCount = (await SystemChatUI.removeChatRecordIds([recordId])) || 0;
       } catch (err) {
         if (window.RetroToast) {
-          RetroToast.show({ tag: 'PURGE // FAILED', message: '记录删除失败，请稍后重试。', type: 'warning' });
+          RetroToast.show({ tag: 'PURGE FAILED', message: '记录删除失败，请稍后重试。', type: 'warning' });
         }
         return;
       }
@@ -646,7 +646,7 @@ window.ForkDeckAsst = (() => {
     const recordId = row && row.dataset ? row.dataset.recordId : '';
     if (!canRewriteRecord(recordId)) {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'REWRITE // 不可用', message: '只能重写最新一轮的助手回复', type: 'info' });
+        RetroToast.show({ tag: 'REWRITE 不可用', message: '只能重写最新一轮的助手回复', type: 'info' });
       }
       return;
     }
@@ -709,7 +709,7 @@ window.ForkDeckAsst = (() => {
         const original = bubble && bubble.dataset ? (bubble.dataset.rawText || '') : '';
         renderMarkdownInto(content, original);
         if (window.RetroToast) {
-          RetroToast.show({ tag: 'REWRITE // 空回复', message: '模型没有输出内容，可再试一次', type: 'warning' });
+          RetroToast.show({ tag: 'REWRITE 空回复', message: '模型没有输出内容，可再试一次', type: 'warning' });
         }
         return;
       }
@@ -734,7 +734,7 @@ window.ForkDeckAsst = (() => {
         if (window.RetroToast) {
           const detail = (window.SystemChatUI && typeof SystemChatUI.getApiErrorText === 'function')
             ? SystemChatUI.getApiErrorText(err) : String(err && err.message || err);
-          RetroToast.show({ tag: 'REWRITE // FAILED', message: `重写失败：${detail}`, type: 'warning' });
+          RetroToast.show({ tag: 'REWRITE FAILED', message: `重写失败：${detail}`, type: 'warning' });
         }
       }
     }
@@ -762,7 +762,7 @@ window.ForkDeckAsst = (() => {
     if (!recordId) return;
     if (activeAbortController) {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'REWIND // 推演进行中', message: '请先等本轮结束或中断', type: 'info' });
+        RetroToast.show({ tag: 'REWIND 推演进行中', message: '请先等本轮结束或中断', type: 'info' });
       }
       return;
     }
@@ -777,7 +777,7 @@ window.ForkDeckAsst = (() => {
 
     if (!doomed.length) {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'REWIND // 无需操作', message: '当前消息已经位于会话末端', type: 'info' });
+        RetroToast.show({ tag: 'REWIND 无需操作', message: '当前消息已经位于会话末端', type: 'info' });
       }
       return;
     }
@@ -804,7 +804,7 @@ window.ForkDeckAsst = (() => {
 
     if (!skipConfirm && window.RetroModal && typeof RetroModal.confirm === 'function') {
       const ok = await RetroModal.confirm({
-        tag: 'REWIND // 回溯会话',
+        tag: 'REWIND 回溯会话',
         message: '确认回溯到此条消息吗？',
         detail: isUserRow
           ? `将删除此条及后续共 ${doomed.length} 条内容，此条内容会退回输入框。`
@@ -824,7 +824,7 @@ window.ForkDeckAsst = (() => {
       }
     } catch (err) {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'REWIND // FAILED', message: '后续记录删除失败，当前会话未改动。', type: 'warning' });
+        RetroToast.show({ tag: 'REWIND FAILED', message: '后续记录删除失败，当前会话未改动。', type: 'warning' });
       }
       return;
     }
@@ -973,7 +973,7 @@ window.ForkDeckAsst = (() => {
 
     if (window.RetroModal && typeof RetroModal.confirm === 'function') {
       const ok = await RetroModal.confirm({
-        tag: `PURGE // 批量抹除 (${count})`,
+        tag: `PURGE 批量抹除 (${count})`,
         message: `确认要彻底删除选中的 ${count} 条记录吗？`,
         detail: '选中的所有记录将从当前会话中永久清除，无法撤销。',
         confirmText: `删除 (${count})`,
@@ -992,7 +992,7 @@ window.ForkDeckAsst = (() => {
         removedCount = (await SystemChatUI.removeChatRecordIds(recordIds)) || 0;
       } catch (err) {
         if (window.RetroToast) {
-          RetroToast.show({ tag: 'PURGE // FAILED', message: '批量删除失败，未改动当前会话。', type: 'warning' });
+          RetroToast.show({ tag: 'PURGE FAILED', message: '批量删除失败，未改动当前会话。', type: 'warning' });
         }
         return;
       }
@@ -1029,7 +1029,7 @@ window.ForkDeckAsst = (() => {
 
     if (!window.ChatShot || typeof ChatShot.capture !== 'function') {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'CAPTURE // 引擎缺席', message: '截图引擎未加载', type: 'warning' });
+        RetroToast.show({ tag: 'CAPTURE 引擎缺席', message: '截图引擎未加载', type: 'warning' });
       }
       return;
     }
@@ -1055,24 +1055,24 @@ window.ForkDeckAsst = (() => {
       const res = await ChatShot.capture({
         rows,
         // 标签与助手页的「助手存档」区分：存出来能看出是副本随行舱截的
-        scene: { sceneName, sceneTag: 'ASSISTANT // 随行存档' },
+        scene: { sceneName, sceneTag: 'ASSISTANT 随行存档' },
         fileLabel: `随行存档_${sceneName}`
       });
       if (res && res.ok) {
         if (window.RetroToast) {
-          RetroToast.show({ tag: 'CAPTURE // 存档完成', message: `已保存 ${count} 条对话长图`, type: 'success' });
+          RetroToast.show({ tag: 'CAPTURE 存档完成', message: `已保存 ${count} 条对话长图`, type: 'success' });
         }
         exitBatchMode();
       } else if (res && res.reason === 'too_tall') {
         if (window.RetroToast) {
-          RetroToast.show({ tag: 'CAPTURE // 内容过长', message: '选中内容拼图过高，请减少条数后重试', type: 'warning' });
+          RetroToast.show({ tag: 'CAPTURE 内容过长', message: '选中内容拼图过高，请减少条数后重试', type: 'warning' });
         }
       } else if (window.RetroToast) {
-        RetroToast.show({ tag: 'CAPTURE // 生成失败', message: '长图生成失败，请重试', type: 'error' });
+        RetroToast.show({ tag: 'CAPTURE 生成失败', message: '长图生成失败，请重试', type: 'error' });
       }
     } catch (err) {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'CAPTURE // 生成异常', message: (err && err.message) || '长图生成异常', type: 'error' });
+        RetroToast.show({ tag: 'CAPTURE 生成异常', message: (err && err.message) || '长图生成异常', type: 'error' });
       }
     } finally {
       updateBatchCount();
@@ -1356,7 +1356,7 @@ window.ForkDeckAsst = (() => {
           const isShare = res.via === 'share';
           const isNative = res.via === 'native';
           RetroToast.show({
-            tag: 'IMAGE // 导出影像',
+            tag: 'IMAGE 导出影像',
             message: isShare ? '已唤起系统保存' : (isNative ? (res.album ? '影像已保存到相册' : '影像已保存到设备存储') : '已触发下载'),
             detail: isShare
               ? `${res.name}｜在面板里选择「保存到相册」或任意应用。`
@@ -1369,7 +1369,7 @@ window.ForkDeckAsst = (() => {
       } catch (err) {
         if (window.RetroToast) {
           RetroToast.show({
-            tag: 'IMAGE // 导出失败',
+            tag: 'IMAGE 导出失败',
             message: (err && err.message) || '影像导出失败',
             detail: '可长按大图，用系统自带的保存图片。',
             type: 'warning'
@@ -1438,7 +1438,7 @@ window.ForkDeckAsst = (() => {
       const figure = document.createElement('div');
       figure.className = 'chat-gen-image is-loading';
       // 骨架先同步挂上（渲染不被异步取图阻塞），src 到了再无感填入
-      figure.innerHTML = '<span class="chat-gen-spinner" aria-hidden="true"></span><span class="chat-gen-loading-text">RENDERING // 载入影像</span>';
+      figure.innerHTML = '<span class="chat-gen-spinner" aria-hidden="true"></span><span class="chat-gen-loading-text">RENDERING 载入影像</span>';
       row.appendChild(figure);
 
       const media = {
@@ -1516,7 +1516,7 @@ window.ForkDeckAsst = (() => {
         nameEl.textContent = String(f.name || '未命名文档');
         const metaEl = document.createElement('span');
         metaEl.className = 'chat-file-card-meta';
-        metaEl.textContent = `${String(f.sizeText || '')} // ${f.charCount || 0} 字符`;
+        metaEl.textContent = `${String(f.sizeText || '')} ${f.charCount || 0} 字符`;
         body.append(nameEl, metaEl);
 
         item.append(icon, body);
@@ -1531,7 +1531,7 @@ window.ForkDeckAsst = (() => {
               detail: { name: f.name || '文件', text }
             }));
           } else if (window.RetroToast) {
-            RetroToast.show({ tag: 'DOC // 已释放', message: '该文件已从文件区删除，无法预览', type: 'info' });
+            RetroToast.show({ tag: 'DOC 已释放', message: '该文件已从文件区删除，无法预览', type: 'info' });
           }
         });
         fileCard.appendChild(item);
@@ -1550,7 +1550,7 @@ window.ForkDeckAsst = (() => {
       handle.row.dataset.visionDescription = String(media.visionDescription || '');
       const figure = document.createElement('div');
       figure.className = 'chat-gen-image is-loading';
-      figure.innerHTML = '<span class="chat-gen-spinner" aria-hidden="true"></span><span class="chat-gen-loading-text">RENDERING // 载入影像</span>';
+      figure.innerHTML = '<span class="chat-gen-spinner" aria-hidden="true"></span><span class="chat-gen-loading-text">RENDERING 载入影像</span>';
       fillGenImage(figure, {
         assetKey: String(media.assetKey || ''),
         state: String(media.state || 'active'),
@@ -1751,7 +1751,7 @@ window.ForkDeckAsst = (() => {
     row.className = 'chat-msg-row assistant is-gen-image is-gen-pending';
     const figure = document.createElement('div');
     figure.className = 'chat-gen-image is-loading';
-    figure.innerHTML = '<span class="chat-gen-spinner" aria-hidden="true"></span><span class="chat-gen-loading-text">RENDERING // 生成中</span>';
+    figure.innerHTML = '<span class="chat-gen-spinner" aria-hidden="true"></span><span class="chat-gen-loading-text">RENDERING 生成中</span>';
     row.appendChild(figure);
     if (messagesEl) {
       messagesEl.appendChild(row);
@@ -1816,7 +1816,7 @@ window.ForkDeckAsst = (() => {
       dropPlaceholder();
       if (window.RetroToast) {
         RetroToast.show({
-          tag: 'IMAGE // 未配置',
+          tag: 'IMAGE 未配置',
           message: '尚未配置图像生成节点，无法生图',
           detail: '请前往 API 引擎配置图像生成插槽。',
           type: 'warning'
@@ -1858,7 +1858,7 @@ window.ForkDeckAsst = (() => {
     } catch (err) {
       if (holder.row && holder.row.parentNode) holder.row.remove();
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'IMAGE // 生成失败', message: errText(err), type: 'warning' });
+        RetroToast.show({ tag: 'IMAGE 生成失败', message: errText(err), type: 'warning' });
       }
       return;
     } finally {
@@ -1892,7 +1892,7 @@ window.ForkDeckAsst = (() => {
     } catch (err) {
       if (holder.row && holder.row.parentNode) holder.row.remove();
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'IMAGE // 归档失败', message: errText(err), type: 'warning' });
+        RetroToast.show({ tag: 'IMAGE 归档失败', message: errText(err), type: 'warning' });
       }
       return;
     }
@@ -1919,7 +1919,7 @@ window.ForkDeckAsst = (() => {
       }
       if (holder.row && holder.row.parentNode) holder.row.remove();
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'IMAGE // 记录失败', message: errText(err), type: 'warning' });
+        RetroToast.show({ tag: 'IMAGE 记录失败', message: errText(err), type: 'warning' });
       }
       return;
     }
@@ -2188,7 +2188,7 @@ window.ForkDeckAsst = (() => {
   async function selectImages() {
     if (!window.ImagePicker || typeof ImagePicker.open !== 'function') {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'VISION // 不可用', message: '图片选择器尚未加载', type: 'warning' });
+        RetroToast.show({ tag: 'VISION 不可用', message: '图片选择器尚未加载', type: 'warning' });
       }
       return;
     }
@@ -2224,7 +2224,7 @@ window.ForkDeckAsst = (() => {
           renderPendingImages();
         } catch (err) {
           if (window.RetroToast) {
-            RetroToast.show({ tag: 'VISION // LOAD FAILED', message: visionErrText(err), type: 'warning' });
+            RetroToast.show({ tag: 'VISION LOAD FAILED', message: visionErrText(err), type: 'warning' });
           }
         }
       }
@@ -2242,7 +2242,7 @@ window.ForkDeckAsst = (() => {
     if (!window.GalleryStore || typeof GalleryStore.record !== 'function'
       || typeof SC.persistImageChatMessage !== 'function' || typeof SC.runImageVision !== 'function') {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'VISION // 不可用', message: '图库或落库模块尚未就绪', type: 'warning' });
+        RetroToast.show({ tag: 'VISION 不可用', message: '图库或落库模块尚未就绪', type: 'warning' });
       }
       return false;
     }
@@ -2267,7 +2267,7 @@ window.ForkDeckAsst = (() => {
         });
         if (!entry) throw new Error('影像归档失败');
       } catch (err) {
-        if (window.RetroToast) RetroToast.show({ tag: 'VISION // 归档失败', message: visionErrText(err), type: 'warning' });
+        if (window.RetroToast) RetroToast.show({ tag: 'VISION 归档失败', message: visionErrText(err), type: 'warning' });
         continue;
       }
       galleryEntries.push(entry);
@@ -2283,7 +2283,7 @@ window.ForkDeckAsst = (() => {
         if (!imgRec) throw new Error('图片消息落库失败');
       } catch (err) {
         await GalleryStore.remove([entry.id]).catch(() => {});
-        if (window.RetroToast) RetroToast.show({ tag: 'VISION // 落库失败', message: visionErrText(err), type: 'warning' });
+        if (window.RetroToast) RetroToast.show({ tag: 'VISION 落库失败', message: visionErrText(err), type: 'warning' });
         continue;
       }
       if (imgRec && imgRec.id && !historyAllRecords.some((r) => r && String(r.id) === String(imgRec.id))) {
@@ -2342,7 +2342,7 @@ window.ForkDeckAsst = (() => {
     // 识别中状态条：独立于图，识图完成/失败由 setDeckVisionRowState 控制显隐
     const visionTag = document.createElement('div');
     visionTag.className = 'fork-asst-vision-tag';
-    visionTag.innerHTML = '<span class="chat-gen-spinner" aria-hidden="true"></span><span class="fork-asst-vision-tag-text">VISION // 识别中</span>';
+    visionTag.innerHTML = '<span class="chat-gen-spinner" aria-hidden="true"></span><span class="fork-asst-vision-tag-text">VISION 识别中</span>';
 
     const stack = document.createElement('div');
     stack.className = 'chat-user-media-stack';
@@ -2384,13 +2384,13 @@ window.ForkDeckAsst = (() => {
         tag.remove();
       } else if (state === 'pending') {
         setDeckTagRetryable(tag, false);
-        tag.innerHTML = '<span class="chat-gen-spinner" aria-hidden="true"></span><span class="fork-asst-vision-tag-text">VISION // 识别中</span>';
+        tag.innerHTML = '<span class="chat-gen-spinner" aria-hidden="true"></span><span class="fork-asst-vision-tag-text">VISION 识别中</span>';
       } else if (assetGone) {
         setDeckTagRetryable(tag, false);
-        tag.innerHTML = '<span class="fork-asst-vision-tag-text">VISION // 原图已释放</span>';
+        tag.innerHTML = '<span class="fork-asst-vision-tag-text">VISION 原图已释放</span>';
       } else {
         setDeckTagRetryable(tag, true);
-        tag.innerHTML = `${DECK_VISION_RETRY_SVG}<span class="fork-asst-vision-tag-text">VISION // 识别失败 · 点击重试</span>`;
+        tag.innerHTML = `${DECK_VISION_RETRY_SVG}<span class="fork-asst-vision-tag-text">VISION 识别失败 · 点击重试</span>`;
       }
     }
     // 历史图行：与助手页同款状态条
@@ -2467,7 +2467,7 @@ window.ForkDeckAsst = (() => {
   async function send() {
     if (!depsReady()) {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'ASST // OFFLINE', message: '系统助手模块尚未就绪', type: 'warning' });
+        RetroToast.show({ tag: 'ASST OFFLINE', message: '系统助手模块尚未就绪', type: 'warning' });
       }
       return;
     }
@@ -2509,7 +2509,7 @@ window.ForkDeckAsst = (() => {
     } catch (err) {
       console.warn('[ForkDeckAsst] 用户消息落库失败：', err);
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'CHAT RECORD // SAVE ERROR', message: '消息未能写入流水', type: 'warning' });
+        RetroToast.show({ tag: 'CHAT RECORD SAVE ERROR', message: '消息未能写入流水', type: 'warning' });
       }
     }
   }
@@ -2529,7 +2529,7 @@ window.ForkDeckAsst = (() => {
   async function infer() {
     if (!depsReady()) {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'ASST // OFFLINE', message: '系统助手模块尚未就绪', type: 'warning' });
+        RetroToast.show({ tag: 'ASST OFFLINE', message: '系统助手模块尚未就绪', type: 'warning' });
       }
       return;
     }
@@ -2576,7 +2576,7 @@ window.ForkDeckAsst = (() => {
         if (window.RetroToast) {
           const detail = (window.SystemChatUI && typeof SystemChatUI.getApiErrorText === 'function')
             ? SystemChatUI.getApiErrorText(err) : String(err && err.message || err);
-          RetroToast.show({ tag: 'ASST // FAILED', message: `应答失败：${detail}`, type: 'warning' });
+          RetroToast.show({ tag: 'ASST FAILED', message: `应答失败：${detail}`, type: 'warning' });
         }
       }
     }
@@ -2610,13 +2610,13 @@ window.ForkDeckAsst = (() => {
       }
     };
     if (emoteBtn) {
-      emoteBtn.addEventListener('click', () => notifyStub('EMOTES // 待接入', '随行系统助手表情交互模组即将上线'));
+      emoteBtn.addEventListener('click', () => notifyStub('EMOTES 待接入', '随行系统助手表情交互模组即将上线'));
     }
     if (imageBtn) {
       imageBtn.addEventListener('click', () => { selectImages(); });
     }
     if (fileBtn) {
-      fileBtn.addEventListener('click', () => notifyStub('FILE // 待接入', '卷宗战术文档附件通道待后续版本打通'));
+      fileBtn.addEventListener('click', () => notifyStub('FILE 待接入', '卷宗战术文档附件通道待后续版本打通'));
     }
 
     // 对话设置：跳系统助手对话设置页（栈协调由 fork-run-ui 的 openAsstSettings 承担，

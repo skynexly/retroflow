@@ -457,7 +457,7 @@ const AssistantMemoryExtractor = (() => {
       if (!res.ok) {
         // 正在回复属于正常让路，不算失败
         if (res.reason !== 'replying') {
-          toast({ tag: 'MEMORY // 自动提取失败', message: `${res.message}。已停止排队，下次回复后重试`, type: 'warn', duration: 4200 });
+          toast({ tag: 'MEMORY 自动提取失败', message: `${res.message}。已停止排队，下次回复后重试`, type: 'warn', duration: 4200 });
         }
         break;
       }
@@ -466,7 +466,7 @@ const AssistantMemoryExtractor = (() => {
     }
     if (rounds) {
       toast({
-        tag: 'MEMORY // 自动提取',
+        tag: 'MEMORY 自动提取',
         message: added ? `已整理 ${rounds} 段对话，新增 ${added} 条记忆` : `已整理 ${rounds} 段对话，没有需要记住的内容`,
         type: 'info'
       });

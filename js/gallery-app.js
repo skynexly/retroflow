@@ -272,7 +272,6 @@
         <div class="gallery-album-zh">${escapeHtml(bucket.ownerName)}</div>
         <div class="gallery-album-sub">
           <span class="gallery-album-en">${enText}</span>
-          <span class="gallery-album-slash">//</span>
           <span class="gallery-album-desc">${bucket.photos.length} 张</span>
         </div>
       </div>`;
@@ -307,7 +306,6 @@
         <div class="gallery-album-zh">${escapeHtml(bucket.ownerName)}</div>
         <div class="gallery-album-sub">
           <span class="gallery-album-en">DIVE CAM</span>
-          <span class="gallery-album-slash">//</span>
           <span class="gallery-album-desc">${bucket.photos.length} 张</span>
         </div>
       </div>`;
@@ -501,7 +499,7 @@
         <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zm-2 0H5V5h14v14zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H6l2.5-4.5z"/>
       </svg>
       <div class="gallery-empty-title">尚无归档影像</div>
-      <div class="gallery-empty-desc">NO OPTIC RECORD // 生成头像后将自动归档至此</div>
+      <div class="gallery-empty-desc">NO OPTIC RECORD 生成头像后将自动归档至此</div>
     `;
     return box;
   }
@@ -1000,7 +998,7 @@
 
     if (window.RetroToast) {
       RetroToast.show({
-        tag: 'OPTIC // 档案清理',
+        tag: 'OPTIC 档案清理',
         message: `已删除 ${removed} 张影像`,
         detail: '视界档案容量统计已同步更新。',
         type: 'success'
@@ -1029,7 +1027,7 @@
 
       if (window.RetroToast) {
         RetroToast.show({
-          tag: 'OPTIC // 封面同步',
+          tag: 'OPTIC 封面同步',
           message: '已设为桌面图库封面',
           detail: `${photo.sourceZh} · ${photo.timeText} 已同步至随身终端相框。`,
           type: 'success'
@@ -1075,7 +1073,7 @@
         const isShare = res.via === 'share';
         const isNative = res.via === 'native';
         RetroToast.show({
-          tag: 'OPTIC // 导出影像',
+          tag: 'OPTIC 导出影像',
           message: isShare ? '已唤起系统保存' : (isNative ? (res.album ? '影像已保存到相册' : '影像已保存到设备存储') : '已触发下载'),
           detail: isShare
             ? `${res.name}｜在面板里选择「保存到相册」或任意应用。`
@@ -1089,7 +1087,7 @@
       console.error('[Gallery] 下载失败:', e);
       if (window.RetroToast) {
         RetroToast.show({
-          tag: 'OPTIC // 导出失败',
+          tag: 'OPTIC 导出失败',
           message: (e && e.message) || '影像导出失败',
           detail: '可长按大图，用系统自带的保存图片。',
           type: 'warning'

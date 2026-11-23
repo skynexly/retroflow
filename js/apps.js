@@ -81,7 +81,7 @@
     } else if (appId === 'retroSpace') {
       if (window.RetroToast) {
         RetroToast.show({
-          tag: 'SYSTEM // 模块连接',
+          tag: 'SYSTEM 模块连接',
           message: `${appName || appId} 正在构筑中`,
           detail: '核心时空通道校准中，后续更新开放。',
           type: 'info'
@@ -90,7 +90,7 @@
     } else {
       if (window.RetroToast) {
         RetroToast.show({
-          tag: 'SYSTEM // 模块连接',
+          tag: 'SYSTEM 模块连接',
           message: `${appName || appId} 正在构筑中`,
           detail: '核心时空通道校准中，后续更新开放。',
           type: 'info'
@@ -194,7 +194,7 @@
 
       if (window.RetroToast && isAudioPlaying) {
         RetroToast.show({
-          tag: 'AUDIO // 声纹广播',
+          tag: 'AUDIO 声纹广播',
           message: '已开始播放：溯流协议 · 主题因果波',
           detail: '黑胶唱机同调运转中。',
           type: 'info'
@@ -211,7 +211,7 @@
       loopBtn.classList.toggle('is-active', isAudioLoop);
       if (window.RetroToast) {
         RetroToast.show({
-          tag: 'AUDIO // 播放模式',
+          tag: 'AUDIO 播放模式',
           message: isAudioLoop ? '单曲循环已启用' : '列表顺序播放',
           type: 'info'
         });
@@ -224,7 +224,7 @@
       e.stopPropagation();
       if (window.RetroToast) {
         RetroToast.show({
-          tag: 'AUDIO // 音轨阵列',
+          tag: 'AUDIO 音轨阵列',
           message: '声纹列表库构筑中',
           detail: '默认音轨：溯流协议 · 主题因果波',
           type: 'info'
@@ -238,7 +238,7 @@
       e.stopPropagation();
       if (window.RetroToast) {
         RetroToast.show({
-          tag: 'AUDIO // 音轨切换',
+          tag: 'AUDIO 音轨切换',
           message: '已回退至上一因果频段',
           type: 'info'
         });
@@ -251,7 +251,7 @@
       e.stopPropagation();
       if (window.RetroToast) {
         RetroToast.show({
-          tag: 'AUDIO // 音轨切换',
+          tag: 'AUDIO 音轨切换',
           message: '已切至下一因果频段',
           type: 'info'
         });
@@ -276,17 +276,17 @@
       const current = memoContent ? memoContent.textContent.trim() : '';
       const updated = await TextEditorModal.edit({
         title: '随身便笺编辑',
-        tag: 'MEMO // 备忘录',
+        tag: 'MEMO 备忘录',
         value: current,
         placeholder: '写下当前的副本观测备忘、线索或警示...',
         maxLength: 500
       });
       if (updated !== null && memoContent) {
-        memoContent.textContent = updated || '// 暂无备忘事项。';
+        memoContent.textContent = updated || '暂无备忘事项。';
         const ok = await Store.save('memo.content', updated || '');
         if (!ok && window.RetroToast) {
           RetroToast.show({
-            tag: 'STORAGE // 写入失败',
+            tag: 'STORAGE 写入失败',
             message: '便笺保存失败',
             detail: '存储空间可能已满，内容未能固化。',
             type: 'error'

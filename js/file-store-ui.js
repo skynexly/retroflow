@@ -89,9 +89,7 @@ const FileVaultUI = (() => {
           <div class="file-vault-item-name">${escapeHtml(item.name)}</div>
           <div class="file-vault-item-meta">
             <span>${escapeHtml(item.sizeText)}</span>
-            <span class="file-vault-meta-slash">//</span>
             <span>${item.charCount} 字符</span>
-            <span class="file-vault-meta-slash">//</span>
             <span>${escapeHtml(item.timeText)}</span>
           </div>
         </div>
@@ -148,8 +146,8 @@ const FileVaultUI = (() => {
       }
     }
     renderList();
-    if (ok > 0) toast('DOC // 归档', `已上传 ${ok} 份文件`, 'success');
-    if (rejected > 0) toast('DOC // 已拒绝', `${rejected} 份非文本文件被跳过`, 'warning');
+    if (ok > 0) toast('DOC 归档', `已上传 ${ok} 份文件`, 'success');
+    if (rejected > 0) toast('DOC 已拒绝', `${rejected} 份非文本文件被跳过`, 'warning');
   }
 
   /* ---------------- 查看 / 删除 ---------------- */
@@ -157,7 +155,7 @@ const FileVaultUI = (() => {
   async function viewFile(entry) {
     const text = await FileStore.getText(entry.id, scope());
     if (text == null) {
-      toast('DOC // 读取失败', '文件内容已失效或无法读取', 'warning');
+      toast('DOC 读取失败', '文件内容已失效或无法读取', 'warning');
       return;
     }
     openReadOnlyPreview(entry.name, text);
@@ -218,7 +216,7 @@ const FileVaultUI = (() => {
   async function deleteFile(entry) {
     const removed = await FileStore.remove([entry.id], scope());
     if (removed > 0) {
-      toast('DOC // 清理', `已删除「${entry.name}」`, 'info');
+      toast('DOC 清理', `已删除「${entry.name}」`, 'info');
       renderList();
     }
   }
@@ -262,7 +260,7 @@ const FileVaultUI = (() => {
     let confirmed = true;
     if (window.RetroModal && typeof RetroModal.confirm === 'function') {
       confirmed = await RetroModal.confirm({
-        tag: `PURGE // 批量清理 (${ids.length})`,
+        tag: `PURGE 批量清理 (${ids.length})`,
         message: `确认删除选中的 ${ids.length} 份文件吗？`,
         detail: '选中的文件将从文件区永久移除，此操作不可撤销。',
         confirmText: `删除 (${ids.length})`,
@@ -275,7 +273,7 @@ const FileVaultUI = (() => {
     const removed = await FileStore.remove(ids, scope());
     selectedIds = new Set();
     renderList();
-    if (removed > 0) toast('DOC // 清理', `已删除 ${removed} 份文件`, 'info');
+    if (removed > 0) toast('DOC 清理', `已删除 ${removed} 份文件`, 'info');
   }
 
   function confirmPick() {

@@ -24,8 +24,12 @@ window.RetroflowOnlineNotice = (() => {
   const MAX_STACK = 3;
   /** 单条停留毫秒 */
   const DEFAULT_DURATION = 4600;
-  /** 同批多条的逐条出场间隔，与私聊气泡的错峰节奏对齐 */
-  const STAGGER_MS = 420;
+  /** 同批多条的首条出场间隔（毫秒） */
+  const STAGGER_MS = 620;
+  /** 波次递增步长：同一批里越靠后的条目间隔越长，形成「哒、…、哒」的递进感 */
+  const STAGGER_STEP_MS = 180;
+  /** 递增上限，避免积压消息时越等越久 */
+  const STAGGER_MAX_MS = 1500;
 
   /** 无立绘时的兜底头像，与联系人卡片同一张 */
   const AVATAR_FALLBACK_SVG = `
@@ -37,13 +41,6 @@ window.RetroflowOnlineNotice = (() => {
   const CLOSE_SVG = `
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/>
-    </svg>
-  `;
-
-  /** 频段接入微标 */
-  const SIGNAL_SVG = `
-    <svg viewBox="0 0 16 16" aria-hidden="true">
-      <path d="M2 13h2V9H2v4zm4 0h2V6H6v7zm4 0h2V3h-2v10zm4 0h2V0h-2v13z"/>
     </svg>
   `;
 
@@ -70,6 +67,8 @@ window.RetroflowOnlineNotice = (() => {
   let drainTimer = null;
   /** 上一条实际弹出的时间戳，用于算下一条的等待间隔 */
   let lastShownAt = 0;
+  /** 本批已弹出的条数，用于波次递增；队列排空后归零 */
+  let batchSeq = 0;
 
   function trimStr(v) {
     return v == null ? '' : String(v).trim();
@@ -439,12 +438,17 @@ window.RetroflowOnlineNotice = (() => {
   }
 
   /**
-   * 排队调度：首条立即出队，其余按 STAGGER_MS 间隔依次推进。
+   * 排队调度：首条立即出队，其余按「基础间隔 + 递增步长」依次推进。
    * 立即弹首条是刻意的——消息已经到了，第一声提醒不该有延迟。
    */
   function scheduleDrain() {
-    if (drainTimer || !queue.length) return;
-    const wait = lastShownAt ? Math.max(0, STAGGER_MS - (Date.now() - lastShownAt)) : 0;
+    if (drainTimer || !queue.length) {
+      // 本批已全部出队：计数归零，下一批重新从基础间隔起步
+      if (!queue.length) batchSeq = 0;
+      return;
+    }
+    const gap = Math.min(STAGGER_MS + batchSeq * STAGGER_STEP_MS, STAGGER_MAX_MS);
+    const wait = lastShownAt ? Math.max(0, gap - (Date.now() - lastShownAt)) : 0;
     drainTimer = setTimeout(() => {
       drainTimer = null;
       drainOne();
@@ -461,6 +465,7 @@ window.RetroflowOnlineNotice = (() => {
     if (!p.force && isViewingSession(p.accountId, p.contactId)) return;
 
     lastShownAt = Date.now();
+    batchSeq += 1;
     render(p);
   }
 
@@ -499,25 +504,14 @@ window.RetroflowOnlineNotice = (() => {
     const body = document.createElement('div');
     body.className = 'online-notice-body';
 
-    // 战术机能顶栏 (COMM LINK // FREQ)
+    // 顶部时间行
     const tacticalBar = document.createElement('div');
     tacticalBar.className = 'online-notice-tactical-bar';
-
-    const tagGroup = document.createElement('div');
-    tagGroup.className = 'online-notice-tag-group';
-    const sigIcon = document.createElement('span');
-    sigIcon.className = 'online-notice-signal-icon';
-    sigIcon.innerHTML = SIGNAL_SVG;
-    const tagText = document.createElement('span');
-    tagText.className = 'online-notice-tag-text';
-    tagText.textContent = 'COMM LINK // INCOMING';
-    tagGroup.append(sigIcon, tagText);
-
     const timeEl = document.createElement('span');
     timeEl.className = 'online-notice-time';
     timeEl.textContent = formatTime(stamp);
 
-    tacticalBar.append(tagGroup, timeEl);
+    tacticalBar.append(timeEl);
 
     // 联系人名称行
     const head = document.createElement('div');
@@ -629,6 +623,7 @@ window.RetroflowOnlineNotice = (() => {
 
   function dismissAll() {
     queue.length = 0;
+    batchSeq = 0;
     if (drainTimer) {
       clearTimeout(drainTimer);
       drainTimer = null;

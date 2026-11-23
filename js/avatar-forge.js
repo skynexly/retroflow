@@ -223,12 +223,12 @@
     setSubmitBusy(true);
     setStageState('loading');
     if (faceTag) {
-      faceTag.textContent = faceRef ? 'FACE REF // 已挂载锁脸' : 'FACE REF // 未参与';
+      faceTag.textContent = faceRef ? 'FACE REF 已挂载锁脸' : 'FACE REF 未参与';
       faceTag.classList.toggle('active', !!faceRef);
     }
     if (modelTag) {
       const mid = (cfg.modelId || 'DEFAULT').toUpperCase();
-      modelTag.textContent = `MODEL // ${mid}`;
+      modelTag.textContent = `MODEL ${mid}`;
     }
 
     abortCtrl = new AbortController();
@@ -272,7 +272,7 @@
 
       if (latencyEl) {
         const sec = ((res.latency || (Date.now() - started)) / 1000).toFixed(1);
-        latencyEl.textContent = `METRICS // ${sec}s · ${res.size || AVATAR_SIZE}`;
+        latencyEl.textContent = `METRICS ${sec}s · ${res.size || AVATAR_SIZE}`;
       }
     } catch (err) {
       // 主动取消不算失败，直接静默
@@ -321,7 +321,7 @@
         const isShare = res.via === 'share';
         const isNative = res.via === 'native';
         RetroToast.show({
-          tag: 'FORGE // 导出影像',
+          tag: 'FORGE 导出影像',
           message: isShare ? '已唤起系统保存' : (isNative ? (res.album ? '影像已保存到相册' : '影像已保存到设备存储') : '已触发下载'),
           detail: isShare
             ? `${res.name}｜在面板里选择「保存到相册」或任意应用。`
@@ -335,7 +335,7 @@
       console.error('[AvatarForge] 下载失败:', err);
       if (window.RetroToast) {
         RetroToast.show({
-          tag: 'FORGE // 导出失败',
+          tag: 'FORGE 导出失败',
           message: (err && err.message) || '影像导出失败',
           detail: '可点击展台放大后长按大图，用系统自带的保存图片。',
           type: 'warning'

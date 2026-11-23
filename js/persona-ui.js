@@ -84,7 +84,7 @@
     if (!ok) {
       if (window.RetroToast) {
         RetroToast.show({
-          tag: 'STORAGE // 写入失败',
+          tag: 'STORAGE 写入失败',
           message: '身份档案保存失败',
           detail: '存储空间可能已满，本次修改未能固化。',
           type: 'error'
@@ -102,7 +102,7 @@
       // 退出即归档是隐式动作，必须给回执，否则用户无从判断存没存上
       if (window.RetroToast) {
         RetroToast.show({
-          tag: 'SAVED // 身份归档',
+          tag: 'SAVED 身份归档',
           message: `执行员「${data.name || '未命名'}」档案已保存`,
           type: 'success'
         });
@@ -296,7 +296,7 @@
     if (!savedIdentity) {
       if (window.RetroToast) {
         RetroToast.show({
-          tag: 'PERSONA // 退出中止',
+          tag: 'PERSONA 退出中止',
           message: '归档未完成，已留在个人档案',
           detail: '请检查存储空间后重试，避免本次编辑内容丢失',
           type: 'error'
@@ -690,7 +690,7 @@
     // 跳转由调用方（顶栏返回）决定，菜单点完页面自己跳走会很突兀。
     if (window.RetroToast) {
       RetroToast.show({
-        tag: 'SAVED // 马甲归档',
+        tag: 'SAVED 马甲归档',
         message: `伪装身份「${data.name || '未命名马甲'}」已保存`,
         type: 'success'
       });
@@ -778,7 +778,7 @@
       }
       const saved = await saveMaskDetail();
       if (saved === false) {
-        toastMask('EDITOR // 退出中止', '归档未完成，已留在编辑页', '请按提示修正后重试，避免本次编辑内容丢失', 'error');
+        toastMask('EDITOR 退出中止', '归档未完成，已留在编辑页', '请按提示修正后重试，避免本次编辑内容丢失', 'error');
         return;
       }
       closeMaskDetail();
@@ -813,13 +813,13 @@
           });
           break;
         case 'ai-assist':
-          toastMask('AI // 写作助手', '智能推演准备中', 'AI 辅助生成马甲设定功能即将接入', 'info');
+          toastMask('AI 写作助手', '智能推演准备中', 'AI 辅助生成马甲设定功能即将接入', 'info');
           break;
         case 'export-json':
-          toastMask('IO // 导出JSON', '导出通道准备中', '马甲档案导出功能即将接入', 'info');
+          toastMask('IO 导出JSON', '导出通道准备中', '马甲档案导出功能即将接入', 'info');
           break;
         case 'import-override':
-          toastMask('IO // 导入覆盖', '导入通道准备中', '马甲档案导入功能即将接入', 'info');
+          toastMask('IO 导入覆盖', '导入通道准备中', '马甲档案导入功能即将接入', 'info');
           break;
         case 'destroy':
           Promise.resolve(deleteMaskDetail()).catch((err) => {
@@ -976,7 +976,7 @@
       const current = maskAppearanceInput ? maskAppearanceInput.value : '';
       const updated = await TextEditorModal.open({
         title: '伪装外貌编辑',
-        tag: 'APPEARANCE // 伪装外貌',
+        tag: 'APPEARANCE 伪装外貌',
         value: current,
         placeholder: '描述该身份的外貌特征、服饰风格等...',
         maxLength: 3000
@@ -988,7 +988,7 @@
       const current = maskProfileInput ? maskProfileInput.value : '';
       const updated = await TextEditorModal.open({
         title: '身份背景编辑',
-        tag: 'PROFILE SETTING // 身份背景',
+        tag: 'PROFILE SETTING 身份背景',
         value: current,
         placeholder: '描述该身份的背景经历、动机与设定...',
         maxLength: 5000
@@ -1006,7 +1006,7 @@
       const current = appearanceInput ? appearanceInput.value : '';
       const updated = await TextEditorModal.open({
         title: '外貌特征编辑',
-        tag: 'APPEARANCE // 外貌形象',
+        tag: 'APPEARANCE 外貌形象',
         value: current,
         placeholder: '详细描述外貌形象（发型发色、瞳色、身高体态、着装习惯等等）...',
         maxLength: 3000
@@ -1018,7 +1018,7 @@
       const current = profileInput ? profileInput.value : '';
       const updated = await TextEditorModal.open({
         title: '核心设定编辑',
-        tag: 'PROFILE SETTING // 身份设定',
+        tag: 'PROFILE SETTING 身份设定',
         value: current,
         placeholder: '详细描述身份背景、性格气质、行事准则、喜好习惯、核心羁绊等等...',
         maxLength: 5000

@@ -182,7 +182,7 @@ const WorldBookUI = (() => {
       return false;
     }
     const ok = await Store.save('worldbook.books', getBooks());
-    if (!ok) toast('STORAGE // 写入失败', '世界书保存失败', 'warning');
+    if (!ok) toast('STORAGE 写入失败', '世界书保存失败', 'warning');
     return ok;
   }
 
@@ -259,8 +259,8 @@ const WorldBookUI = (() => {
         out.push({ id: String(p.id), name: p.name || '未命名档案', group });
       });
     };
-    push(Store.roster.characters, 'CHARACTERS // 角色档案');
-    push(Store.roster.npcs, 'NPC // 配角档案');
+    push(Store.roster.characters, 'CHARACTERS 角色档案');
+    push(Store.roster.npcs, 'NPC 配角档案');
     return out;
   }
 
@@ -452,7 +452,7 @@ const WorldBookUI = (() => {
       // 触发模式
       + '<div class="api-field-group">'
       + '<div class="api-field-label-row">'
-      + '<span class="api-field-label">TRIGGER MODE // 触发模式</span>'
+      + '<span class="api-field-label">TRIGGER MODE 触发模式</span>'
       + '</div>'
       + '<div class="wb-segmented-row">'
       + '<button type="button" class="wb-segmented-btn' + (isKeyword ? '' : ' active')
@@ -465,7 +465,7 @@ const WorldBookUI = (() => {
       // 关键词组（含填写说明抽屉与校验回显）
       + '<div class="api-field-group wb-keyword-group' + (isKeyword ? '' : ' wb-field-disabled') + '">'
       + '<div class="api-field-label-row">'
-      + '<label class="api-field-label">KEYWORDS // 触发关键词</label>'
+      + '<label class="api-field-label">KEYWORDS 触发关键词</label>'
       + '<button type="button" class="psych-help-circle-btn wb-keys-help-btn"'
       + ' aria-label="查看关键词填写说明" title="查看关键词填写说明">'
       + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"'
@@ -488,7 +488,7 @@ const WorldBookUI = (() => {
       // 注入位置
       + '<div class="api-field-group">'
       + '<div class="api-field-label-row">'
-      + '<label class="api-field-label">INJECTION POSITION // 注入位置</label>'
+      + '<label class="api-field-label">INJECTION POSITION 注入位置</label>'
       + '<span class="api-field-hint">点击切换</span>'
       + '</div>'
       + '<div class="api-input-wrap clickable wb-pos-trigger" role="button" tabindex="0"'
@@ -520,7 +520,7 @@ const WorldBookUI = (() => {
       + (allowDepth
         ? '<div class="api-field-group wb-role-group"' + (isDepth ? '' : ' hidden') + '>'
         + '<div class="api-field-label-row">'
-        + '<label class="api-field-label">INJECTION ROLE // 注入角色</label>'
+        + '<label class="api-field-label">INJECTION ROLE 注入角色</label>'
         + '<span class="api-field-hint">点击切换</span>'
         + '</div>'
         + '<div class="api-input-wrap clickable wb-role-trigger" role="button" tabindex="0"'
@@ -537,7 +537,7 @@ const WorldBookUI = (() => {
       // 条目内容（支持全屏沉浸编辑）
       + '<div class="api-field-group">'
       + '<div class="api-field-label-row">'
-      + '<label class="api-field-label">CONTENT // 条目内容</label>'
+      + '<label class="api-field-label">CONTENT 条目内容</label>'
       + '<div class="api-field-actions">'
       + '<button type="button" class="field-expand-btn wb-content-expand-btn"'
       + ' title="全屏沉浸编辑" aria-label="全屏编辑条目内容">'
@@ -638,7 +638,7 @@ const WorldBookUI = (() => {
 
     const picked = await SelectModal.pickMulti({
       title: '绑定角色',
-      tag: 'BIND // 作用范围',
+      tag: 'BIND 作用范围',
       options: pool.map((p) => ({ value: p.id, label: p.name, group: p.group })),
       values: bindIdsOf(book),
       confirmText: '确认绑定',
@@ -668,7 +668,7 @@ const WorldBookUI = (() => {
     const current = Array.isArray(book.bindForkIds) ? book.bindForkIds.filter(Boolean).map(String) : [];
     const picked = await SelectModal.pickMulti({
       title: '绑定副本',
-      tag: 'BIND // 作用范围',
+      tag: 'BIND 作用范围',
       options: pool,
       values: current,
       confirmText: '确认绑定',
@@ -788,7 +788,7 @@ const WorldBookUI = (() => {
 
     if (window.RetroModal && typeof RetroModal.confirm === 'function') {
       const ok = await RetroModal.confirm({
-        tag: 'WORLDBOOK // 删除世界书',
+        tag: 'WORLDBOOK 删除世界书',
         title: '删除世界书',
         message: '确认要删除世界书「' + name + '」吗？',
         detail: '书内包含的所有规则条目将被同时清除，无法撤销。',
@@ -867,7 +867,7 @@ const WorldBookUI = (() => {
 
     if (window.RetroModal && typeof RetroModal.confirm === 'function') {
       const ok = await RetroModal.confirm({
-        tag: 'WORLDBOOK // 删除条目',
+        tag: 'WORLDBOOK 删除条目',
         title: '删除条目',
         message: '确认要删除条目' + title + '吗？',
         detail: '条目内容将被移除，无法撤销。',
@@ -954,7 +954,7 @@ const WorldBookUI = (() => {
 
     const updated = await TextEditorModal.open({
       title: '条目内容编辑',
-      tag: 'WORLDBOOK // ' + entryTitle,
+      tag: 'WORLDBOOK ' + entryTitle,
       value: current,
       placeholder: '在此输入条目规则提示词内容…',
       maxLength: 8000
@@ -973,7 +973,7 @@ const WorldBookUI = (() => {
 
     const picked = await SelectModal.pick({
       title: '选择注入位置',
-      tag: 'INJECTION // 注入策略',
+      tag: 'INJECTION 注入策略',
       options: options,
       value: triggerEl.dataset.pos || 'sys-top',
       searchable: false
@@ -995,7 +995,7 @@ const WorldBookUI = (() => {
 
     const picked = await SelectModal.pick({
       title: '选择注入角色',
-      tag: 'ROLE // 消息身份',
+      tag: 'ROLE 消息身份',
       options: INJECTION_ROLES,
       value: triggerEl.dataset.role || 'system',
       searchable: false

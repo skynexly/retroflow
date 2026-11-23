@@ -200,13 +200,13 @@ const DataVaultUI = (() => {
       const opts = { onProgress };
       if (selectedScope === 'all') {
         await DataVault.exportAll(opts);
-        toast('EXPORT // 全量导出', '完整备份已导出为 JSON', 'success');
+        toast('EXPORT 全量导出', '完整备份已导出为 JSON', 'success');
       } else {
         await DataVault.exportScope(selectedScope, opts);
-        toast('EXPORT // 导出完成', `「${DataVault.scopeLabel(selectedScope)}」已导出为 JSON`, 'success');
+        toast('EXPORT 导出完成', `「${DataVault.scopeLabel(selectedScope)}」已导出为 JSON`, 'success');
       }
     } catch (err) {
-      toast('EXPORT // 导出失败', '导出过程出错，请重试', 'warning');
+      toast('EXPORT 导出失败', '导出过程出错，请重试', 'warning');
     } finally {
       exporting = false;
       if (exportBtn) {
@@ -228,7 +228,7 @@ const DataVaultUI = (() => {
     let confirmed = true;
     if (window.RetroModal && typeof RetroModal.confirm === 'function') {
       confirmed = await RetroModal.confirm({
-        tag: 'PURGE // 清理分块',
+        tag: 'PURGE 清理分块',
         message: `确认清空「${label}」的全部数据吗？`,
         detail: '该范围下的所有数据将从本地存储永久移除，此操作不可撤销。清理后页面会自动重载。',
         confirmText: '确认清理',
@@ -242,13 +242,13 @@ const DataVaultUI = (() => {
     try {
       removed = await DataVault.clearScope(selectedScope);
     } catch (err) {
-      toast('PURGE // 清理失败', '清理过程出错，请重试', 'warning');
+      toast('PURGE 清理失败', '清理过程出错，请重试', 'warning');
       return;
     }
 
     if (window.RetroModal && typeof RetroModal.alert === 'function') {
       await RetroModal.alert({
-        tag: 'PURGE // 清理完成',
+        tag: 'PURGE 清理完成',
         message: `「${label}」已清理 ${removed} 项`,
         detail: '页面将重新载入以刷新界面状态。',
         confirmText: '立即重载'
@@ -273,19 +273,19 @@ const DataVaultUI = (() => {
     try {
       text = await file.text();
     } catch (_) {
-      toast('IMPORT // 读取失败', '无法读取所选文件', 'warning');
+      toast('IMPORT 读取失败', '无法读取所选文件', 'warning');
       return;
     }
 
     const pkg = DataVault.parsePackage(text);
     if (!pkg) {
-      toast('IMPORT // 格式错误', '这不是有效的溯流数据备份文件', 'warning');
+      toast('IMPORT 格式错误', '这不是有效的溯流数据备份文件', 'warning');
       return;
     }
 
     const pkgBlocks = Array.isArray(pkg.blocks) ? pkg.blocks : [];
     if (!pkgBlocks.length) {
-      toast('IMPORT // 空备份', '这份备份不含任何可导入的分块', 'warning');
+      toast('IMPORT 空备份', '这份备份不含任何可导入的分块', 'warning');
       return;
     }
 
@@ -297,7 +297,7 @@ const DataVaultUI = (() => {
     let confirmed = true;
     if (window.RetroModal && typeof RetroModal.confirm === 'function') {
       confirmed = await RetroModal.confirm({
-        tag: 'IMPORT // 覆盖导入',
+        tag: 'IMPORT 覆盖导入',
         message: `识别到 ${pkgBlocks.length} 个分块，确认导入吗？`,
         detail: `将覆盖：${names}。导入以备份内容替换当前对应数据，无法撤销，完成后页面会自动重载。`,
         confirmText: '确认导入',
@@ -307,24 +307,24 @@ const DataVaultUI = (() => {
     }
     if (!confirmed) return;
 
-    toast('IMPORT // 写入中', '正在写入数据，请稍候…', 'info');
+    toast('IMPORT 写入中', '正在写入数据，请稍候…', 'info');
     let result;
     try {
       // 不传 onlyBlock，applyImport 按包里 blocks 全量覆盖导入
       result = await DataVault.applyImport(pkg, null);
     } catch (err) {
-      toast('IMPORT // 导入失败', '写入过程出错，数据可能不完整', 'warning');
+      toast('IMPORT 导入失败', '写入过程出错，数据可能不完整', 'warning');
       return;
     }
 
     if (!result || !result.ok) {
-      toast('IMPORT // 导入失败', '备份内容无法应用', 'warning');
+      toast('IMPORT 导入失败', '备份内容无法应用', 'warning');
       return;
     }
 
     if (window.RetroModal && typeof RetroModal.alert === 'function') {
       await RetroModal.alert({
-        tag: 'IMPORT // 导入完成',
+        tag: 'IMPORT 导入完成',
         message: '数据已写入本地存储',
         detail: '页面将重新载入以应用导入的数据。',
         confirmText: '立即重载'

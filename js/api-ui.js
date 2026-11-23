@@ -209,7 +209,7 @@
   function resetTestPanel(resultEl, textEl) {
     if (resultEl && textEl) {
       resultEl.className = 'api-test-result';
-      textEl.textContent = 'STANDBY // 待命';
+      textEl.textContent = 'STANDBY 待命';
     }
   }
 
@@ -247,7 +247,7 @@
     if (btnSpan) btnSpan.textContent = '测试中';
     btn.disabled = true;
     resultEl.className = 'api-test-result testing';
-    textEl.textContent = 'CONNECTING // 链路探测中...';
+    textEl.textContent = 'CONNECTING 链路探测中...';
 
     let res;
     try {
@@ -395,10 +395,10 @@
     const hint = slotImageStagePlaceholder.querySelector('.image-stage-hint');
     const svg = slotImageStagePlaceholder.querySelector('svg');
     if (state === 'loading') {
-      if (hint) hint.textContent = 'RENDERING // 生成中';
+      if (hint) hint.textContent = 'RENDERING 生成中';
       if (svg) svg.classList.add('test-spinner-icon');
     } else {
-      if (hint) hint.textContent = 'STANDBY // 图像渲染暂存区';
+      if (hint) hint.textContent = 'STANDBY 图像渲染暂存区';
       if (svg) svg.classList.remove('test-spinner-icon');
     }
   }
@@ -420,7 +420,7 @@
     setTestBtnBusy(slotTestBtn, true, '测试中', '测试生图');
     if (slotTestResult && slotTestResultText) {
       slotTestResult.className = 'api-test-result testing';
-      slotTestResultText.textContent = 'RENDERING // 生成中，生图较慢请稍候';
+      slotTestResultText.textContent = 'RENDERING 生成中，生图较慢请稍候';
     }
     setStageState('loading');
 
@@ -470,7 +470,7 @@
       return;
     }
     setTestBtnBusy(slotTestBtn, true, '测试中', '测试向量');
-    show('testing', 'EMBEDDING // 正在请求向量接口...');
+    show('testing', 'EMBEDDING 正在请求向量接口...');
     const started = Date.now();
     try {
       const res = await RetroflowAPI.embed(
@@ -538,8 +538,8 @@
     if (slotTestResult && slotTestResultText) {
       slotTestResult.className = 'api-test-result testing';
       slotTestResultText.textContent = RetroflowTTSCache.has(cfg, text)
-        ? 'LOADING // 命中缓存，正在载入试听'
-        : 'SYNTHESIZING // 正在合成试听音频';
+        ? 'LOADING 命中缓存，正在载入试听'
+        : 'SYNTHESIZING 正在合成试听音频';
     }
 
     try {
@@ -905,7 +905,7 @@
     const activeId = getActiveId();
     const picked = await SelectModal.pick({
       title: '选择载入来源',
-      tag: 'IMPORT // 节点库',
+      tag: 'IMPORT 节点库',
       options: nodes.map((n) => ({
         value: n.id,
         label: n.alias || '未命名节点',
@@ -1080,16 +1080,16 @@
 
     // 按钮与状态文案分流
     let btnText = '测试连接';
-    let statusText = 'STANDBY // 待命';
+    let statusText = 'STANDBY 待命';
     if (isImage) {
       btnText = '测试生图';
-      statusText = 'STANDBY // 点击按钮发送请求测试生图';
+      statusText = 'STANDBY 点击按钮发送请求测试生图';
     } else if (isTts) {
       btnText = '测试语音';
-      statusText = 'STANDBY // 点击按钮发送请求测试语音合成';
+      statusText = 'STANDBY 点击按钮发送请求测试语音合成';
     } else if (isEmbed) {
       btnText = '测试向量';
-      statusText = 'STANDBY // 点击按钮请求一次向量接口，显示向量维度';
+      statusText = 'STANDBY 点击按钮请求一次向量接口，显示向量维度';
     }
 
     setTestBtnBusy(slotTestBtn, false, '测试中', btnText);

@@ -22,7 +22,7 @@
     }
     if (window.RetroToast) {
       RetroToast.show({
-        tag: 'ORB // 随行中枢',
+        tag: 'ORB 随行中枢',
         message: orbToggleEl.checked ? '悬浮球已启用' : '悬浮球已收起',
         type: 'info'
       });
@@ -145,7 +145,7 @@
     if (snoContentEl) snoContentEl.disabled = !snoOnEl.checked;
     if (window.RetroToast) {
       RetroToast.show({
-        tag: 'NOTICE // 消息通知',
+        tag: 'NOTICE 消息通知',
         message: snoOnEl.checked ? '系统通知已开启' : '系统通知已关闭',
         type: 'info'
       });
@@ -157,7 +157,7 @@
     N.setSysContent(snoContentEl.checked);
     if (window.RetroToast) {
       RetroToast.show({
-        tag: 'NOTICE // 消息通知',
+        tag: 'NOTICE 消息通知',
         message: snoContentEl.checked ? '通知将显示消息内容' : '通知将只显示发信人',
         type: 'info'
       });
@@ -171,7 +171,7 @@
     KeepaliveCore.setOn(skaOnEl.checked);
     if (window.RetroToast) {
       RetroToast.show({
-        tag: 'BACKGROUND // 后台服务',
+        tag: 'BACKGROUND 后台服务',
         message: skaOnEl.checked ? '后台保活已开启' : '后台保活已关闭',
         type: 'info'
       });
@@ -185,7 +185,7 @@
     KeepaliveCore.setWake(skaWakeEl.checked);
     if (window.RetroToast) {
       RetroToast.show({
-        tag: 'BACKGROUND // 后台服务',
+        tag: 'BACKGROUND 后台服务',
         message: skaWakeEl.checked ? '屏幕常亮已开启' : '屏幕常亮已关闭',
         type: 'info'
       });

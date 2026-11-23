@@ -357,7 +357,7 @@ window.OnlineChatUI = (() => {
     const row = messagesWrap.querySelector(`[data-record-id="${String(recordId).replace(/"/g, '\\"')}"]`);
     if (!row) {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'SEARCH // 定位失败', message: '这条记录已不在当前会话中', type: 'warning' });
+        RetroToast.show({ tag: 'SEARCH 定位失败', message: '这条记录已不在当前会话中', type: 'warning' });
       }
       return false;
     }
@@ -380,8 +380,8 @@ window.OnlineChatUI = (() => {
       const isInstance = currentPerson && currentPerson.camp === 'instance';
       // 副本阵营角色不属于溯流编制，无编号
       headerStatusText.textContent = isInstance || !serial
-        ? 'FORK LINK // 副本频段'
-        : `NO.${serial} // 执行员`;
+        ? 'FORK LINK 副本频段'
+        : `NO.${serial} 执行员`;
     }
   }
 
@@ -662,7 +662,7 @@ window.OnlineChatUI = (() => {
     const tag = document.createElement('div');
     tag.className = 'chat-bubble-tag';
     const charName = trimStr(currentPerson && currentPerson.name) || '执行员';
-    tag.textContent = isEnvoy ? 'OPERATIVE' : `ENVOY // ${charName}`;
+    tag.textContent = isEnvoy ? 'OPERATIVE' : `ENVOY ${charName}`;
     row.dataset.senderName = isEnvoy ? getCurrentUserName() : charName;
     bubble.appendChild(tag);
 
@@ -746,7 +746,7 @@ const content = document.createElement('div');
          msg.fileRefs.forEach((f) => {
            const item = document.createElement('div');
            item.className = 'chat-file-card-item';
-           item.innerHTML = `<span class="chat-file-card-icon">${DOC_ICON_SVG}</span><span class="chat-file-card-body"><span class="chat-file-card-name">${escapeHtml(f.name)}</span><span class="chat-file-card-meta">${escapeHtml(f.sizeText || '')} // ${f.charCount || 0} 字符</span></span>`;
+           item.innerHTML = `<span class="chat-file-card-icon">${DOC_ICON_SVG}</span><span class="chat-file-card-body"><span class="chat-file-card-name">${escapeHtml(f.name)}</span><span class="chat-file-card-meta">${escapeHtml(f.sizeText || '')} ${f.charCount || 0} 字符</span></span>`;
            item.addEventListener('click', async (e) => {
              e.stopPropagation();
              const text = await FileStore.getText(f.id, onlineFileScope());
@@ -1073,7 +1073,7 @@ const content = document.createElement('div');
 
       if (window.RetroModal && typeof RetroModal.confirm === 'function') {
         const ok = await RetroModal.confirm({
-          tag: `PURGE // 批量抹除 (${count})`,
+          tag: `PURGE 批量抹除 (${count})`,
           message: `确认要彻底删除选中的 ${count} 条消息吗？`,
           detail: '选中的所有通讯记录将从当前会话中永久清除，无法撤销。',
           confirmText: `删除 (${count})`,
@@ -1092,7 +1092,7 @@ const content = document.createElement('div');
           await OnlineChatStore.removeMessages(recordIds);
         } catch (err) {
           if (window.RetroToast) {
-            RetroToast.show({ tag: 'PURGE // FAILED', message: '批量记录删除失败，未改动当前会话。', type: 'warning' });
+            RetroToast.show({ tag: 'PURGE FAILED', message: '批量记录删除失败，未改动当前会话。', type: 'warning' });
           }
           return;
         }
@@ -1131,7 +1131,7 @@ const content = document.createElement('div');
       if (count < 1 || count > limit) return; // 灰态双保险
       if (!window.ChatShot || typeof ChatShot.capture !== 'function') {
         if (window.RetroToast) {
-          RetroToast.show({ tag: 'CAPTURE // 引擎缺席', message: '截图引擎未加载', type: 'warning' });
+          RetroToast.show({ tag: 'CAPTURE 引擎缺席', message: '截图引擎未加载', type: 'warning' });
         }
         return;
       }
@@ -1150,26 +1150,26 @@ const content = document.createElement('div');
       try {
         const res = await ChatShot.capture({
           rows,
-          scene: { sceneName, sceneTag: 'ONLINE // 私聊存档' },
+          scene: { sceneName, sceneTag: 'ONLINE 私聊存档' },
           fileLabel: `私聊存档_${sceneName}`
         });
         if (res && res.ok) {
           if (window.RetroToast) {
-            RetroToast.show({ tag: 'CAPTURE // 存档完成', message: `已保存 ${count} 条对话长图`, type: 'success' });
+            RetroToast.show({ tag: 'CAPTURE 存档完成', message: `已保存 ${count} 条对话长图`, type: 'success' });
           }
           exitBatchMode();
         } else if (res && res.reason === 'too_tall') {
           if (window.RetroToast) {
-            RetroToast.show({ tag: 'CAPTURE // 内容过长', message: '选中内容拼图过高，请减少条数后重试', type: 'warning' });
+            RetroToast.show({ tag: 'CAPTURE 内容过长', message: '选中内容拼图过高，请减少条数后重试', type: 'warning' });
           }
         } else {
           if (window.RetroToast) {
-            RetroToast.show({ tag: 'CAPTURE // 生成失败', message: '长图生成失败，请重试', type: 'error' });
+            RetroToast.show({ tag: 'CAPTURE 生成失败', message: '长图生成失败，请重试', type: 'error' });
           }
         }
       } catch (err) {
         if (window.RetroToast) {
-          RetroToast.show({ tag: 'CAPTURE // 生成异常', message: (err && err.message) || '长图生成异常', type: 'error' });
+          RetroToast.show({ tag: 'CAPTURE 生成异常', message: (err && err.message) || '长图生成异常', type: 'error' });
         }
       } finally {
         updateBatchCount();
@@ -1180,7 +1180,7 @@ const content = document.createElement('div');
   if (batchQuoteBtn) {
     batchQuoteBtn.addEventListener('click', () => {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'BATCH // QUOTE', message: '合并引用为预留机能', type: 'info' });
+        RetroToast.show({ tag: 'BATCH QUOTE', message: '合并引用为预留机能', type: 'info' });
       }
     });
   }
@@ -1373,7 +1373,7 @@ const content = document.createElement('div');
     }
 
     if (!batchRows.length) {
-      if (window.RetroToast) RetroToast.show({ tag: 'REWRITE // FAILED', message: '未找到可重写的最新回复', type: 'warning' });
+      if (window.RetroToast) RetroToast.show({ tag: 'REWRITE FAILED', message: '未找到可重写的最新回复', type: 'warning' });
       return;
     }
 
@@ -1385,7 +1385,7 @@ const content = document.createElement('div');
         await OnlineChatStore.removeMessages(deleteIds);
       }
     } catch (err) {
-      if (window.RetroToast) RetroToast.show({ tag: 'REWRITE // FAILED', message: '清理历史回复失败', type: 'warning' });
+      if (window.RetroToast) RetroToast.show({ tag: 'REWRITE FAILED', message: '清理历史回复失败', type: 'warning' });
       return;
     }
 
@@ -1411,7 +1411,7 @@ const content = document.createElement('div');
 
     if (!rowsToDelete.length) {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'REWIND // NO OPERATION', message: '当前消息已经位于会话末端。', type: 'info' });
+        RetroToast.show({ tag: 'REWIND NO OPERATION', message: '当前消息已经位于会话末端。', type: 'info' });
       }
       return;
     }
@@ -1439,7 +1439,7 @@ const content = document.createElement('div');
 
     if (!skipConfirm && window.RetroModal && typeof RetroModal.confirm === 'function') {
       const confirmed = await RetroModal.confirm({
-        tag: 'REWIND // 回溯会话',
+        tag: 'REWIND 回溯会话',
         message: '确认回溯到此条消息吗？',
         detail: isUserRow 
           ? `将删除此条及后续共 ${rowsToDelete.length} 条内容，此条内容会退回输入框。`
@@ -1458,7 +1458,7 @@ const content = document.createElement('div');
       }
     } catch (err) {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'REWIND // FAILED', message: '后续记录删除失败，当前会话未改动。', type: 'warning' });
+        RetroToast.show({ tag: 'REWIND FAILED', message: '后续记录删除失败，当前会话未改动。', type: 'warning' });
       }
       return;
     }
@@ -1482,7 +1482,7 @@ const content = document.createElement('div');
     }
 
     if (window.RetroToast) {
-      RetroToast.show({ tag: 'REWIND // SUCCESS', message: `已回溯，清除了后续 ${rowsToDelete.length} 条消息`, type: 'info' });
+      RetroToast.show({ tag: 'REWIND SUCCESS', message: `已回溯，清除了后续 ${rowsToDelete.length} 条消息`, type: 'info' });
     }
   }
 
@@ -1495,7 +1495,7 @@ const content = document.createElement('div');
         {
           const cleanText = String(text || '').trim();
           if (!cleanText) {
-            if (window.RetroToast) RetroToast.show({ tag: 'COPY // 空内容', message: '当前消息无有效纯文本可复制', type: 'info' });
+            if (window.RetroToast) RetroToast.show({ tag: 'COPY 空内容', message: '当前消息无有效纯文本可复制', type: 'info' });
             return;
           }
 
@@ -1526,9 +1526,9 @@ const content = document.createElement('div');
 
           if (window.RetroToast) {
             if (copied) {
-              RetroToast.show({ tag: 'COPY // 复制成功', message: '纯文本已复制到剪贴板', type: 'info' });
+              RetroToast.show({ tag: 'COPY 复制成功', message: '纯文本已复制到剪贴板', type: 'info' });
             } else {
-              RetroToast.show({ tag: 'COPY // 复制失败', message: '未能写入剪贴板，请检查权限', type: 'warning' });
+              RetroToast.show({ tag: 'COPY 复制失败', message: '未能写入剪贴板，请检查权限', type: 'warning' });
             }
           }
         }
@@ -1544,7 +1544,7 @@ const content = document.createElement('div');
             const description = String(row.dataset.visionDescription || '').trim() || '[图片]';
             TextEditorModal.open({
               title: '查看描述',
-              tag: 'IMAGE // VISION',
+              tag: 'IMAGE VISION',
               value: description,
               readOnly: true
             });
@@ -1555,7 +1555,7 @@ const content = document.createElement('div');
             
             TextEditorModal.open({
               title: '编辑消息',
-              tag: 'MESSAGE // 修改记忆',
+              tag: 'MESSAGE 修改记忆',
               value: currentText,
               maxLength: 8000
             }).then(async (updated) => {
@@ -1582,7 +1582,7 @@ const content = document.createElement('div');
                     }
                   } catch (err) {
                     if (window.RetroToast) {
-                      RetroToast.show({ tag: 'MEMORY // WRITE FAILED', message: '消息修改未能写入上下文记录。', type: 'warning' });
+                      RetroToast.show({ tag: 'MEMORY WRITE FAILED', message: '消息修改未能写入上下文记录。', type: 'warning' });
                     }
                     return;
                   }
@@ -1686,7 +1686,7 @@ const content = document.createElement('div');
             }
           } catch (err) {
             if (window.RetroToast) {
-              RetroToast.show({ tag: 'RECALL // FAILED', message: '消息撤回失败，当前会话未改动。', type: 'warning' });
+              RetroToast.show({ tag: 'RECALL FAILED', message: '消息撤回失败，当前会话未改动。', type: 'warning' });
             }
           }
         }
@@ -1699,7 +1699,7 @@ const content = document.createElement('div');
       case 'delete':
         if (window.RetroModal && typeof RetroModal.confirm === 'function') {
           const ok = await RetroModal.confirm({
-            tag: 'PURGE // 抹除记录',
+            tag: 'PURGE 抹除记录',
             message: '确认要彻底删除此条消息吗？',
             detail: '该条消息将从当前会话中永久清除，无法撤销。',
             confirmText: '确认删除',
@@ -1718,7 +1718,7 @@ const content = document.createElement('div');
               const lastRec = remaining.length ? remaining[remaining.length - 1] : null;
               await OnlineChatStore.syncSession(currentAccountId, currentContactId, lastRec, { clearUnread: true });
             } catch (err) {
-              if (window.RetroToast) RetroToast.show({ tag: 'PURGE // FAILED', message: '记录删除失败，请稍后重试。', type: 'warning' });
+              if (window.RetroToast) RetroToast.show({ tag: 'PURGE FAILED', message: '记录删除失败，请稍后重试。', type: 'warning' });
               return;
             }
           }
@@ -1732,7 +1732,7 @@ const content = document.createElement('div');
       default:
         if (window.RetroToast) {
           window.RetroToast.show({
-            tag: `ACTION // ${actionKey.toUpperCase()}`,
+            tag: `ACTION ${actionKey.toUpperCase()}`,
             message: `已触发「${actionZh}」操作（待对接完整业务链路）`,
             type: 'info'
           });
@@ -2546,7 +2546,7 @@ const records = await OnlineChatStore.listMessages(session.accountId, session.co
     const tag = document.createElement('div');
     tag.className = 'chat-bubble-tag';
     const charName = trimStr(currentPerson && currentPerson.name) || '执行员';
-    tag.textContent = `ENVOY // ${charName}`;
+    tag.textContent = `ENVOY ${charName}`;
     const content = document.createElement('div');
     content.className = 'chat-bubble-content';
     content.innerHTML = WAVEFORM_HTML;
@@ -3918,7 +3918,7 @@ const records = await OnlineChatStore.listMessages(session.accountId, session.co
     if (!state.failed) return true;
     if (!window.RetroModal || typeof RetroModal.confirm !== 'function') return true;
     return await RetroModal.confirm({
-      tag: 'VISION // 识别状态',
+      tag: 'VISION 识别状态',
       message: '存在未识别成功的图片，是否继续发送？',
       detail: '继续后，未成功识别的图片不会进入对话的文字视觉记忆。',
       confirmText: '继续发送',

@@ -187,14 +187,14 @@
   async function speakAssistantBubble(bubble, fallbackText) {
     const cleanText = getSpeechText(bubble, fallbackText);
     if (!cleanText) {
-      if (window.RetroToast) RetroToast.show({ tag: 'TTS // 空内容', message: '当前消息没有可朗读的纯文本', type: 'info' });
+      if (window.RetroToast) RetroToast.show({ tag: 'TTS 空内容', message: '当前消息没有可朗读的纯文本', type: 'info' });
       return;
     }
 
     // 再次点击当前正在合成或播放的气泡：停止，不重新计费或合成
     if (chatTtsBubble === bubble && (chatTtsBusy || (chatTtsAudio && !chatTtsAudio.paused))) {
       stopChatTts();
-      if (window.RetroToast) RetroToast.show({ tag: 'TTS // 语音播报', message: '语音播放已停止', type: 'info' });
+      if (window.RetroToast) RetroToast.show({ tag: 'TTS 语音播报', message: '语音播放已停止', type: 'info' });
       return;
     }
 
@@ -202,7 +202,7 @@
     if (!slot || !slot.baseUrl || !slot.apiKey) {
       if (window.RetroToast) {
         RetroToast.show({
-          tag: 'TTS // 未配置',
+          tag: 'TTS 未配置',
           message: '尚未配置 TTS 语音合成节点',
           detail: '请前往 API 引擎配置 TTS 语音合成插槽。',
           type: 'warning'
@@ -227,7 +227,7 @@
     if (chatTtsBubble) chatTtsBubble.classList.add('is-tts-loading');
     if (window.RetroToast) {
       RetroToast.show({
-        tag: 'TTS // 语音播报',
+        tag: 'TTS 语音播报',
         message: '正在合成助手语音…',
         detail: assistant.voiceId ? `专属音色：${assistant.voiceId}` : '使用 TTS 插槽默认音色',
         type: 'info',
@@ -264,7 +264,7 @@
 
       if (window.RetroToast) {
         RetroToast.show({
-          tag: 'TTS // 语音播报',
+          tag: 'TTS 语音播报',
           message: result.cached ? '正在播放助手语音 · 命中缓存' : '正在播放助手语音',
           type: 'success',
           duration: 1800
@@ -280,7 +280,7 @@
       chatTtsBubble = null;
       if (window.RetroToast) {
         RetroToast.show({
-          tag: 'TTS // 播放失败',
+          tag: 'TTS 播放失败',
           message: err && err.message ? err.message : '语音合成或播放失败',
           type: 'warning'
         });
@@ -1347,7 +1347,7 @@
 
     const tag = document.createElement('div');
     tag.className = 'chat-bubble-tag';
-    tag.textContent = isAssistant ? `SYSTEM // ${resolvedSenderName}` : 'OPERATIVE';
+    tag.textContent = isAssistant ? `SYSTEM ${resolvedSenderName}` : 'OPERATIVE';
 
     bubble.appendChild(tag);
 
@@ -1416,7 +1416,7 @@
           <span class="chat-file-card-icon">${FILE_DOC_SVG}</span>
           <span class="chat-file-card-body">
             <span class="chat-file-card-name">${escapeChatHtml(f.name)}</span>
-            <span class="chat-file-card-meta">${escapeChatHtml(f.sizeText || '')} // ${f.charCount || 0} 字符</span>
+            <span class="chat-file-card-meta">${escapeChatHtml(f.sizeText || '')} ${f.charCount || 0} 字符</span>
           </span>`;
         item.addEventListener('click', async (e) => {
           e.stopPropagation();
@@ -1428,7 +1428,7 @@
               const ev = new CustomEvent('retroflow:preview-file', { detail: { name: f.name, text: t } });
               window.dispatchEvent(ev);
             } else if (t == null && window.RetroToast) {
-              RetroToast.show({ tag: 'DOC // 已释放', message: '该文件已从文件区删除，无法预览', type: 'info' });
+              RetroToast.show({ tag: 'DOC 已释放', message: '该文件已从文件区删除，无法预览', type: 'info' });
             }
           }
         });
@@ -1707,7 +1707,7 @@
           const isShare = res.via === 'share';
           const isNative = res.via === 'native';
           RetroToast.show({
-            tag: 'IMAGE // 导出影像',
+            tag: 'IMAGE 导出影像',
             message: isShare ? '已唤起系统保存' : (isNative ? (res.album ? '影像已保存到相册' : '影像已保存到设备存储') : '已触发下载'),
             detail: isShare
               ? `${res.name}｜在面板里选择「保存到相册」或任意应用。`
@@ -1720,7 +1720,7 @@
       } catch (err) {
         if (window.RetroToast) {
           RetroToast.show({
-            tag: 'IMAGE // 导出失败',
+            tag: 'IMAGE 导出失败',
             message: (err && err.message) || '影像导出失败',
             detail: '可长按大图，用系统自带的保存图片。',
             type: 'warning'
@@ -1749,7 +1749,7 @@
     // 间插演示：工具调用卡片
     appendToolCard({
       name: 'query_worldline_params',
-      tag: 'SYSTEM // 工具调用',
+      tag: 'SYSTEM 工具调用',
       input: { worldId: 'WL-007', depth: 0.88, filter: 'active_anomalies' },
       output: { status: 'stable', anomalies: 2, causal_drift: 0.04, latency_ms: 128 },
       status: 'success'
@@ -1893,7 +1893,7 @@
 
     if (window.RetroModal && typeof RetroModal.confirm === 'function') {
       const ok = await RetroModal.confirm({
-        tag: 'PURGE // 抹除记录',
+        tag: 'PURGE 抹除记录',
         message: `确认要彻底删除${label}吗？`,
         detail: '删除后该记录不再进入上下文，无法撤销。',
         confirmText: '确认删除',
@@ -1909,7 +1909,7 @@
         await removeChatRecordIds([recordId]);
       } catch (err) {
         if (window.RetroToast) {
-          RetroToast.show({ tag: 'PURGE // FAILED', message: '记录删除失败，请稍后重试。', type: 'warning' });
+          RetroToast.show({ tag: 'PURGE FAILED', message: '记录删除失败，请稍后重试。', type: 'warning' });
         }
         return;
       }
@@ -2078,20 +2078,20 @@
 
       <div class="chat-tool-inspect-body">
         <div class="chat-tool-inspect-section">
-          <span class="chat-tool-inspect-label">STATUS // 状态</span>
+          <span class="chat-tool-inspect-label">STATUS 状态</span>
           <div class="chat-tool-inspect-status-badge">
             <span class="chat-status-dot"></span>
-            <span>SUCCESS // 200 OK</span>
+            <span>SUCCESS 200 OK</span>
           </div>
         </div>
 
         <div class="chat-tool-inspect-section">
-          <span class="chat-tool-inspect-label">INPUT PARAMS // 输入参数</span>
+          <span class="chat-tool-inspect-label">INPUT PARAMS 输入参数</span>
           <pre class="chat-tool-inspect-code">${formattedInput}</pre>
         </div>
 
         <div class="chat-tool-inspect-section">
-          <span class="chat-tool-inspect-label">OUTPUT RESULT // 执行结果</span>
+          <span class="chat-tool-inspect-label">OUTPUT RESULT 执行结果</span>
           <pre class="chat-tool-inspect-code">${formattedOutput}</pre>
         </div>
       </div>
@@ -2321,7 +2321,7 @@
 
     if (!rowsToDelete.length) {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'REWIND // NO OPERATION', message: '当前消息已经位于会话末端。', type: 'info' });
+        RetroToast.show({ tag: 'REWIND NO OPERATION', message: '当前消息已经位于会话末端。', type: 'info' });
       }
       return;
     }
@@ -2351,7 +2351,7 @@
 
     if (!skipConfirm && window.RetroModal && typeof RetroModal.confirm === 'function') {
       const confirmed = await RetroModal.confirm({
-        tag: 'REWIND // 回溯会话',
+        tag: 'REWIND 回溯会话',
         message: '确认回溯到此条消息吗？',
         detail: isUserRow 
           ? `将删除此条及后续共 ${rowsToDelete.length} 条内容，此条内容会退回输入框。`
@@ -2368,7 +2368,7 @@
       await removeChatRecordIds(recordIds);
     } catch (err) {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'REWIND // FAILED', message: '后续记录删除失败，当前会话未改动。', type: 'warning' });
+        RetroToast.show({ tag: 'REWIND FAILED', message: '后续记录删除失败，当前会话未改动。', type: 'warning' });
       }
       return;
     }
@@ -2397,7 +2397,7 @@
             : String(targetRaw || '').trim();
 
           if (!cleanText) {
-            if (window.RetroToast) RetroToast.show({ tag: 'COPY // 空内容', message: '当前消息无有效纯文本可复制', type: 'info' });
+            if (window.RetroToast) RetroToast.show({ tag: 'COPY 空内容', message: '当前消息无有效纯文本可复制', type: 'info' });
             return;
           }
 
@@ -2428,9 +2428,9 @@
 
           if (window.RetroToast) {
             if (copied) {
-              RetroToast.show({ tag: 'COPY // 复制成功', message: '纯文本已复制到剪贴板', type: 'info' });
+              RetroToast.show({ tag: 'COPY 复制成功', message: '纯文本已复制到剪贴板', type: 'info' });
             } else {
-              RetroToast.show({ tag: 'COPY // 复制失败', message: '未能写入剪贴板，请检查权限', type: 'warning' });
+              RetroToast.show({ tag: 'COPY 复制失败', message: '未能写入剪贴板，请检查权限', type: 'warning' });
             }
           }
         }
@@ -2447,7 +2447,7 @@
             const isGenImg = Boolean(row && row.classList.contains('assistant'));
             TextEditorModal.open({
               title: isGenImg ? '生图提示词' : '识图结果',
-              tag: isGenImg ? 'IMAGE // 生成提示词' : 'VISION // 识别结果',
+              tag: isGenImg ? 'IMAGE 生成提示词' : 'VISION 识别结果',
               value: String(text || '').trim() || (isGenImg ? '（无生图提示词记录）' : '（暂无识图结果）'),
               readOnly: true
             });
@@ -2456,7 +2456,7 @@
           const rawValue = (bubble && typeof bubble.dataset.rawText === 'string') ? bubble.dataset.rawText : text;
           TextEditorModal.open({
             title: '编辑消息',
-            tag: 'MESSAGE // 修改记忆',
+            tag: 'MESSAGE 修改记忆',
             value: rawValue,
             maxLength: 8000
           }).then(async (updated) => {
@@ -2470,7 +2470,7 @@
                   if (!updatedRecord) throw new Error('找不到待编辑的消息记录');
                 } catch (err) {
                   if (window.RetroToast) {
-                    RetroToast.show({ tag: 'MEMORY // WRITE FAILED', message: '消息修改未能写入上下文记录。', type: 'warning' });
+                    RetroToast.show({ tag: 'MEMORY WRITE FAILED', message: '消息修改未能写入上下文记录。', type: 'warning' });
                   }
                   return;
                 }
@@ -2495,7 +2495,7 @@
       case 'delete':
         if (window.RetroModal && typeof RetroModal.confirm === 'function') {
           const ok = await RetroModal.confirm({
-            tag: 'PURGE // 抹除记录',
+            tag: 'PURGE 抹除记录',
             message: '确认要彻底删除此条消息吗？',
             detail: '该条消息将从当前会话中永久清除，无法撤销。',
             confirmText: '确认删除',
@@ -2510,7 +2510,7 @@
             try {
               await removeChatRecordIds([recordId]);
             } catch (err) {
-              if (window.RetroToast) RetroToast.show({ tag: 'PURGE // FAILED', message: '记录删除失败，请稍后重试。', type: 'warning' });
+              if (window.RetroToast) RetroToast.show({ tag: 'PURGE FAILED', message: '记录删除失败，请稍后重试。', type: 'warning' });
               return;
             }
           }
@@ -2552,7 +2552,7 @@
             }
           } catch (err) {
             if (window.RetroToast) {
-              RetroToast.show({ tag: 'RECALL // FAILED', message: '消息撤回失败，当前会话未改动。', type: 'warning' });
+              RetroToast.show({ tag: 'RECALL FAILED', message: '消息撤回失败，当前会话未改动。', type: 'warning' });
             }
           }
         }
@@ -2588,7 +2588,7 @@
       default:
         if (window.RetroToast) {
           window.RetroToast.show({
-            tag: `ACTION // ${actionKey.toUpperCase()}`,
+            tag: `ACTION ${actionKey.toUpperCase()}`,
             message: `已触发「${actionZh}」操作（待对接完整业务链路）`,
             type: 'info'
           });
@@ -3210,7 +3210,7 @@
           // 补记过去日期的账：标出账单日期，避免助手以为是刚刚花的
           if (r.dateKey && r.dateKey !== localDateKeyOf(at)) parts.push(`账单日期 ${r.dateKey}`);
           if (note) parts.push(`备注：${note}`);
-          events.push({ at, text: `${label} ${amt}${parts.length ? ` · ${parts.join(' · ')}` : ''}` });
+          events.push({ at, text: `${label} ${amt}${parts.length ? `· ${parts.join(' · ')}` : ''}` });
         }
       }
 
@@ -3223,7 +3223,7 @@
         if (acc) parts.push(`回款至${acc}`);
         const note = cleanNote(rawNote);
         if (note) parts.push(`原备注：${note}`);
-        events.push({ at: reimAt, text: `报销到账 ${amt}${parts.length ? ` · ${parts.join(' · ')}` : ''}` });
+        events.push({ at: reimAt, text: `报销到账 ${amt}${parts.length ? `· ${parts.join(' · ')}` : ''}` });
       }
     }
 
@@ -3312,7 +3312,7 @@
         ? r.timeStr
         : (ts ? formatLedgerClock(ts) : '');
       const sameYear = year === String(new Date(at).getFullYear());
-      return `${sameYear ? '' : `${year}-`}${md}${clock ? ` ${clock}` : ''}`;
+      return `${sameYear ? '' : `${year}-`}${md}${clock ? `${clock}` : ''}`;
     };
     const formatKg = (v) => Number(v).toFixed(1);
 
@@ -3327,8 +3327,8 @@
       if (when) parts.push(`运动时间 ${when}`);
       const plan = planMap.get(r.planId);
       if (plan) parts.push(`计划：${clean(plan)}`);
-      const head = `运动 ${clean(r.activity) || '自由运动'}${Number.isFinite(minutes) && minutes > 0 ? ` ${Math.round(minutes * 10) / 10} 分钟` : ''}`;
-      events.push({ at, text: `${head}${parts.length ? ` · ${parts.join(' · ')}` : ''}` });
+      const head = `运动 ${clean(r.activity) || '自由运动'}${Number.isFinite(minutes) && minutes > 0 ? `${Math.round(minutes * 10) / 10} 分钟` : ''}`;
+      events.push({ at, text: `${head}${parts.length ? `· ${parts.join(' · ')}` : ''}` });
     }
 
     // 「较上次」按称重时间排序，取这条之前最近的一次，补记往日也能算对
@@ -3363,7 +3363,7 @@
       const note = clean(r.note);
       if (note) parts.push(`备注：${note}`);
       const label = HEALTH_DIET_LABELS[r.category] || '饮食';
-      events.push({ at, text: `${label} ${content}${parts.length ? ` · ${parts.join(' · ')}` : ''}` });
+      events.push({ at, text: `${label} ${content}${parts.length ? `· ${parts.join(' · ')}` : ''}` });
     }
 
     events.sort((a, b) => a.at - b.at);
@@ -3576,7 +3576,7 @@ ${parts.join('\n\n———\n\n')}`;
       } catch (err) {
         console.warn('[System Chat] 动作协议 JSON 解析失败：', normalized, err);
         if (window.RetroToast) {
-          RetroToast.show({ tag: 'ACTION // 解析失败', message: '助手动作指令格式不合法，未能执行。', type: 'warning' });
+          RetroToast.show({ tag: 'ACTION 解析失败', message: '助手动作指令格式不合法，未能执行。', type: 'warning' });
         }
       }
       return false;
@@ -3677,7 +3677,7 @@ ${parts.join('\n\n———\n\n')}`;
     const cfg = getImageSlotConfig();
     if (!cfg) {
       if (options.existingStateRow && options.existingStateRow.parentNode) options.existingStateRow.remove();
-      if (window.RetroToast) RetroToast.show({ tag: 'IMAGE // 未配置', message: '尚未配置图像生成节点，无法生图', detail: '请前往 API 引擎配置图像生成插槽。', type: 'warning' });
+      if (window.RetroToast) RetroToast.show({ tag: 'IMAGE 未配置', message: '尚未配置图像生成节点，无法生图', detail: '请前往 API 引擎配置图像生成插槽。', type: 'warning' });
       return;
     }
 
@@ -3709,7 +3709,7 @@ ${parts.join('\n\n———\n\n')}`;
     } catch (err) {
       if (stateRow && stateRow.parentNode) stateRow.remove();
       const message = getApiErrorText(err);
-      if (window.RetroToast) RetroToast.show({ tag: 'IMAGE // 生成失败', message, type: 'warning' });
+      if (window.RetroToast) RetroToast.show({ tag: 'IMAGE 生成失败', message, type: 'warning' });
       return;
     } finally {
       if (faceRef) Storage.revokeAssetSrc(faceRef);
@@ -3730,7 +3730,7 @@ ${parts.join('\n\n———\n\n')}`;
       if (!galleryEntry) throw new Error('影像归档失败');
     } catch (err) {
       if (stateRow && stateRow.parentNode) stateRow.remove();
-      if (window.RetroToast) RetroToast.show({ tag: 'IMAGE // 归档失败', message: getApiErrorText(err), type: 'warning' });
+      if (window.RetroToast) RetroToast.show({ tag: 'IMAGE 归档失败', message: getApiErrorText(err), type: 'warning' });
       return;
     }
 
@@ -3750,7 +3750,7 @@ ${parts.join('\n\n———\n\n')}`;
       // 落库失败则回收图库资产，避免孤儿
       if (window.GalleryStore) await GalleryStore.remove([galleryEntry.id]).catch(() => {});
       if (stateRow && stateRow.parentNode) stateRow.remove();
-      if (window.RetroToast) RetroToast.show({ tag: 'IMAGE // 记录失败', message: getApiErrorText(err), type: 'warning' });
+      if (window.RetroToast) RetroToast.show({ tag: 'IMAGE 记录失败', message: getApiErrorText(err), type: 'warning' });
       return;
     }
 
@@ -3776,7 +3776,7 @@ ${parts.join('\n\n———\n\n')}`;
 
     const figure = document.createElement('div');
     figure.className = 'chat-gen-image is-loading';
-    figure.innerHTML = `<span class="chat-gen-spinner" aria-hidden="true"></span><span class="chat-gen-loading-text">RENDERING // 生成中</span>`;
+    figure.innerHTML = `<span class="chat-gen-spinner" aria-hidden="true"></span><span class="chat-gen-loading-text">RENDERING 生成中</span>`;
 
     row.append(avatarCol, figure);
     messagesWrap.appendChild(row);
@@ -3856,20 +3856,20 @@ ${parts.join('\n\n———\n\n')}`;
       const galleryId = String(action.galleryId || action.gallery_id || action.imageId || action.image_id || '').trim();
       if (!active || !active.id) {
         console.warn('[System Chat] 头像动作失败：没有可用的当前激活助手');
-        if (window.RetroToast) RetroToast.show({ tag: 'ACTION // 头像未更新', message: '未找到当前激活助手，无法换头像。', type: 'warning' });
+        if (window.RetroToast) RetroToast.show({ tag: 'ACTION 头像未更新', message: '未找到当前激活助手，无法换头像。', type: 'warning' });
         continue;
       }
       if (!galleryId) {
         console.warn('[System Chat] 头像动作失败：缺少 galleryId');
-        if (window.RetroToast) RetroToast.show({ tag: 'ACTION // 头像未更新', message: '助手未提供有效的图片 ID。', type: 'warning' });
+        if (window.RetroToast) RetroToast.show({ tag: 'ACTION 头像未更新', message: '助手未提供有效的图片 ID。', type: 'warning' });
         continue;
       }
       try {
         await ResonanceUI.applyAssistantAvatarFromGallery(active.id, galleryId);
-        if (window.RetroToast) RetroToast.show({ tag: 'ASSISTANT // 头像已更新', message: '系统助手立绘已同步至当前拟态档案', type: 'success' });
+        if (window.RetroToast) RetroToast.show({ tag: 'ASSISTANT 头像已更新', message: '系统助手立绘已同步至当前拟态档案', type: 'success' });
       } catch (err) {
         console.warn('[System Chat] 助手头像动作未执行：', err);
-        if (window.RetroToast) RetroToast.show({ tag: 'ACTION // 头像未更新', message: getApiErrorText(err), type: 'warning' });
+        if (window.RetroToast) RetroToast.show({ tag: 'ACTION 头像未更新', message: getApiErrorText(err), type: 'warning' });
       }
     }
     return parsed.visibleText;
@@ -3921,14 +3921,14 @@ ${parts.join('\n\n———\n\n')}`;
    * 否则手册工具刷新重建后会被标成文件工具。
    */
   function toolCardTag(name, status) {
-    if (status === 'error') return 'TOOL // 执行失败';
+    if (status === 'error') return 'TOOL 执行失败';
     const key = String(name || '').trim();
-    if (MEMORY_TOOL_TYPES.has(key)) return 'MEMORY // 记忆工具';
-    if (WEB_SEARCH_TOOL_TYPES.has(key)) return 'SEARCH // 联网检索';
-    if (READ_WEB_TOOL_TYPES.has(key)) return 'READER // 网页抓取';
-    if (MANUAL_TOOL_TYPES.has(key)) return 'MANUAL // 手册查阅';
-    if (FILE_TOOL_TYPES.has(key)) return 'FILE // 工具调用';
-    return 'TOOL // 工具调用';
+    if (MEMORY_TOOL_TYPES.has(key)) return 'MEMORY 记忆工具';
+    if (WEB_SEARCH_TOOL_TYPES.has(key)) return 'SEARCH 联网检索';
+    if (READ_WEB_TOOL_TYPES.has(key)) return 'READER 网页抓取';
+    if (MANUAL_TOOL_TYPES.has(key)) return 'MANUAL 手册查阅';
+    if (FILE_TOOL_TYPES.has(key)) return 'FILE 工具调用';
+    return 'TOOL 工具调用';
   }
 
   /** 内置工具（文件区读取）是否启用：读对话设置，缺省视为开启 */
@@ -4621,7 +4621,7 @@ ${parts.join('\n\n———\n\n')}`;
       const isAbort = !isTimeout
         && (err && (err.name === 'AbortError' || err.message === 'The user aborted a request.' || err.message === 'DOMException: The user aborted a request.'));
       if (!isAbort && window.RetroToast) {
-        RetroToast.show({ tag: 'REWRITE // FAILED', message: `重写失败：${getApiErrorText(err)}`, type: 'warning' });
+        RetroToast.show({ tag: 'REWRITE FAILED', message: `重写失败：${getApiErrorText(err)}`, type: 'warning' });
       }
     }
   }
@@ -4877,7 +4877,7 @@ ${parts.join('\n\n———\n\n')}`;
     addCard.addEventListener('click', (e) => {
       e.stopPropagation();
       selectChatImage().catch((err) => {
-        if (window.RetroToast) RetroToast.show({ tag: 'VISION // LOAD FAILED', message: getApiErrorText(err), type: 'warning' });
+        if (window.RetroToast) RetroToast.show({ tag: 'VISION LOAD FAILED', message: getApiErrorText(err), type: 'warning' });
       });
     });
     imagePreviewBar.appendChild(addCard);
@@ -4928,7 +4928,7 @@ ${parts.join('\n\n———\n\n')}`;
           }
           toggleDockPanel(false);
         } catch (err) {
-          if (window.RetroToast) RetroToast.show({ tag: 'VISION // LOAD FAILED', message: getApiErrorText(err), type: 'warning' });
+          if (window.RetroToast) RetroToast.show({ tag: 'VISION LOAD FAILED', message: getApiErrorText(err), type: 'warning' });
         }
       }
     });
@@ -5082,7 +5082,7 @@ ${parts.join('\n\n———\n\n')}`;
     if (!id || isImageVisionInFlight(id)) return { ok: false, skipped: true };
     const warn = (message) => {
       if (window.RetroToast && typeof RetroToast.show === 'function') {
-        RetroToast.show({ tag: 'VISION // 重试失败', message, type: 'warning' });
+        RetroToast.show({ tag: 'VISION 重试失败', message, type: 'warning' });
       }
     };
     // 先占位，防止取记录 / 取原图的异步间隙里被连点出第二个请求
@@ -5156,7 +5156,7 @@ ${parts.join('\n\n———\n\n')}`;
     if (!state.failed) return true;
     if (!window.RetroModal || typeof RetroModal.confirm !== 'function') return true;
     return await RetroModal.confirm({
-      tag: 'VISION // 识别状态',
+      tag: 'VISION 识别状态',
       message: '存在未识别成功的图片，是否继续发送？',
       detail: '继续后，未成功识别的图片不会进入助手的文字视觉记忆。',
       confirmText: '继续发送',
@@ -5238,7 +5238,7 @@ ${parts.join('\n\n———\n\n')}`;
       }
       const message = getApiErrorText(err);
       if (window.RetroToast && typeof RetroToast.show === 'function') {
-        RetroToast.show({ tag: imageBlobs.length ? 'VISION // FAILED' : 'CHAT RECORD // SAVE ERROR', message, type: 'warning' });
+        RetroToast.show({ tag: imageBlobs.length ? 'VISION FAILED' : 'CHAT RECORD SAVE ERROR', message, type: 'warning' });
       }
       return;
     } finally {
@@ -5266,7 +5266,7 @@ ${parts.join('\n\n———\n\n')}`;
     clearPendingImage();
     clearPendingFiles();
     autoResizeTextarea();
-    if (fileRecord && window.RetroToast) RetroToast.show({ tag: 'DOC // 载荷就绪', message: `已附带 ${fileRecord.fileRefs.length} 份文件，等待助手推演`, type: 'success' });
+    if (fileRecord && window.RetroToast) RetroToast.show({ tag: 'DOC 载荷就绪', message: `已附带 ${fileRecord.fileRefs.length} 份文件，等待助手推演`, type: 'success' });
     if (visionTasks.length) {
       visionTasks.forEach((vt) => {
         // 统一入口：回写只改 imageRef，原始 createdAt / envSnapshot 原样保留，并发识图不打乱时间线
@@ -5330,7 +5330,7 @@ ${parts.join('\n\n———\n\n')}`;
         await appendMessage('assistant', `链路未建立：${message}`);
         if (window.RetroToast && typeof RetroToast.show === 'function') {
           RetroToast.show({
-            tag: 'SYSTEM CHAT // API ERROR',
+            tag: 'SYSTEM CHAT API ERROR',
             message,
             type: 'warning'
           });
@@ -5491,7 +5491,7 @@ ${parts.join('\n\n———\n\n')}`;
         console.log(`[System Chat] 点击扩展项目: ${action}`);
         if (action === 'image') {
           try { await selectChatImage(); } catch (err) {
-            if (window.RetroToast) RetroToast.show({ tag: 'VISION // LOAD FAILED', message: getApiErrorText(err), type: 'warning' });
+            if (window.RetroToast) RetroToast.show({ tag: 'VISION LOAD FAILED', message: getApiErrorText(err), type: 'warning' });
           }
           return;
         }
@@ -5500,13 +5500,13 @@ ${parts.join('\n\n———\n\n')}`;
           if (window.FileVaultUI && typeof FileVaultUI.openForPick === 'function') {
             FileVaultUI.openForPick((entries) => attachPendingFiles(entries));
           } else if (window.RetroToast) {
-            RetroToast.show({ tag: 'DOC // 模块未就绪', message: '文件区模块尚未加载', type: 'warning' });
+            RetroToast.show({ tag: 'DOC 模块未就绪', message: '文件区模块尚未加载', type: 'warning' });
           }
           return;
         }
         if (window.RetroToast) {
           window.RetroToast.show({
-            tag: `DOCK // ${action.toUpperCase()}`,
+            tag: `DOCK ${action.toUpperCase()}`,
             message: `「${nameZh}」扩展模组已就绪（待接入具体机能）`,
             type: 'info'
           });
@@ -5642,7 +5642,7 @@ ${parts.join('\n\n———\n\n')}`;
 
       if (window.RetroModal && typeof RetroModal.confirm === 'function') {
         const ok = await RetroModal.confirm({
-          tag: `PURGE // 批量抹除 (${count})`,
+          tag: `PURGE 批量抹除 (${count})`,
           message: `确认要彻底删除选中的 ${count} 条消息吗？`,
           detail: '选中的所有通讯记录将从当前会话中永久清除，无法撤销。',
           confirmText: `删除 (${count})`,
@@ -5659,7 +5659,7 @@ ${parts.join('\n\n———\n\n')}`;
         await removeChatRecordIds(recordIds);
       } catch (err) {
         if (window.RetroToast) {
-          RetroToast.show({ tag: 'PURGE // FAILED', message: '批量记录删除失败，未改动当前会话。', type: 'warning' });
+          RetroToast.show({ tag: 'PURGE FAILED', message: '批量记录删除失败，未改动当前会话。', type: 'warning' });
         }
         return;
       }
@@ -5688,7 +5688,7 @@ ${parts.join('\n\n———\n\n')}`;
       if (count < 1 || count > limit) return; // 灰态双保险
       if (!window.ChatShot || typeof ChatShot.capture !== 'function') {
         if (window.RetroToast) {
-          RetroToast.show({ tag: 'CAPTURE // 引擎缺席', message: '截图引擎未加载', type: 'warning' });
+          RetroToast.show({ tag: 'CAPTURE 引擎缺席', message: '截图引擎未加载', type: 'warning' });
         }
         return;
       }
@@ -5713,26 +5713,26 @@ ${parts.join('\n\n———\n\n')}`;
       try {
         const res = await ChatShot.capture({
           rows,
-          scene: { sceneName, sceneTag: 'ASSISTANT // 助手存档' },
+          scene: { sceneName, sceneTag: 'ASSISTANT 助手存档' },
           fileLabel: `助手存档_${sceneName}`
         });
         if (res && res.ok) {
           if (window.RetroToast) {
-            RetroToast.show({ tag: 'CAPTURE // 存档完成', message: `已保存 ${count} 条对话长图`, type: 'success' });
+            RetroToast.show({ tag: 'CAPTURE 存档完成', message: `已保存 ${count} 条对话长图`, type: 'success' });
           }
           exitBatchMode();
         } else if (res && res.reason === 'too_tall') {
           if (window.RetroToast) {
-            RetroToast.show({ tag: 'CAPTURE // 内容过长', message: '选中内容拼图过高，请减少条数后重试', type: 'warning' });
+            RetroToast.show({ tag: 'CAPTURE 内容过长', message: '选中内容拼图过高，请减少条数后重试', type: 'warning' });
           }
         } else {
           if (window.RetroToast) {
-            RetroToast.show({ tag: 'CAPTURE // 生成失败', message: '长图生成失败，请重试', type: 'error' });
+            RetroToast.show({ tag: 'CAPTURE 生成失败', message: '长图生成失败，请重试', type: 'error' });
           }
         }
       } catch (err) {
         if (window.RetroToast) {
-          RetroToast.show({ tag: 'CAPTURE // 生成异常', message: (err && err.message) || '长图生成异常', type: 'error' });
+          RetroToast.show({ tag: 'CAPTURE 生成异常', message: (err && err.message) || '长图生成异常', type: 'error' });
         }
       } finally {
         updateBatchCount();
@@ -5745,7 +5745,7 @@ ${parts.join('\n\n———\n\n')}`;
       const count = selectedRows.size;
       if (!count) {
         if (window.RetroToast) {
-          RetroToast.show({ tag: 'MEMORY // 提取失败', message: '请先选中至少一条消息', type: 'warning' });
+          RetroToast.show({ tag: 'MEMORY 提取失败', message: '请先选中至少一条消息', type: 'warning' });
         }
         return;
       }
@@ -5758,7 +5758,7 @@ ${parts.join('\n\n———\n\n')}`;
 
       if (!rows.length) {
         if (window.RetroToast) {
-          RetroToast.show({ tag: 'MEMORY // 无可用消息', message: '选中的消息中没有可提取的对话内容', type: 'warning' });
+          RetroToast.show({ tag: 'MEMORY 无可用消息', message: '选中的消息中没有可提取的对话内容', type: 'warning' });
         }
         return;
       }
@@ -5788,14 +5788,14 @@ ${parts.join('\n\n———\n\n')}`;
 
       if (!lines.length) {
         if (window.RetroToast) {
-          RetroToast.show({ tag: 'MEMORY // 无可用消息', message: '选中的消息内容为空', type: 'warning' });
+          RetroToast.show({ tag: 'MEMORY 无可用消息', message: '选中的消息内容为空', type: 'warning' });
         }
         return;
       }
 
       // 4. 调用提取
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'MEMORY // 正在提取', message: `正在从 ${rows.length} 条消息中提取记忆`, type: 'info' });
+        RetroToast.show({ tag: 'MEMORY 正在提取', message: `正在从 ${rows.length} 条消息中提取记忆`, type: 'info' });
       }
 
       try {
@@ -5846,7 +5846,7 @@ ${parts.join('\n\n———\n\n')}`;
 
         if (window.RetroToast) {
           RetroToast.show({
-            tag: 'MEMORY // 提取完成',
+            tag: 'MEMORY 提取完成',
             message: result.added && result.added.length
               ? `已整理 ${rows.length} 条消息，新增 ${result.added.length} 条记忆`
               : `已整理 ${rows.length} 条消息，没有需要记住的内容`,
@@ -5857,7 +5857,7 @@ ${parts.join('\n\n———\n\n')}`;
         console.error('[System Chat] 批量提取记忆失败：', err);
         if (window.RetroToast) {
           RetroToast.show({
-            tag: 'MEMORY // 提取失败',
+            tag: 'MEMORY 提取失败',
             message: (err && err.message) || '提取失败',
             type: 'error'
           });
@@ -5872,7 +5872,7 @@ ${parts.join('\n\n———\n\n')}`;
       const current = textarea ? textarea.value : '';
       const updated = await TextEditorModal.open({
         title: '文本编辑',
-        tag: 'SYSTEM CHAT // 全屏输入',
+        tag: 'SYSTEM CHAT 全屏输入',
         value: current,
         placeholder: '向系统助手发送你想得到的帮助，或者别的什么…',
         maxLength: 8000
@@ -5951,7 +5951,7 @@ ${parts.join('\n\n———\n\n')}`;
     const row = messagesWrap.querySelector(`[data-record-id="${String(recordId).replace(/"/g, '\\"')}"]`);
     if (!row) {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'SEARCH // 定位失败', message: '这条记录已不在当前会话中', type: 'warning' });
+        RetroToast.show({ tag: 'SEARCH 定位失败', message: '这条记录已不在当前会话中', type: 'warning' });
       }
       return false;
     }
@@ -6122,7 +6122,7 @@ ${parts.join('\n\n———\n\n')}`;
 
     if (!window.SelectModal || typeof SelectModal.pick !== 'function') {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'CONV // 异常', message: '选择器组件未就绪', type: 'warning' });
+        RetroToast.show({ tag: 'CONV 异常', message: '选择器组件未就绪', type: 'warning' });
       }
       return;
     }
@@ -6160,7 +6160,7 @@ ${parts.join('\n\n———\n\n')}`;
     });
 
     const picked = await SelectModal.pick({
-      tag: 'CONVERSATIONS // 对话',
+      tag: 'CONVERSATIONS 对话',
       title: '查看与切换对话',
       options: optList,
       value: currentConvId
@@ -6172,7 +6172,7 @@ ${parts.join('\n\n———\n\n')}`;
       const newConv = await SystemChatStore.createConv('');
       if (!newConv) {
         if (window.RetroToast) {
-          RetroToast.show({ tag: 'CONV // 失败', message: '新建对话失败', type: 'warning' });
+          RetroToast.show({ tag: 'CONV 失败', message: '新建对话失败', type: 'warning' });
         }
         return;
       }
@@ -6181,7 +6181,7 @@ ${parts.join('\n\n———\n\n')}`;
         SystemChatSettings.close();
       }
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'CONV // 新建', message: '已开启新对话', type: 'success' });
+        RetroToast.show({ tag: 'CONV 新建', message: '已开启新对话', type: 'success' });
       }
       return;
     }
@@ -6189,7 +6189,7 @@ ${parts.join('\n\n———\n\n')}`;
     if (picked === currentConvId) {
       if (window.RetroToast) {
         RetroToast.show({
-          tag: 'CONV // 活跃对话',
+          tag: 'CONV 活跃对话',
           message: '已锁定当前对话',
           type: 'info'
         });
@@ -6230,7 +6230,7 @@ ${parts.join('\n\n———\n\n')}`;
     const res = await SystemChatStore.deleteConv(targetConvId);
     if (res && res.ok) {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'CONV // 删除', message: `已清除「${label}」`, type: 'info' });
+        RetroToast.show({ tag: 'CONV 删除', message: `已清除「${label}」`, type: 'info' });
       }
       // 重新拉起弹窗刷新列表，保持副本对齐体验
       setTimeout(() => {
@@ -6238,7 +6238,7 @@ ${parts.join('\n\n———\n\n')}`;
       }, 120);
     } else {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'CONV // 拒绝', message: res.reason === 'last' ? '至少要保留一条对话' : '删除失败', type: 'warning' });
+        RetroToast.show({ tag: 'CONV 拒绝', message: res.reason === 'last' ? '至少要保留一条对话' : '删除失败', type: 'warning' });
       }
     }
   }

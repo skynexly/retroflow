@@ -157,7 +157,7 @@ const MemoryAuditModal = (() => {
     // 显示 toast（RetroToast 无 duration:0 长驻模式，用较长时长；期间可点击关闭）
     if (toast && typeof toast.show === 'function') {
       toast.show({
-        tag: 'AUDIT // 记忆巡检',
+        tag: 'AUDIT 记忆巡检',
         message: '正在巡检中…',
         detail: '系统正在分析记忆并生成合并方案，可点击关闭本提示',
         type: 'info',

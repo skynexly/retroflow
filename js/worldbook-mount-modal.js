@@ -128,7 +128,7 @@ function initDOM() {
   function entryModeLabel(entry) {
     if (entry.mode === 'keyword') {
       const keys = trimStr(entry.keys);
-      return keys ? ('关键词: ' + keys.slice(0, 18) + (keys.length > 18 ? '…' : '')) : '关键词';
+      return keys ? ('关键词: '+ keys.slice(0, 18) + (keys.length > 18 ? '…' : '')) : '关键词';
     }
     if (entry.position === 'depth') {
       const d = parseInt(entry.depth, 10);

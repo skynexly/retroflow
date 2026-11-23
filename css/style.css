@@ -166,9 +166,6 @@ body.has-wallpaper {
   letter-spacing: 0.5px;
 }
 
-.clock-day .day-slash {
-  opacity: 0.35;
-}
 
 .clock-day .day-zh {
   font-family: var(--main-font);
@@ -487,16 +484,6 @@ body.has-wallpaper {
   align-items: center;
 }
 
-.profile-folder-tab .btn-slash {
-  font-family: var(--mono-font);
-  font-size: 10px;
-  font-weight: 700;
-  opacity: 0.45;
-  line-height: 1;
-  display: inline-flex;
-  align-items: center;
-  letter-spacing: -1px;
-}
 
 .profile-folder-tab .btn-zh {
   font-weight: 600;
@@ -520,10 +507,6 @@ body.has-wallpaper {
 }
 
 .profile-folder-tab:hover .btn-en,
-.profile-folder-tab:hover .btn-slash {
-  opacity: 0.85;
-}
-
 .profile-folder-tab:hover svg {
   transform: translateX(2px);
 }
@@ -641,13 +624,6 @@ body.has-wallpaper {
   opacity: 0.75;
 }
 
-.service-metric-sep {
-  font-family: var(--mono-font);
-  font-size: 10px;
-  font-weight: 800;
-  color: var(--secondary-color);
-  opacity: 0.25;
-}
 
 /* ==========================================================================
    桌面应用矩阵（第 1 页：2 列 Bento Grid 机能磁贴）
@@ -1157,13 +1133,6 @@ body.has-wallpaper {
   letter-spacing: 0.3px;
 }
 
-.p2-gallery-slash {
-  font-family: var(--mono-font);
-  font-size: 8px;
-  font-weight: 700;
-  color: var(--primary-color);
-  opacity: 0.7;
-}
 
 .p2-gallery-desc {
   font-size: 8.5px;
@@ -1527,10 +1496,6 @@ body.has-wallpaper {
   letter-spacing: 0.6px;
 }
 
-.p2-memo-subtitle .bento-slash {
-  opacity: 0.35;
-  letter-spacing: -1px;
-}
 
 .p2-memo-subtitle .bento-zh {
   font-family: var(--main-font);
@@ -1619,10 +1584,6 @@ body.has-wallpaper {
   letter-spacing: 0.4px;
 }
 
-.bento-subtitle .bento-slash {
-  opacity: 0.45;
-  letter-spacing: -1px;
-}
 
 .bento-subtitle .bento-zh {
   font-family: var(--main-font);
@@ -1772,7 +1733,6 @@ body.has-wallpaper {
   display: block;
   transition: transform 0.2s ease;
 }
-
 .dock-dive-core:hover svg {
   transform: scale(1.08);
 }
@@ -2194,12 +2154,6 @@ body.page-active .desktop-viewport {
   color: var(--secondary-color);
 }
 
-.settings-title-slash {
-  font-family: var(--mono-font);
-  font-size: 13px;
-  color: var(--text-muted);
-  opacity: 0.6;
-}
 
 .settings-title-zh {
   font-family: var(--main-font);
@@ -2329,13 +2283,6 @@ body.page-active .desktop-viewport {
   flex-shrink: 0;
 }
 
-.settings-item-slash {
-  font-family: var(--mono-font);
-  font-size: 9px;
-  color: var(--text-muted);
-  opacity: 0.45;
-  flex-shrink: 0;
-}
 
 .settings-item-zh {
   font-family: var(--main-font);
@@ -2440,10 +2387,6 @@ body.has-wallpaper.has-wallpaper-mask .clock-day {
   color: rgba(var(--bg-color-rgb), 0.85);
 }
 
-body.has-wallpaper.has-wallpaper-mask .clock-day .day-slash {
-  opacity: 0.5;
-  color: rgba(var(--bg-color-rgb), 0.7);
-}
 
 body.has-wallpaper.has-wallpaper-mask .clock-day .day-zh {
   opacity: 0.85;
@@ -2490,10 +2433,6 @@ body.has-wallpaper.has-wallpaper-mask .service-record-tag {
   color: rgba(var(--bg-color-rgb), 0.85);
 }
 
-body.has-wallpaper.has-wallpaper-mask .service-metric-sep {
-  color: rgba(var(--bg-color-rgb), 0.6);
-  opacity: 0.5;
-}
 
 /* ==========================================================================
    磨砂玻璃透光激活时：13 张桌面卡片半透毛玻璃化，芯片图标与红卡保持实色
@@ -2839,11 +2778,6 @@ body.has-frosted-glass .bento-card-p2-memo.tile-has-bg {
   letter-spacing: 0.8px;
 }
 
-.tile-sync-btn-slash {
-  font-family: var(--mono-font);
-  font-size: 10px;
-  opacity: 0.4;
-}
 
 .tile-sync-btn-zh {
   font-size: 12px;
@@ -3025,10 +2959,6 @@ body.has-frosted-glass .bento-card-p2-memo.tile-has-bg {
   letter-spacing: 0.6px;
 }
 
-.tile-clear-sheet-slash {
-  color: var(--text-muted);
-  font-size: 11px;
-}
 
 .tile-clear-sheet-zh {
   font-size: 13px;
@@ -3190,12 +3120,6 @@ body.has-frosted-glass .bento-card-p2-memo.tile-has-bg {
   color: var(--secondary-color);
 }
 
-.module-label-slash {
-  font-family: var(--mono-font);
-  font-size: 10px;
-  color: var(--text-muted);
-  opacity: 0.5;
-}
 
 .module-label-zh {
   font-size: 11px;
@@ -3859,12 +3783,6 @@ html.theme-color-transition *::after {
   color: var(--secondary-color);
 }
 
-.theme-toggle-title .toggle-slash {
-  font-family: var(--mono-font);
-  font-size: 10px;
-  color: var(--text-muted);
-  opacity: 0.45;
-}
 
 .theme-toggle-title .toggle-zh {
   font-size: 12px;
@@ -7470,12 +7388,6 @@ button.api-node-badge:active {
   letter-spacing: 0.4px;
 }
 
-.psych-stat-chip .chip-lbl-slash {
-  font-family: var(--mono-font);
-  font-size: 8.5px;
-  color: var(--text-muted);
-  opacity: 0.5;
-}
 
 .psych-stat-chip .chip-val {
   font-family: var(--mono-font);
@@ -7611,7 +7523,6 @@ button.api-node-badge:active {
   background-color: transparent;
   color: var(--primary-color);
 }
-
 .psych-help-circle-btn:hover svg {
   opacity: 1;
 }
@@ -11824,7 +11735,7 @@ button.api-node-badge:active {
 }
 
 .retro-toast-item.type-success .retro-toast-icon svg {
-  fill: var(--success-color);
+  fill: var(--primary-color);
 }
 
 .retro-toast-body {
@@ -13924,32 +13835,9 @@ button.api-node-badge:active {
   transform: scale(0.92);
 }
 
-.retro-toast-progress {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  height: 2.5px;
-  width: 100%;
-  background-color: rgba(var(--primary-color-rgb), 0.35);
-  transform-origin: left center;
-  transform: scaleX(1);
-  transition: transform linear;
-}
 
-.retro-toast-item.type-info .retro-toast-progress {
-  background-color: rgba(var(--text-muted-rgb), 0.4);
-}
 
-.retro-toast-item.type-danger .retro-toast-progress {
-  background-color: rgba(var(--danger-color-rgb), 0.4);
-}
 
-.retro-toast-item.type-success .retro-toast-progress {
-  background-color: rgba(var(--success-color-rgb), 0.4);
-}
-.retro-toast-progress.is-depleting {
-  transform: scaleX(0);
-}
 
 /* ==========================================================================
    顶部新消息通知横幅 (Online Notice) - 精密因果铭牌 (Precision Causal Plaque)
@@ -13987,7 +13875,7 @@ button.api-node-badge:active {
     0 4px 12px rgba(var(--secondary-color-rgb), 0.12),
     inset 0 1px 0 rgba(var(--decor-color-rgb), 0.45),
     inset 0 -1px 0 rgba(var(--secondary-color-rgb), 0.08);
-  padding: 11px 12px 12px 12px;
+  padding: 9px 12px 11px 12px;
   display: flex;
   gap: 12px;
   align-items: center;
@@ -13995,9 +13883,33 @@ button.api-node-badge:active {
   overflow: hidden;
   cursor: pointer;
   user-select: none;
+  /* 初始态：尚未入场 */
   opacity: 0;
-  transform: translateY(-22px) scale(0.96);
-  transition: opacity 0.26s cubic-bezier(0.16, 1, 0.3, 1), transform 0.26s cubic-bezier(0.16, 1, 0.3, 1);
+  /* 重排过渡：新条目插到最上面时，旧卡片下移要平滑滑下去，而不是瞬移。
+     入场动画走 @keyframes 独立驱动，这里只负责位移重排，两者不打架 */
+  transition:
+    opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* 入场：三道工序叠在一起——下落回弹、微放大归位、淡入
+   fill-mode: both 保证起始帧立即生效，避免第一帧闪一下全尺寸 */
+@keyframes online-notice-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(-26px) scale(0.94);
+  }
+  55% {
+    opacity: 1;
+    transform: translateY(2px) scale(1.006);
+  }
+  78% {
+    transform: translateY(-1px) scale(0.999);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 /* 顶部机能扫光微动效 */
@@ -14025,14 +13937,21 @@ button.api-node-badge:active {
   100% { left: 140%; opacity: 0; }
 }
 
+/* 入场：由 @keyframes 独立驱动，与重排 transition 分离 */
 .online-notice-card.is-entering {
   opacity: 1;
-  transform: translateY(0) scale(1);
+  animation: online-notice-enter 0.46s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* 退场：向左上角轻微收起并淡出，速度比入场快，让位给下一条 */
 .online-notice-card.is-leaving {
   opacity: 0;
-  transform: translateY(-16px) scale(0.96);
+  transform: translateY(-14px) scale(0.955);
+  /* 入场动画必须撤掉，否则 keyframes 的优先级会压住退场过渡 */
+  animation: none;
+  transition:
+    opacity 0.18s cubic-bezier(0.4, 0, 0.6, 1),
+    transform 0.22s cubic-bezier(0.4, 0, 0.6, 1);
   pointer-events: none;
 }
 
@@ -14087,50 +14006,20 @@ button.api-node-badge:active {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
-/* 战术机能顶栏 (COMM LINK // FREQ) */
+/* 顶部时间行 */
 .online-notice-tactical-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  margin-bottom: 1px;
+  justify-content: flex-end;
+  margin-bottom: 0;
 }
 
-.online-notice-tag-group {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--primary-color);
-}
 
-.online-notice-signal-icon {
-  width: 10px;
-  height: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 0;
-}
 
-.online-notice-signal-icon svg {
-  width: 100%;
-  height: 100%;
-  fill: currentColor;
-  display: block;
-}
 
-.online-notice-tag-text {
-  font-family: var(--mono-font);
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.8px;
-  line-height: 1;
-  text-transform: uppercase;
-  color: var(--primary-color);
-}
 
 .online-notice-time {
   font-family: var(--mono-font);
@@ -14830,12 +14719,6 @@ button.api-node-badge:active {
   color: var(--secondary-color);
 }
 
-.gallery-title-slash {
-  font-family: var(--mono-font);
-  font-size: 13px;
-  color: var(--text-muted);
-  opacity: 0.6;
-}
 
 .gallery-title-zh {
   font-family: var(--main-font);
@@ -15026,12 +14909,6 @@ button.api-node-badge:active {
   color: var(--primary-color);
 }
 
-.gallery-stats-slash {
-  font-family: var(--mono-font);
-  color: var(--text-muted);
-  opacity: 0.5;
-  margin: 0 2px;
-}
 
 /* 相册滚动区与 2 列网格 */
 .gallery-albums-scroll,
@@ -15162,12 +15039,6 @@ button.api-node-badge:active {
   letter-spacing: 0.5px;
 }
 
-.gallery-album-slash {
-  font-family: var(--mono-font);
-  color: var(--primary-color);
-  opacity: 0.7;
-  font-weight: 700;
-}
 
 .gallery-album-desc {
   font-family: var(--mono-font);
@@ -15497,10 +15368,6 @@ button.api-node-badge:active {
   letter-spacing: 0.5px;
 }
 
-.gallery-lightbox-meta-slash {
-  color: var(--primary-color);
-  font-weight: 900;
-}
 
 .gallery-lightbox-meta-tag {
   color: var(--primary-color);
@@ -18131,7 +17998,6 @@ button.api-node-badge:active {
   fill: var(--text-muted);
   transition: fill 0.16s ease, transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
 }
-
 .chat-plus-btn:hover svg {
   fill: var(--primary-color);
 }
@@ -19659,9 +19525,6 @@ button.api-node-badge:active {
 .asst-standby-tag {
   color: var(--primary-color);
 }
-.asst-standby-slash {
-  opacity: 0.4;
-}
 .asst-standby-label {
   font-family: inherit;
 }
@@ -19909,11 +19772,6 @@ button.api-node-badge:active {
   color: var(--secondary-color);
 }
 
-.file-vault-title-slash {
-  font-family: var(--mono-font);
-  font-size: 13px;
-  color: var(--primary-color);
-}
 
 .file-vault-title-zh {
   font-size: 12px;
@@ -19961,10 +19819,6 @@ button.api-node-badge:active {
   color: var(--secondary-color);
 }
 
-.file-vault-stats-slash {
-  color: var(--primary-color);
-  margin: 0 2px;
-}
 
 /* 选择发送提示条 */
 .file-vault-pick-hint {
@@ -20068,9 +19922,6 @@ button.api-node-badge:active {
   gap: 6px;
 }
 
-.file-vault-item-meta .file-vault-meta-slash {
-  color: var(--primary-color);
-}
 
 .file-vault-item-del {
   width: 30px;
@@ -21230,11 +21081,6 @@ button.api-node-badge:active {
   color: var(--secondary-color);
 }
 
-.chat-search-title-slash {
-  font-family: var(--mono-font);
-  font-size: 13px;
-  color: rgba(var(--secondary-color-rgb), 0.4);
-}
 
 .chat-search-title-zh {
   font-size: 13px;
@@ -21619,10 +21465,6 @@ button.api-node-badge:active {
   color: var(--wall-ink);
 }
 
-.fork-archive-header .settings-title-slash {
-  color: var(--wall-ink);
-  opacity: 0.5;
-}
 
 .fork-archive-header .settings-title-zh {
   color: rgba(var(--wall-ink-rgb), 0.82);
@@ -22345,14 +22187,6 @@ button.api-node-badge:active {
   text-overflow: ellipsis;
 }
 
-.fork-caption-sep {
-  font-family: var(--mono-font);
-  font-size: 7px;
-  font-weight: 600;
-  color: var(--decor-color);
-  opacity: 0.45;
-  user-select: none;
-}
 
 /* 1*1 微幅适配：只留标题与极简等级，避免拥挤 */
 .fork-frame-1x1 .fork-level-pill {
@@ -22991,11 +22825,6 @@ button.api-node-badge:active {
   letter-spacing: 1px;
 }
 
-.fork-pick-header-title .settings-title-slash {
-  color: var(--wall-ink);
-  opacity: 0.45;
-  margin: 0 4px;
-}
 
 .fork-pick-header-title .settings-title-zh {
   color: rgba(var(--wall-ink-rgb), 0.9);
@@ -23917,11 +23746,6 @@ button.api-node-badge:active {
   color: var(--decor-color);
 }
 
-.fork-ready-deed-kind-sep {
-  font-family: var(--mono-font, monospace);
-  font-size: 10px;
-  color: rgba(var(--wall-ink-rgb), 0.35);
-}
 
 .fork-ready-deed-kind-text {
   font-size: 10.5px;
@@ -24060,7 +23884,6 @@ button.api-node-badge:active {
 .fork-ready-invite-help-btn:hover {
   color: var(--decor-color);
 }
-
 .fork-ready-invite-help-btn:hover svg {
   opacity: 1;
 }
@@ -26463,7 +26286,6 @@ button.api-node-badge:active {
 }
 
 #forkEditorPage .settings-title-en,
-#forkEditorPage .settings-title-slash,
 #forkEditorPage .settings-title-zh {
   color: var(--secondary-color);
   background: transparent;
@@ -26477,10 +26299,6 @@ button.api-node-badge:active {
   letter-spacing: 1.1px;
 }
 
-#forkEditorPage .settings-title-slash {
-  color: var(--text-muted);
-  font-size: 13px;
-}
 
 #forkEditorPage .settings-title-zh {
   font-size: 14px;
@@ -31178,14 +30996,6 @@ button.api-node-badge:active {
   line-height: 1;
 }
 
-.fork-run-vitals-field-slash {
-  font-family: var(--mono-font);
-  font-size: 9px;
-  font-weight: 700;
-  color: var(--text-muted);
-  opacity: 0.45;
-  line-height: 1;
-}
 
 .fork-run-vitals-field-zh {
   font-size: 9.5px;

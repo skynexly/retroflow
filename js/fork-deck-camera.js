@@ -553,7 +553,7 @@
     }
     saveDraft(baseExtractedScene);
     if (window.RetroToast) {
-      RetroToast.show({ tag: 'CAMERA // RESET', message: '已重置为当前最新现场', type: 'info' });
+      RetroToast.show({ tag: 'CAMERA RESET', message: '已重置为当前最新现场', type: 'info' });
     }
   }
 
@@ -565,7 +565,7 @@
     const raw = sceneInputEl.value.trim();
     if (!raw) {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'CAMERA // EMPTY', message: '当前取景器内容为空', type: 'warning' });
+        RetroToast.show({ tag: 'CAMERA EMPTY', message: '当前取景器内容为空', type: 'warning' });
       }
       return;
     }
@@ -684,13 +684,13 @@
     const config = resolveRefineConfig();
     if (!config || !config.baseUrl || !config.modelId) {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'AI SCENE // 未配置', message: '请先在 API 设置中配置辅助推理模型或主模型', type: 'error' });
+        RetroToast.show({ tag: 'AI SCENE 未配置', message: '请先在 API 设置中配置辅助推理模型或主模型', type: 'error' });
       }
       return;
     }
     if (!window.RetroflowAPI || typeof RetroflowAPI.chat !== 'function') {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'AI SCENE // 不可用', message: 'API 内核尚未加载', type: 'error' });
+        RetroToast.show({ tag: 'AI SCENE 不可用', message: 'API 内核尚未加载', type: 'error' });
       }
       return;
     }
@@ -701,7 +701,7 @@
 
     try {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'AI SCENE // 总结', message: guidance ? `正在按指导【${guidance.slice(0, 10)}...】提炼画面...` : '正在提炼现场画面...', type: 'info' });
+        RetroToast.show({ tag: 'AI SCENE 总结', message: guidance ? `正在按指导【${guidance.slice(0, 10)}...】提炼画面...` : '正在提炼现场画面...', type: 'info' });
       }
 
       // ① 最近两轮副本主线（全文注入，不截尾）
@@ -732,12 +732,12 @@
       saveDraft(refined);
 
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'SCENE // 画面', message: '现场画面已总结完成', type: 'success' });
+        RetroToast.show({ tag: 'SCENE 画面', message: '现场画面已总结完成', type: 'success' });
       }
     } catch (err) {
       console.warn('[ForkDeckCamera] 画面总结失败：', err);
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'AI SCENE // 失败', message: (err && err.message) ? `总结失败：${err.message}` : '画面总结失败，请检查算力链路', type: 'error' });
+        RetroToast.show({ tag: 'AI SCENE 失败', message: (err && err.message) ? `总结失败：${err.message}` : '画面总结失败，请检查算力链路', type: 'error' });
       }
     } finally {
       if (aiRefineBtnEl) {
@@ -754,7 +754,7 @@
     const prompt = sceneInputEl.value.trim();
     if (!prompt) {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'CAMERA // BLANK', message: '取景器尚未捕捉到场景画面', type: 'warning' });
+        RetroToast.show({ tag: 'CAMERA BLANK', message: '取景器尚未捕捉到场景画面', type: 'warning' });
       }
       return;
     }
@@ -865,7 +865,7 @@
     const prompt = sceneInputEl ? sceneInputEl.value.trim() : '';
     if (!prompt) {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'CAMERA // BLANK', message: '取景器尚未捕捉到场景画面', type: 'warning' });
+        RetroToast.show({ tag: 'CAMERA BLANK', message: '取景器尚未捕捉到场景画面', type: 'warning' });
       }
       return;
     }
@@ -879,13 +879,13 @@
     } catch (_) { cfg = null; }
     if (!cfg) {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'CAMERA // 未配置', message: '请先在 API 设置中配置图像生成端点', type: 'error' });
+        RetroToast.show({ tag: 'CAMERA 未配置', message: '请先在 API 设置中配置图像生成端点', type: 'error' });
       }
       return;
     }
     if (!window.RetroflowAPI || (typeof RetroflowAPI.generateImage !== 'function')) {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'CAMERA // 不可用', message: '生图内核尚未加载', type: 'error' });
+        RetroToast.show({ tag: 'CAMERA 不可用', message: '生图内核尚未加载', type: 'error' });
       }
       return;
     }
@@ -910,7 +910,7 @@
     let faceRefs = [];
     try {
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'CAMERA // 显影', message: '正在交给AI生成，请稍候...', type: 'info' });
+        RetroToast.show({ tag: 'CAMERA 显影', message: '正在交给AI生成，请稍候...', type: 'info' });
       }
 
       faceRefs = await collectFaceRefs();
@@ -975,7 +975,7 @@
       savePhotoToAlbum(photoItem);
 
       if (window.RetroToast) {
-        RetroToast.show({ tag: 'CAMERA // SNAP', message: '快照已显影并定格入相册', type: 'success' });
+        RetroToast.show({ tag: 'CAMERA SNAP', message: '快照已显影并定格入相册', type: 'success' });
       }
 
       // 自动切到相册 Tab 浏览最新卡片
@@ -984,7 +984,7 @@
       console.warn('[ForkDeckCamera] 显影失败：', err);
       if (window.RetroToast) {
         RetroToast.show({
-          tag: 'CAMERA // 显影失败',
+          tag: 'CAMERA 显影失败',
           message: (err && err.message) ? `生成失败：${err.message}` : '生成失败，请检查生图端点',
           type: 'error'
         });
@@ -1195,7 +1195,7 @@
     deletePhotoFromAlbum(currentDetailPhotoId);
     closePhotoDetail();
     if (window.RetroToast) {
-      RetroToast.show({ tag: 'ALBUM // PURGE', message: '已彻底删除该张快照', type: 'info' });
+      RetroToast.show({ tag: 'ALBUM PURGE', message: '已彻底删除该张快照', type: 'info' });
     }
   }
 
