@@ -153,7 +153,7 @@ const ExternalServicesUI = (() => {
       +       + ' value="' + escapeHtml(p.apiKey) + '"'
       +       + ' autocomplete="off" spellcheck="false">'
       +   '</div>'
-      // 操作行：测试 + 启用
+      // 操作行：测试按钮 + 结果提示（启用由全局开关统一控制，不再单卡开关）
       +   '<div class="es-provider-actions">'
       +     '<button type="button" class="es-test-btn" data-provider="' + escapeHtml(p.id) + '">'
       +       '<svg viewBox="0 0 24 24" aria-hidden="true">'
@@ -162,11 +162,6 @@ const ExternalServicesUI = (() => {
       +       '<span>测试连接</span>'
       +     '</button>'
       +     '<div class="es-test-result" id="svcTestMsg_' + escapeHtml(p.id) + '" hidden></div>'
-      +     '<label class="chat-bento-switch">'
-      +       '<input type="checkbox" class="es-provider-toggle" id="svcToggle_' + escapeHtml(p.id) + '"'
-      +         + (p.enabled ? ' checked' : '') + '>'
-      +       '<span class="chat-switch-slider"></span>'
-      +     '</label>'
       +   '</div>'
       + '</div>';
   }
@@ -241,15 +236,6 @@ const ExternalServicesUI = (() => {
         const val = input.value.trim();
         await ES.updateProvider(id, { apiKey: val });
         // 填入 Key 后如果之前是未配置状态，刷新整个卡片显示新状态
-        render();
-      };
-    });
-
-    // 服务商开关
-    containerEl.querySelectorAll('.es-provider-toggle').forEach((toggle) => {
-      toggle.onchange = async () => {
-        const id = toggle.id.replace('svcToggle_', '');
-        await ES.updateProvider(id, { enabled: toggle.checked });
         render();
       };
     });
