@@ -32,17 +32,17 @@
   "channel": "stable",
   "latest": {
     "version": "1.4.0",
-    "build": 1318,
+    "build": 1319,
     "minBinary": 7,
-    "releasedAt": "2026-11-23T04:17:24Z",
+    "releasedAt": "2026-11-23T04:37:33Z",
     "notes": [
-      "UI修复：外部服务卡片去掉单卡开关（Key即为启用），测试按钮独立一行"
+      "外部服务：修复 Key 输入框与测试按钮挤在一起、填入的 Key 不显示；新增 Key 显示/隐藏切换"
     ],
     "packages": {
       "full": {
-        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1318/retroflow-ota-full-b1318.zip",
-        "sha256": "40de4d3386bd57f465e4ec5e27a1bd326b261cc383b5336d9d7b18a9d9315ac2",
-        "size": 2136511
+        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1319/retroflow-ota-full-b1319.zip",
+        "sha256": "e7379749916964dc5e8e2667955421abba5b280f4ae2c7be072f3e17c594954b",
+        "size": 2137437
       },
       "patch": {
         "sinceBuild": 0,
@@ -52,5 +52,5 @@
       }
     }
   },
-  "_status": "已发布 build 1318（全量包，字体常驻不打包）。patch 差分留待后续。"
+  "_status": "已发布 build 1319（全量包，字体常驻不打包）。patch 差分留待后续。"
 }
