@@ -32,17 +32,17 @@
   "channel": "stable",
   "latest": {
     "version": "1.4.0",
-    "build": 1321,
+    "build": 1322,
     "minBinary": 7,
-    "releasedAt": "2026-11-23T05:27:25Z",
+    "releasedAt": "2026-11-23T06:03:50Z",
     "notes": [
-      "外部服务页：卡片、输入行、按钮等圆角统一为 4px"
+      "联网搜索新增服务商：博查（中文内容覆盖强，按次计费），支持多服务商排序与自动降级"
     ],
     "packages": {
       "full": {
-        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1321/retroflow-ota-full-b1321.zip",
-        "sha256": "f1778c6d2d088d3810ebef99df798328f2b614bc6f504e76d703bcdd7585ee02",
-        "size": 2137591
+        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1322/retroflow-ota-full-b1322.zip",
+        "sha256": "f78665fa83df8c2938abea752f51ad3c5227e8311d794261e84bf564cba66481",
+        "size": 2138089
       },
       "patch": {
         "sinceBuild": 0,
@@ -52,5 +52,5 @@
       }
     }
   },
-  "_status": "已发布 build 1321（全量包，字体常驻不打包）。patch 差分留待后续。"
+  "_status": "已发布 build 1322（全量包，字体常驻不打包）。patch 差分留待后续。"
 }
