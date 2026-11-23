@@ -62,8 +62,47 @@ const ExternalServices = (() => {
         })).filter((r) => r.url);
         return { status: resp.status, results, raw: text };
       }
+    },
+    bocha: {
+      name: '博查',
+      en: 'BOCHA SEARCH',
+      desc: '中文内容覆盖强的 AI 搜索，按次计费，详见 open.bochaai.com 价格页',
+      keyHint: 'sk- 开头的 API Key，在 open.bochaai.com 控制台获取',
+      async search(apiKey, query, maxResults) {
+        const resp = await fetch('https://api.bochaai.com/v1/web-search', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            query: String(query),
+            count: maxResults,
+            summary: true
+          })
+        });
+        const text = await resp.text();
+        if (!resp.ok) {
+          return { status: resp.status, error: text, results: [] };
+        }
+        let data = null;
+        try { data = JSON.parse(text); } catch (_) { /* 非 JSON 按错误处理 */ }
+        // 博查 HTTP 200 也可能带业务错误码（code !== 200），按错误处理交给调度层
+        if (!data || data.code !== 200 || !data.data || !data.data.webPages
+          || !Array.isArray(data.data.webPages.value)) {
+          const bizMsg = data && data.msg ? String(data.msg) : '';
+          return { status: resp.status, error: bizMsg || text || '响应格式异常', results: [] };
+        }
+        const results = data.data.webPages.value.map((r) => ({
+          title: String(r.name || '').trim(),
+          url: String(r.url || '').trim(),
+          // summary 是长文总结，比 snippet 信息量大；截断防止单条撑爆上下文
+          snippet: String(r.summary || r.snippet || '').trim().slice(0, 500)
+        })).filter((r) => r.url);
+        return { status: resp.status, results, raw: text };
+      }
     }
-    // 后续服务商在此注册：brave、bocha……调度与 UI 不需要改。
+    // 后续服务商在此注册：brave、zhipu……调度与 UI 不需要改。
   };
   // 注册顺序即默认优先级
   const PROVIDER_IDS = Object.keys(PROVIDERS);
@@ -159,12 +198,17 @@ const ExternalServices = (() => {
 
   /* ---------------- 搜索调度 ---------------- */
 
-  /** 额度类错误判定：429，或 401/403 且报错文本明确指向配额 */
+  /** 额度类错误判定：429；401/403 且报错指向配额；200 业务错误但文本明确指向余额/配额
+   *（博查余额不足可能走 HTTP 200 + 业务码，只认状态码会漏）。具体报错文案待真实 Key 实测校准。 */
   function isQuotaError(status, errorText) {
     if (status === 429) return true;
     const t = String(errorText || '').toLowerCase();
-    return (status === 401 || status === 403)
-      && (t.indexOf('quota') !== -1 || t.indexOf('exceed') !== -1 || t.indexOf('usage limit') !== -1);
+    const quotaHint = t.indexOf('quota') !== -1 || t.indexOf('exceed') !== -1
+      || t.indexOf('usage limit') !== -1 || t.indexOf('insufficient') !== -1
+      || t.indexOf('余额不足') !== -1 || t.indexOf('额度不足') !== -1 || t.indexOf('额度已用') !== -1;
+    if (status === 401 || status === 403) return quotaHint;
+    if (status === 200) return quotaHint;
+    return false;
   }
 
   function nextMidnight() {
