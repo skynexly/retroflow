@@ -3882,6 +3882,8 @@ ${parts.join('\n\n———\n\n')}`;
   const MANUAL_TOOL_TYPES = new Set(['search_manual', 'read_manual']);
   // 记忆工具：新增、查询、修改、删除记忆库
   const MEMORY_TOOL_TYPES = new Set(['create_memory', 'search_memory', 'update_memory', 'remove_memory']);
+  // 联网搜索工具：走外部服务（ExternalServices），双层开关校验
+  const WEB_SEARCH_TOOL_TYPES = new Set(['web_search']);
 
   // 工具卡片上的中文显示名：胶囊直接显示英文函数名对用户没有信息量
   const TOOL_LABELS = {
@@ -3892,7 +3894,8 @@ ${parts.join('\n\n———\n\n')}`;
     create_memory: '新增记忆',
     search_memory: '查询记忆',
     update_memory: '修改记忆',
-    remove_memory: '删除记忆'
+    remove_memory: '删除记忆',
+    web_search: '联网搜索'
   };
 
   /** 工具的人类可读名，未登记时回落原始名 */
@@ -3909,6 +3912,7 @@ ${parts.join('\n\n———\n\n')}`;
     if (status === 'error') return 'TOOL // 执行失败';
     const key = String(name || '').trim();
     if (MEMORY_TOOL_TYPES.has(key)) return 'MEMORY // 记忆工具';
+    if (WEB_SEARCH_TOOL_TYPES.has(key)) return 'SEARCH // 联网检索';
     if (MANUAL_TOOL_TYPES.has(key)) return 'MANUAL // 手册查阅';
     if (FILE_TOOL_TYPES.has(key)) return 'FILE // 工具调用';
     return 'TOOL // 工具调用';
@@ -3923,10 +3927,18 @@ ${parts.join('\n\n———\n\n')}`;
   }
 
   function isFileToolAction(action) {
+    const type = String(action && (action.type || action.action) || '').trim().toLowerCase();
+    // 联网搜索是独立能力，不受「内置工具」开关约束：本窗口 webSearch + 外部服务全局，两层校验
+    if (WEB_SEARCH_TOOL_TYPES.has(type)) {
+      const s = (window.SystemChatSettings && typeof SystemChatSettings.getSettings === 'function')
+        ? SystemChatSettings.getSettings()
+        : null;
+      if (s && s.webSearch === false) return false;
+      return !!(window.ExternalServices && ExternalServices.isSearchAvailable());
+    }
     // 内置工具开关关闭时，工具标记一律不识别为工具：
     // 提示词里也不会给出这些标记，即便模型硬凑出来也不触发工具循环、不额外消耗调用。
     if (!isBuiltinToolsEnabled()) return false;
-    const type = String(action && (action.type || action.action) || '').trim().toLowerCase();
     if (FILE_TOOL_TYPES.has(type) || MANUAL_TOOL_TYPES.has(type)) return true;
     // 记忆工具需要额外检查 memoryTool 开关
     if (MEMORY_TOOL_TYPES.has(type)) {
@@ -3934,6 +3946,14 @@ ${parts.join('\n\n———\n\n')}`;
         ? SystemChatSettings.getSettings()
         : null;
       return s && s.memoryTool === true;
+    }
+    // 联网搜索：本窗口 webSearch 开 + 外部服务全局可用（与提示词注入同口径）
+    if (WEB_SEARCH_TOOL_TYPES.has(type)) {
+      const s = (window.SystemChatSettings && typeof SystemChatSettings.getSettings === 'function')
+        ? SystemChatSettings.getSettings()
+        : null;
+      if (s && s.webSearch === false) return false;
+      return !!(window.ExternalServices && ExternalServices.isSearchAvailable());
     }
     return false;
   }
@@ -4240,6 +4260,20 @@ ${parts.join('\n\n———\n\n')}`;
       return { name: type, input, status: res.status, output: res.output };
     }
 
+    // 联网搜索分流：走外部服务调度（多服务商顺序降级），不需要文件区条目
+    if (WEB_SEARCH_TOOL_TYPES.has(type)) {
+      const query = String(action.query || action.keyword || action.q || '').trim();
+      if (!query) {
+        return { name: type, input, status: 'error', output: '缺少 query，无法搜索。' };
+      }
+      const result = await ExternalServices.search(query, { caller: '系统助手 · 联网搜索' });
+      return {
+        name: type,
+        input,
+        status: result.ok ? 'success' : 'error',
+        output: ExternalServices.formatResultsForModel(result, query)
+      };
+    }
     // 记忆工具分流：直接走记忆库，不需要解析文件区条目
     if (MEMORY_TOOL_TYPES.has(type)) {
       if (type === 'create_memory') return await runCreateMemory(action);

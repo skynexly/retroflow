@@ -18,7 +18,8 @@
     manual: document.getElementById('manualDetailSection'),
     data: document.getElementById('dataDetailSection'),
     apiLog: document.getElementById('apiLogDetailSection'),
-    terminal: document.getElementById('terminalDetailSection')
+    terminal: document.getElementById('terminalDetailSection'),
+    services: document.getElementById('servicesDetailSection')
   };
 
   // 当前层级：0 = 主桌面，1 = 一级设置，2 = 二级子页
@@ -108,6 +109,10 @@
       // 同页第三个模块：检查更新（仅原生壳下 OTAUI.init 会解除隐藏并绑定事件）
       if (section === 'terminal' && window.OTAUI && typeof OTAUI.init === 'function') {
         OTAUI.init();
+      }
+      // 进入外部服务页：渲染服务商配置列表
+      if (section === 'services' && window.ExternalServicesUI && typeof ExternalServicesUI.init === 'function') {
+        ExternalServicesUI.init();
       }
     } else {
       if (detailView) {

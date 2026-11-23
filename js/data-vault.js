@@ -137,8 +137,8 @@ const DataVault = (() => {
     config: {
       zh: '系统配置',
       en: 'CONFIG // API NODES',
-      desc: 'API 节点、算力槽位等接入配置',
-      docKeys: [K.configApiNodes, K.configApiActiveNodeId, K.configApiSlots],
+      desc: 'API 节点、算力槽位与外部服务接入配置',
+      docKeys: [K.configApiNodes, K.configApiActiveNodeId, K.configApiSlots, K.configExternalServices],
       assetPrefixes: [],
       localKeys: [],
       records: false

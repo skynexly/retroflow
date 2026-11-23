@@ -2587,6 +2587,18 @@ const records = await OnlineChatStore.listMessages(session.accountId, session.co
      不出现工具名、参数、执行结果这类技术痕迹。 */
 
   const FILE_TOOL_TYPES = new Set(['read_file', 'search_file']);
+  // 联网搜索：走外部服务，与本窗口 webSearch 开关联动
+  const WEB_SEARCH_TOOL_TYPES = new Set(['web_search']);
+  /**
+   * 联网搜索是否可用：本窗口 webSearch 开 + 外部服务全局可用，两层同时满足。
+   * 与提示词注入（promptOptions.webSearch）和运行期识别用同一口径。
+   * 独立于「内置工具」开关——联网是外部服务能力，不归文件翻阅那套管。
+   */
+  function isWebSearchEnabled() {
+    const s = chatSettings();
+    if (s && s.webSearch === false) return false;
+    return !!(window.ExternalServices && ExternalServices.isSearchAvailable());
+  }
   /** 单次翻阅返回的分页字符上限，与助手页一致 */
   const FILE_TOOL_PAGE_CHARS = 30000;
   /** 连续翻阅次数与结果保留轮数的兜底值，实际生效值读该联系人的对话设置 */
@@ -2647,8 +2659,10 @@ const records = await OnlineChatStore.listMessages(session.accountId, session.co
    * 即便模型硬凑出来也不触发循环，不产生额外的模型调用。
    */
   function isFileToolAction(action) {
-    if (!isBuiltinToolsEnabled()) return false;
     const type = String(action && (action.type || action.action) || '').trim().toLowerCase();
+    // 联网搜索是独立能力，不受「内置工具」开关约束：本窗口 webSearch + 外部服务全局，两层校验
+    if (WEB_SEARCH_TOOL_TYPES.has(type)) return isWebSearchEnabled();
+    if (!isBuiltinToolsEnabled()) return false;
     return FILE_TOOL_TYPES.has(type);
   }
 
@@ -2674,6 +2688,22 @@ const records = await OnlineChatStore.listMessages(session.accountId, session.co
    */
   async function runFileTool(action) {
     const type = String(action.type || action.action || '').trim().toLowerCase();
+    // 联网搜索分流：走外部服务调度（多服务商顺序降级），不需要文件区条目。
+    // 返回结构沿用 {name, fileName, status, output}：fileName 放搜索词，胶囊直接复用。
+    if (WEB_SEARCH_TOOL_TYPES.has(type)) {
+      const query = String(action.query || action.keyword || action.q || '').trim();
+      if (!query) {
+        return { name: type, fileName: '', status: 'error', output: '没有给出搜索词，无法上网查。' };
+      }
+      const result = await ExternalServices.search(query, { caller: '线上联络 · 上网看看' });
+      return {
+        name: type,
+        fileName: query,
+        query,
+        status: result.ok ? 'success' : 'error',
+        output: ExternalServices.formatResultsForModel(result, query)
+      };
+    }
     const scope = onlineFileScope();
     const entry = resolveFileEntry(action);
 
@@ -2749,6 +2779,10 @@ const records = await OnlineChatStore.listMessages(session.accountId, session.co
   const FILE_PEEK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true">'
     + '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm0 2.5L17.5 8H14V4.5zM8 12h8v1.6H8zm0 3.4h5.5V17H8z"/>'
     + '</svg>';
+  /** 上网查询胶囊的 SVG：一颗带经纬线的地球，与文件胶囊同一套填充线条语言 */
+  const WEB_SEARCH_PEEK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true">'
+    + '<path d="M12 2a10 10 0 100 20 10 10 0 000-20zm7.93 9h-3.02a15.7 15.7 0 00-1.2-5.36A8.03 8.03 0 0119.93 11zM12 4.06c.86 1.24 1.6 3.2 1.88 5.94h-3.76c.28-2.74 1.02-4.7 1.88-5.94zM8.29 5.64A15.7 15.7 0 007.09 11H4.07a8.03 8.03 0 014.22-5.36zM4.07 13h3.02c.14 1.98.56 3.8 1.2 5.36A8.03 8.03 0 014.07 13zM12 19.94c-.86-1.24-1.6-3.2-1.88-5.94h3.76c-.28 2.74-1.02 4.7-1.88 5.94zm3.71-1.58c.64-1.56 1.06-3.38 1.2-5.36h3.02a8.03 8.03 0 01-4.22 5.36z"/>'
+    + '</svg>';
 
   /**
    * 追加一条文件翻阅胶囊。
@@ -2759,27 +2793,28 @@ const records = await OnlineChatStore.listMessages(session.accountId, session.co
    */
   function appendFilePeekPill(result) {
     if (!messagesWrap || !result) return null;
-
     const name = trimStr(result.fileName) || '文件';
+    const isSearch = result.name === 'web_search';
     let label;
-    if (result.status === 'error') {
+    if (isSearch) {
+      label = result.status === 'error'
+        ? '没能上网查到东西'
+        : `上网查了下「${trimStr(result.query) || name}」`;
+    } else if (result.status === 'error') {
       label = `没能打开「${name}」`;
     } else if (result.name === 'search_file' && trimStr(result.keyword)) {
       label = `在「${name}」里找了下「${trimStr(result.keyword)}」`;
     } else {
       label = `翻看了「${name}」`;
     }
-
     const row = document.createElement('div');
     row.className = 'chat-status-pill-row';
     row.dataset.filePeek = 'true';
-
     // 多选能力：它不落库，但删消息时不能把这张卡孤零零留在流里
     attachRowBatchSelection(row);
-
     const pill = document.createElement('div');
     pill.className = 'chat-status-pill';
-    pill.innerHTML = `${FILE_PEEK_SVG}<span class="chat-status-pill-text"></span>`;
+    pill.innerHTML = `${isSearch ? WEB_SEARCH_PEEK_SVG : FILE_PEEK_SVG}<span class="chat-status-pill-text"></span>`;
     const textEl = pill.querySelector('.chat-status-pill-text');
     if (textEl) textEl.textContent = label;
 
@@ -3141,7 +3176,11 @@ const records = await OnlineChatStore.listMessages(session.accountId, session.co
       const records = await OnlineChatStore.listMessages(session.accountId, session.contactId);
       const timeAware = isTimePerceptionEnabled();
       const fileScope = onlineFileScope();
-      const promptOptions = { fileTools: isBuiltinToolsEnabled(), imageGen: isImageGenEnabled() };
+      const promptOptions = {
+        fileTools: isBuiltinToolsEnabled(),
+        imageGen: isImageGenEnabled(),
+        webSearch: isWebSearchEnabled()
+      };
 
       // 装配分两遍，为的是破一个循环依赖：
       //   历史预算 = 上下文容量 - systemPrompt 开销，
@@ -3270,16 +3309,25 @@ const records = await OnlineChatStore.listMessages(session.accountId, session.co
         if (assistantTurn) messages.push({ role: 'assistant', content: assistantTurn });
 
         const backLines = [];
+        let hasSearch = false;
         for (const action of toolActions) {
           const toolResult = await runFileTool(action);
           appendFilePeekPill(toolResult);
           // 回传标签用「文件内容」而不是「工具结果」：模型看到什么词，
           // 就容易顺着那个词的口吻说话，喂它「工具」它就会汇报调用过程。
-          backLines.push(`[文件内容 · ${toolResult.fileName}]\n${toolResult.output}`);
+          // 联网搜索同理，标签用「网上查到的信息」，与提示词里的说法一致。
+          if (toolResult.name === 'web_search') {
+            hasSearch = true;
+            backLines.push(`[网上查到的信息 · ${toolResult.query || toolResult.fileName}]\n${toolResult.output}`);
+          } else {
+            backLines.push(`[文件内容 · ${toolResult.fileName}]\n${toolResult.output}`);
+          }
         }
         messages.push({
           role: 'system',
-          content: `以下是你刚打开的文件内容，看完继续把话说下去，不要提起你打开过文件：\n\n${backLines.join('\n\n')}`
+          content: (hasSearch
+            ? '以下是你刚看到的内容（翻开的文件或上网查到的信息），看完用自己的话继续把话说下去，不要提起你打开过文件或上过网：'
+            : '以下是你刚打开的文件内容，看完继续把话说下去，不要提起你打开过文件：') + `\n\n${backLines.join('\n\n')}`
         });
 
         // 翻阅期间占位行可能已被移除（比如上一轮插了胶囊），补回来保持等待感

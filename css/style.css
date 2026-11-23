@@ -44286,3 +44286,268 @@ html:not(.is-native) #otaUpdateModule { display: none !important; }
     transform: none;
   }
 }
+
+/* ==========================================================================
+   外部服务（ExternalServicesUI）
+   模块骨架复用 theme-module + chat-bento-card，这里只补服务商卡片一族。
+   零分割线：层级靠底色块与间距区分；图标全 SVG。
+   ========================================================================== */
+
+/* 顶栏标题：本页不用双斜杠，英文与中文之间只留基线间距 */
+.es-header-title {
+  gap: 8px;
+}
+
+/* 服务商列表：卡片之间用间距分隔，不用线 */
+.es-provider-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 单个服务商卡片：比外层 bento 卡略深一点的底色块 */
+.es-provider-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background-color: rgba(var(--secondary-color-rgb), 0.045);
+}
+
+.es-provider-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.es-provider-info {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.es-provider-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--secondary-color);
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.es-provider-en {
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  opacity: 0.7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.es-provider-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* 状态徽标：小圆角底块 + 状态色文字，不描边 */
+.es-provider-status {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  padding: 3px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.es-status-ok {
+  color: var(--success-color);
+  background-color: rgba(var(--success-color-rgb), 0.1);
+}
+.es-status-nokey {
+  color: var(--text-muted);
+  background-color: rgba(var(--secondary-color-rgb), 0.07);
+}
+.es-status-disabled {
+  color: var(--text-muted);
+  background-color: rgba(var(--secondary-color-rgb), 0.07);
+  opacity: 0.7;
+}
+.es-status-cooldown {
+  color: var(--warning-color);
+  background-color: rgba(var(--secondary-color-rgb), 0.07);
+}
+
+/* 上下移动：一对方形小按钮，列表只有一家时整组不渲染 */
+.es-reorder-arrows {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.es-reorder-btn {
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 4px;
+  background-color: transparent;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.es-reorder-btn svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+.es-reorder-btn:active {
+  background-color: rgba(var(--primary-color-rgb), 0.12);
+  color: var(--primary-color);
+  transform: scale(0.92);
+}
+.es-reorder-btn:disabled {
+  opacity: 0.25;
+  cursor: default;
+  pointer-events: none;
+}
+
+.es-provider-desc {
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  opacity: 0.75;
+}
+
+/* Key 输入行：底色块承托，无边框（零分割线） */
+.es-provider-key-row {
+  display: flex;
+  align-items: center;
+  background-color: rgba(var(--secondary-color-rgb), 0.05);
+  border-radius: 5px;
+  padding: 0 10px;
+}
+.es-key-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 8px 0;
+  font-family: var(--mono-font);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--secondary-color);
+  min-width: 0;
+}
+.es-key-input::placeholder {
+  font-family: var(--main-font);
+  color: var(--text-muted);
+  opacity: 0.45;
+  font-weight: 400;
+}
+.es-provider-key-row:focus-within {
+  background-color: rgba(var(--primary-color-rgb), 0.07);
+}
+
+/* 操作行：测试按钮居左，结果提示占中间弹性位，启用开关靠右 */
+.es-provider-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.es-test-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  border-radius: 5px;
+  padding: 6px 10px;
+  background-color: rgba(var(--primary-color-rgb), 0.1);
+  color: var(--primary-color);
+  font-family: var(--main-font);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
+}
+.es-test-btn svg {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+}
+.es-test-btn:active {
+  transform: scale(0.96);
+  background-color: rgba(var(--primary-color-rgb), 0.18);
+}
+.es-test-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.es-test-result {
+  flex: 1;
+  min-width: 0;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.es-test-pending {
+  opacity: 0.7;
+}
+.es-test-ok {
+  color: var(--success-color);
+}
+.es-test-fail {
+  color: var(--danger-color);
+}
+
+/* 占位模块：描述 + 「暂未开放」徽标，整卡降透明度表示未实装 */
+.es-placeholder-card {
+  opacity: 0.65;
+}
+.es-placeholder-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.es-placeholder-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  line-height: 1.65;
+  color: var(--text-muted);
+}
+.es-placeholder-badge {
+  flex-shrink: 0;
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 3px 7px;
+  border-radius: 4px;
+  color: var(--text-muted);
+  background-color: rgba(var(--secondary-color-rgb), 0.07);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .es-reorder-btn,
+  .es-test-btn {
+    transition: none;
+  }
+  .es-reorder-btn:active,
+  .es-test-btn:active {
+    transform: none;
+  }
+}

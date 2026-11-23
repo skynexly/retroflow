@@ -61,6 +61,8 @@ const Store = (() => {
     configApiNodes: 'config/api.nodes',
     configApiActiveNodeId: 'config/api.activeNodeId',
     configApiSlots: 'config/api.slots',
+    // 外部服务接入配置（联网搜索等），与 API 节点同域同备份块
+    configExternalServices: 'config/external.services',
     // worldbook 域
     worldbookBooks: 'worldbook/books',
     worldbookSeeded: 'worldbook/seeded',
@@ -224,7 +226,8 @@ const Store = (() => {
     config: {
       apiNodes: [],
       apiActiveNodeId: '',
-      apiSlots: {}
+      apiSlots: {},
+      externalServices: {}
     },
     worldbook: {
       books: [],
@@ -402,6 +405,7 @@ const Store = (() => {
       data.config.apiNodes = asArray(pick(raw, K.configApiNodes, []));
       data.config.apiActiveNodeId = pick(raw, K.configApiActiveNodeId, '');
       data.config.apiSlots = asObject(pick(raw, K.configApiSlots, {}));
+      data.config.externalServices = asObject(pick(raw, K.configExternalServices, {}));
 
       // worldbook：仅在首次（从未播种过）时落预设「破限」。
       // 用一次性播种标记而非「数据为空」来判断，用户删掉预设后不会复活。
@@ -585,6 +589,11 @@ const Store = (() => {
       key: K.configApiSlots,
       get: () => data.config.apiSlots,
       set: (v) => { data.config.apiSlots = asObject(v); }
+    },
+    'config.externalServices': {
+      key: K.configExternalServices,
+      get: () => data.config.externalServices,
+      set: (v) => { data.config.externalServices = asObject(v); }
     },
     'worldbook.books': {
       key: K.worldbookBooks,
@@ -877,7 +886,7 @@ const Store = (() => {
       K.decorTileConfigs, K.decorTileNoBaseGlobal
     ],
     memo: [K.memoContent],
-    config: [K.configApiNodes, K.configApiActiveNodeId, K.configApiSlots],
+    config: [K.configApiNodes, K.configApiActiveNodeId, K.configApiSlots, K.configExternalServices],
     worldbook: [K.worldbookBooks, K.worldbookSeeded],
     online: [K.onlineAccounts, K.onlineContacts, K.onlineSessions, K.onlineFeed],
     meta: [K.metaGalleryIndex, K.metaFileIndex, K.metaLegacyPurged, K.metaOnboarding],
