@@ -18,8 +18,8 @@
   <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
 
   <!-- 样式资产（带构建版本戳穿透 HTTP 磁盘缓存） -->
-  <link rel="stylesheet" href="css/variables.css?v=190">
-  <link rel="stylesheet" href="css/style.css?v=907">
+  <link rel="stylesheet" href="css/variables.css?v=192">
+  <link rel="stylesheet" href="css/style.css?v=986">
   <link rel="stylesheet" href="css/fork-deck-camera.css?v=3">
   <link rel="stylesheet" href="css/api-call-log.css?v=4">
   <link rel="stylesheet" href="css/life-service.css?v=129">
@@ -65,7 +65,12 @@
     })();
   </script>
 </head>
-<body>
+<body class="is-booting">
+  <!-- 启动遮罩：纯色盖住「静态初始桌面 → 存档布局 → 主题着色」的三段跳。
+       由 js/apps.js 在桌面与磁贴美化都就绪后移除 is-booting 并淡出。
+       任何异常路径都有兜底定时器，绝不会把界面永久留在遮罩下。 -->
+  <div class="boot-curtain" id="bootCurtain" aria-hidden="true"></div>
+
   <!-- 桌面壁纸底层渲染层 -->
   <div id="wallpaperLayer" class="wallpaper-layer" aria-hidden="true"></div>
 
@@ -87,125 +92,131 @@
     <div class="desktop-carousel-viewport" id="desktopCarouselViewport">
       <div class="desktop-carousel-track" id="desktopCarouselTrack">
 
-        <!-- ================= 第 1 页：系统核心主干 (Page 01 // CORE) ================= -->
+        <!-- ================= 第 1 页：系统核心主干 (Page 01 · CORE) ================= -->
         <div class="desktop-carousel-page" data-page-index="0">
+          <div class="desktop-grid" data-grid-page="0">
+            <div class="grid-slots" aria-hidden="true"></div>
 
-          <!-- 复合英雄角色组件（破框照片 + 红色档案卡 + 外置按钮） -->
-          <section class="profile-hero-section">
-            <!-- 原「全局时空广播跑马灯」已移除：32s 无限滚动 + will-change 常驻合成层，
-                 在 120Hz 屏上持续触发重绘，是耗电主因之一。未来若需回归请改用它处实现。 -->
-
-            <!-- 红色档案信息条 -->
-            <div class="profile-card">
-              <!-- 左下角底纹装饰英文字句（绝对定位在红卡底部外侧，与右下按钮同排，被破框照片自然遮挡前半部分） -->
-              <div class="card-bg-watermark">
-                <span>WELCOME TO RETROFLOW PROJECT</span>
-              </div>
-
-              <!-- 右上角不可修改的代号与序列号 -->
-              <div class="profile-serial-id">
-                <span class="serial-tag">ENVOY</span>
-                <span id="profileSerialNum">NO.000517</span>
-              </div>
-
-              <!-- 单层照片相框区（上下均破出红色边界） -->
-              <div class="photo-stack-wrapper">
-                <!-- 顶层主立绘相框（四周边距完全等宽相框，可交互上传） -->
-                <div class="photo-layer-front">
-                  <!-- 机密条形码封条（跨越照片左边缘） -->
-                  <div class="photo-barcode-seal">
-                    <svg viewBox="0 0 60 12" preserveAspectRatio="none">
-                      <rect x="0" y="0" width="3" height="12" fill="var(--bg-color)"/>
-                      <rect x="4" y="0" width="2" height="12" fill="var(--bg-color)"/>
-                      <rect x="7" y="0" width="4" height="12" fill="var(--bg-color)"/>
-                      <rect x="12" y="0" width="2" height="12" fill="var(--bg-color)"/>
-                      <rect x="15" y="0" width="5" height="12" fill="var(--bg-color)"/>
-                      <rect x="21" y="0" width="2" height="12" fill="var(--bg-color)"/>
-                      <rect x="24" y="0" width="3" height="12" fill="var(--bg-color)"/>
-                      <rect x="28" y="0" width="6" height="12" fill="var(--bg-color)"/>
-                      <rect x="35" y="0" width="2" height="12" fill="var(--bg-color)"/>
-                      <rect x="38" y="0" width="4" height="12" fill="var(--bg-color)"/>
-                      <rect x="43" y="0" width="3" height="12" fill="var(--bg-color)"/>
-                      <rect x="47" y="0" width="2" height="12" fill="var(--bg-color)"/>
-                      <rect x="50" y="0" width="5" height="12" fill="var(--bg-color)"/>
-                      <rect x="56" y="0" width="4" height="12" fill="var(--bg-color)"/>
-                    </svg>
+            <!-- 复合英雄组件（破框照片 + 红色档案卡 + 在役履历条），整体占 4×2 网格 -->
+            <div class="desktop-hero-widget" data-widget-id="profile">
+              <section class="profile-hero-section">
+                <!-- 红色档案信息条 -->
+                <div class="profile-card">
+                  <!-- 左下角底纹装饰英文字句（绝对定位在红卡底部外侧，与右下按钮同排，被破框照片自然遮挡前半部分） -->
+                  <div class="card-bg-watermark">
+                    <span>WELCOME TO RETROFLOW PROJECT</span>
+                  </div>
+                  <!-- 右上角不可修改的代号与序列号 -->
+                  <div class="profile-serial-id">
+                    <span class="serial-tag">ENVOY</span>
+                    <span id="profileSerialNum" class="profile-serial-num">NO.000517</span>
                   </div>
 
-                  <div class="photo-inner">
-                    <img alt="红卡照片" hidden />
+                  <!-- 破框带右侧同步指示器（立于红卡上沿之外，纯装饰） -->
+                  <div class="profile-sync-indicator" aria-hidden="true">
+                    <span class="sync-dot"></span>
+                    <span class="sync-dot"></span>
+                    <span class="sync-dot is-lit"></span>
+                    <span class="sync-num">03</span>
+                    <span class="sync-label">SYNC</span>
                   </div>
-                </div>
-              </div>
 
-                <!-- 右侧信息区：名字与签名 -->
-                <div class="profile-info">
-                  <div class="profile-header-group">
-                    <div class="profile-name-row">
-                      <input type="text" class="profile-name" value="执行员" placeholder="输入名字" spellcheck="false">
+
+                  <!-- 单层照片相框区（上下均破出红色边界） -->
+                  <div class="photo-stack-wrapper">
+                    <!-- 顶层主立绘相框（四周边距完全等宽相框，可交互上传） -->
+                    <div class="photo-layer-front">
+                      <!-- 机密条形码封条（跨越照片左边缘） -->
+                      <div class="photo-barcode-seal">
+                        <svg viewBox="0 0 60 12" preserveAspectRatio="none">
+                          <rect x="0" y="0" width="3" height="12" fill="var(--bg-color)"/>
+                          <rect x="4" y="0" width="2" height="12" fill="var(--bg-color)"/>
+                          <rect x="7" y="0" width="4" height="12" fill="var(--bg-color)"/>
+                          <rect x="12" y="0" width="2" height="12" fill="var(--bg-color)"/>
+                          <rect x="15" y="0" width="5" height="12" fill="var(--bg-color)"/>
+                          <rect x="21" y="0" width="2" height="12" fill="var(--bg-color)"/>
+                          <rect x="24" y="0" width="3" height="12" fill="var(--bg-color)"/>
+                          <rect x="28" y="0" width="6" height="12" fill="var(--bg-color)"/>
+                          <rect x="35" y="0" width="2" height="12" fill="var(--bg-color)"/>
+                          <rect x="38" y="0" width="4" height="12" fill="var(--bg-color)"/>
+                          <rect x="43" y="0" width="3" height="12" fill="var(--bg-color)"/>
+                          <rect x="47" y="0" width="2" height="12" fill="var(--bg-color)"/>
+                          <rect x="50" y="0" width="5" height="12" fill="var(--bg-color)"/>
+                          <rect x="56" y="0" width="4" height="12" fill="var(--bg-color)"/>
+                        </svg>
+                      </div>
+
+                      <div class="photo-inner">
+                        <img alt="红卡照片" hidden />
+                      </div>
                     </div>
-                    <input type="text" class="profile-bio" value="I arrive as a variable, never as a witness." placeholder="输入个性签名" spellcheck="false">
                   </div>
 
-                  <!-- 右下角机能条码微标装饰（纯 SVG，零 Emoji） -->
-                  <div class="profile-card-barcode-deco" aria-hidden="true">
-                    <svg viewBox="0 0 64 12" preserveAspectRatio="none">
-                      <rect x="0" y="0" width="2.5" height="12" fill="currentColor"/>
-                      <rect x="4" y="0" width="1.5" height="12" fill="currentColor"/>
-                      <rect x="7" y="0" width="3" height="12" fill="currentColor"/>
-                      <rect x="12" y="0" width="1.5" height="12" fill="currentColor"/>
-                      <rect x="15" y="0" width="4" height="12" fill="currentColor"/>
-                      <rect x="21" y="0" width="2" height="12" fill="currentColor"/>
-                      <rect x="25" y="0" width="3.5" height="12" fill="currentColor"/>
-                      <rect x="30" y="0" width="1.5" height="12" fill="currentColor"/>
-                      <rect x="33" y="0" width="5" height="12" fill="currentColor"/>
-                      <rect x="40" y="0" width="2" height="12" fill="currentColor"/>
-                      <rect x="44" y="0" width="3" height="12" fill="currentColor"/>
-                      <rect x="49" y="0" width="1.5" height="12" fill="currentColor"/>
-                      <rect x="52" y="0" width="4.5" height="12" fill="currentColor"/>
-                      <rect x="58" y="0" width="2.5" height="12" fill="currentColor"/>
-                      <rect x="62" y="0" width="2" height="12" fill="currentColor"/>
+                  <!-- 右侧信息区：名字与签名 -->
+                  <div class="profile-info">
+                    <div class="profile-header-group">
+                      <div class="profile-name-row">
+                        <input type="text" class="profile-name" value="PROXY-0" placeholder="输入名字" spellcheck="false">
+                      </div>
+                      <input type="text" class="profile-bio" value="I arrive as a variable, never as a witness." placeholder="输入个性签名" spellcheck="false">
+                    </div>
+
+                    <!-- 右下角机能条码微标装饰（纯 SVG，零 Emoji） -->
+                    <div class="profile-card-barcode-deco" aria-hidden="true">
+                      <svg viewBox="0 0 64 12" preserveAspectRatio="none">
+                        <rect x="0" y="0" width="2.5" height="12" fill="currentColor"/>
+                        <rect x="4" y="0" width="1.5" height="12" fill="currentColor"/>
+                        <rect x="7" y="0" width="3" height="12" fill="currentColor"/>
+                        <rect x="12" y="0" width="1.5" height="12" fill="currentColor"/>
+                        <rect x="15" y="0" width="4" height="12" fill="currentColor"/>
+                        <rect x="21" y="0" width="2" height="12" fill="currentColor"/>
+                        <rect x="25" y="0" width="3.5" height="12" fill="currentColor"/>
+                        <rect x="30" y="0" width="1.5" height="12" fill="currentColor"/>
+                        <rect x="33" y="0" width="5" height="12" fill="currentColor"/>
+                        <rect x="40" y="0" width="2" height="12" fill="currentColor"/>
+                        <rect x="44" y="0" width="3" height="12" fill="currentColor"/>
+                        <rect x="49" y="0" width="1.5" height="12" fill="currentColor"/>
+                        <rect x="52" y="0" width="4.5" height="12" fill="currentColor"/>
+                        <rect x="58" y="0" width="2.5" height="12" fill="currentColor"/>
+                        <rect x="62" y="0" width="2" height="12" fill="currentColor"/>
+                      </svg>
+                    </div>
+                  </div>
+
+                  <!-- 紧贴在卡片右下底缘的实体索引抽拉标签 -->
+                  <button class="profile-folder-tab" type="button">
+                    <span class="btn-en">DIVE</span>
+                    <span class="btn-zh">进入副本</span>
+                    <!-- 箭头 SVG -->
+                    <svg viewBox="0 0 24 24">
+                      <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
                     </svg>
+                  </button>
+                </div>
+              </section>
+
+              <!-- 在役履历反色横条 (SERVICE RECORD) -->
+              <div class="service-record-strip">
+                <div class="service-record-tag">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/>
+                  </svg>
+                  <span>SERVICE</span>
+                </div>
+                <div class="service-record-metrics">
+                  <div class="service-metric-item">
+                    <span class="metric-label">加入计划</span>
+                    <span class="metric-val service-days-val" id="serviceDaysVal">--</span>
+                    <span class="metric-unit">天</span>
+                  </div>
+                  <div class="service-metric-item">
+                    <span class="metric-label">距上次下潜</span>
+                    <span class="metric-val" id="serviceLastDiveVal">3</span>
+                    <span class="metric-unit">天</span>
                   </div>
                 </div>
-
-              <!-- 紧贴在卡片右下底缘的实体索引抽拉标签 -->
-              <button class="profile-folder-tab" type="button">
-                <span class="btn-en">DIVE</span>
-<span class="btn-zh">进入副本</span>
-                <!-- 箭头 SVG -->
-                <svg viewBox="0 0 24 24">
-                  <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
-                </svg>
-              </button>
-
-            </div>
-          </section>
-
-          <!-- 在役履历反色横条 (SERVICE RECORD) -->
-          <div class="service-record-strip">
-            <div class="service-record-tag">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <!-- 时空因果罗盘 / 在役徽章 -->
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/>
-              </svg>
-              <span>SERVICE</span>
-            </div>
-            <div class="service-record-metrics">
-              <div class="service-metric-item">
-                <span class="metric-label">加入计划</span>
-                <span class="metric-val" id="serviceDaysVal">--</span>
-                <span class="metric-unit">天</span>
-              </div>
-              <div class="service-metric-item">
-                <span class="metric-label">距上次下潜</span>
-                <span class="metric-val" id="serviceLastDiveVal">3</span>
-                <span class="metric-unit">天</span>
               </div>
             </div>
-          </div>
-
-          <nav class="app-bento-grid" aria-label="系统核心功能入口">
 
             <!-- 1. 副本库 -->
             <button class="bento-card" type="button" data-app="forks">
@@ -220,7 +231,7 @@
                 <div class="bento-title">副本库</div>
                 <div class="bento-subtitle">
                   <span class="bento-en">FORK ARCHIVE</span>
-<span class="bento-zh">实例分支</span>
+                  <span class="bento-zh">实例分支</span>
                 </div>
               </div>
             </button>
@@ -238,7 +249,7 @@
                 <div class="bento-title">数据归档</div>
                 <div class="bento-subtitle">
                   <span class="bento-en">MEMORY BANK</span>
-<span class="bento-zh">记忆库</span>
+                  <span class="bento-zh">记忆库</span>
                 </div>
               </div>
             </button>
@@ -256,7 +267,7 @@
                 <div class="bento-title">个人档案</div>
                 <div class="bento-subtitle">
                   <span class="bento-en">PERSONA</span>
-<span class="bento-zh">用户面具</span>
+                  <span class="bento-zh">用户面具</span>
                 </div>
               </div>
             </button>
@@ -274,7 +285,7 @@
                 <div class="bento-title">同调档案</div>
                 <div class="bento-subtitle">
                   <span class="bento-en">RESONANCE</span>
-<span class="bento-zh">角色资料</span>
+                  <span class="bento-zh">角色资料</span>
                 </div>
               </div>
             </button>
@@ -292,7 +303,7 @@
                 <div class="bento-title">溯流论坛</div>
                 <div class="bento-subtitle">
                   <span class="bento-en">ECHO CHAT</span>
-<span class="bento-zh">风闻信息</span>
+                  <span class="bento-zh">风闻信息</span>
                 </div>
               </div>
             </button>
@@ -310,247 +321,116 @@
                 <div class="bento-title">系统商城</div>
                 <div class="bento-subtitle">
                   <span class="bento-en">SUPPLY DEPOT</span>
-<span class="bento-zh">道具补充</span>
+                  <span class="bento-zh">道具补充</span>
                 </div>
               </div>
             </button>
 
-          </nav>
+          </div>
         </div>
 
-        <!-- ================= 第 2 页：随身物资与媒体中心 (Page 02 // MEDIA & ASSETS) ================= -->
+        <!-- ================= 第 2 页：随身物资与媒体中心 (Page 02 · ASSETS) ================= -->
         <div class="desktop-carousel-page" data-page-index="1">
-          <nav class="app-bento-grid-p2" aria-label="随身物资与媒体中心">
+          <div class="desktop-grid" data-grid-page="1">
+            <div class="grid-slots" aria-hidden="true"></div>
 
-            <!-- 上段：左列 (07 收藏馆 + 08 阅读) + 右列 (08 图库总高 2:3，内嵌 1:1 相框) -->
-            <div class="p2-row-top">
-              <div class="p2-col-stretch">
-                <!-- 1. 左上中方卡：07 收藏馆 -->
-                <button class="bento-card p2-card-adaptive p2-vault" type="button" data-app="vault">
-                  <span class="bento-index">07</span>
-                  <div class="bento-icon-wrap">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <!-- 珍藏因果盒 / 密档印章 -->
-                      <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/>
-                    </svg>
-                  </div>
-                  <div class="bento-content">
-                    <div class="bento-title">收藏馆</div>
-                    <div class="bento-subtitle">
-                      <span class="bento-en">VAULT</span>
-<span class="bento-zh">珍藏密档</span>
-                    </div>
-                  </div>
-                </button>
-
-                <!-- 2. 左下中方卡：08 阅读 -->
-                <button class="bento-card p2-card-adaptive p2-reader" type="button" data-app="reader">
-                  <span class="bento-index">08</span>
-                  <div class="bento-icon-wrap">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <!-- 打开的世界线典籍 / 阅读卷宗 -->
-                      <path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1zm-1 14c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5V8c1.35-.85 3.8-1.5 5.5-1.5 1.2 0 2.4.15 3.5.5v12z"/>
-                    </svg>
-                  </div>
-                  <div class="bento-content">
-                    <div class="bento-title">阅读</div>
-                    <div class="bento-subtitle">
-                      <span class="bento-en">READER</span>
-<span class="bento-zh">图书馆</span>
-                    </div>
-                  </div>
-                </button>
+            <!-- 07 收藏馆 -->
+            <button class="bento-card" type="button" data-app="vault">
+              <span class="bento-index">07</span>
+              <div class="bento-icon-wrap">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <!-- 珍藏因果盒 / 密档印章 -->
+                  <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/>
+                </svg>
               </div>
-
-              <!-- 右侧 2:3 黄金比例大图库卡 (内嵌 1:1 图片相框 + 底部入口条) -->
-              <div class="bento-card-p2-gallery p2-gallery-box" id="bentoGalleryCard">
-                <div class="p2-gallery-frame" id="bentoGalleryFrame" role="button" tabindex="0" title="点击更换快照封面">
-                  <img id="bentoGalleryCoverImg" alt="" hidden>
-                  <div class="p2-gallery-placeholder" id="bentoGalleryPlaceholder">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
-                    </svg>
-                    <span class="p2-gallery-ph-text">TACTICAL SNAPSHOT</span>
-                  </div>
-                  <div class="p2-gallery-hover-tag">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-                    </svg>
-                    <span>更换封面</span>
-                  </div>
-                </div>
-                <button class="p2-gallery-footer-bar" type="button" data-app="gallery" aria-label="进入图库">
-                  <span class="p2-gallery-index" aria-hidden="true">09</span>
-                  <div class="p2-gallery-icon-wrap">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <!-- 战术胶卷 / 影像快门小图标 -->
-                      <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
-                    </svg>
-                  </div>
-                  <div class="p2-gallery-text-col">
-                    <div class="p2-gallery-zh">图库</div>
-                    <div class="p2-gallery-subtitle">
-                      <span class="p2-gallery-en">GALLERY</span>
-                      <span class="p2-gallery-desc">图片管理</span>
-                    </div>
-                  </div>
-                  <div class="p2-gallery-indicator-wrap">
-                    <svg class="p2-gallery-arrow" viewBox="0 0 24 24" aria-hidden="true">
-                      <!-- 双折角光标指示器 ›› -->
-                      <path d="M6.5 17.5l5.5-5.5-5.5-5.5 1.5-1.5 7 7-7 7-1.5-1.5zm6 0l5.5-5.5-5.5-5.5 1.5-1.5 7 7-7 7-1.5-1.5z"/>
-                    </svg>
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            <!-- 中段：10 黑胶唱片音乐播放器 (AUDIO DECK，自适应弹性撑满) -->
-            <div class="bento-card-p2-music p2-audio-deck" id="bentoAudioDeck">
-              <!-- 右上角水印数字 (与全页 07~13 统一压阵) -->
-              <span class="bento-index">10</span>
-
-              <!-- 左侧拟物黑胶唱片 -->
-              <div class="p2-vinyl-wrap" id="p2VinylWrap">
-                <div class="p2-vinyl-disc" id="p2VinylDisc">
-                  <div class="p2-vinyl-grooves"></div>
-                  <!-- 高光划扫层：随唱片同步旋转，形成灯下黑胶光带扫过的视觉 -->
-                  <div class="p2-vinyl-sheen" aria-hidden="true"></div>
-                  <div class="p2-vinyl-center-label">
-                    <img id="p2VinylCoverImg" alt="" hidden>
-                    <div class="p2-vinyl-core-hole"></div>
-                  </div>
+              <div class="bento-content">
+                <div class="bento-title">收藏馆</div>
+                <div class="bento-subtitle">
+                  <span class="bento-en">VAULT</span>
+                  <span class="bento-zh">珍藏密档</span>
                 </div>
               </div>
+            </button>
 
-              <!-- 右侧播放器信息与机能控制按键 -->
-              <div class="p2-audio-info-col">
-                <div class="p2-audio-header">
-                  <div class="p2-audio-track-name" id="p2AudioTrackName">溯流协议 · 主题因果波</div>
-                  <div class="p2-audio-lyric" id="p2AudioLyric">循因果之迹，渡彼岸之流...</div>
-                </div>
-                <!-- 极简机能进度线 -->
-                <div class="p2-audio-progress-wrap">
-                  <div class="p2-audio-progress-bar">
-                    <div class="p2-audio-progress-fill" id="p2AudioProgressFill" style="width: 38%;"></div>
-                  </div>
-                  <div class="p2-audio-time-row">
-                    <span class="p2-audio-time" id="p2AudioCurrentTime">01:14</span>
-                    <span class="p2-audio-time" id="p2AudioTotalTime">03:20</span>
-                  </div>
-                </div>
-                <!-- 机能播放控制按键 (纯 SVG 5键均匀分布：循环 / 上一首 / 播放 / 下一首 / 列表) -->
-                <div class="p2-audio-controls">
-                  <button type="button" class="p2-audio-btn p2-audio-aux-btn" id="p2AudioLoopBtn" aria-label="循环模式" title="循环模式">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <!-- 循环/因果回环箭头 -->
-                      <path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/>
-                    </svg>
-                  </button>
-                  <button type="button" class="p2-audio-btn" id="p2AudioPrevBtn" aria-label="上一首" title="上一首">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
-                    </svg>
-                  </button>
-                  <button type="button" class="p2-audio-btn p2-audio-play-btn" id="p2AudioPlayBtn" aria-label="播放/暂停" title="播放/暂停">
-                    <svg class="icon-play" viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M8 5v14l11-7z"/>
-                    </svg>
-                    <svg class="icon-pause" viewBox="0 0 24 24" aria-hidden="true" hidden>
-                      <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
-                    </svg>
-                  </button>
-                  <button type="button" class="p2-audio-btn" id="p2AudioNextBtn" aria-label="下一首" title="下一首">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
-                    </svg>
-                  </button>
-                  <button type="button" class="p2-audio-btn p2-audio-aux-btn" id="p2AudioPlaylistBtn" aria-label="播放列表" title="播放列表">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <!-- 播放列表/音轨阵列 -->
-                      <path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/>
-                    </svg>
-                  </button>
+            <!-- 08 阅读 -->
+            <button class="bento-card" type="button" data-app="reader">
+              <span class="bento-index">08</span>
+              <div class="bento-icon-wrap">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <!-- 打开的世界线典籍 / 阅读卷宗 -->
+                  <path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1zm-1 14c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5V8c1.35-.85 3.8-1.5 5.5-1.5 1.2 0 2.4.15 3.5.5v12z"/>
+                </svg>
+              </div>
+              <div class="bento-content">
+                <div class="bento-title">阅读</div>
+                <div class="bento-subtitle">
+                  <span class="bento-en">READER</span>
+                  <span class="bento-zh">图书馆</span>
                 </div>
               </div>
-            </div>
+            </button>
 
-            <!-- 下段：左列 (11 随身便笺) + 右列 (12 积分 + 13 储物室) -->
-            <div class="p2-row-bottom">
-              <!-- 左侧随身便笺 -->
-              <div class="bento-card-p2-memo p2-memo-box" id="bentoMemoCard" role="button" tabindex="0" title="点击编辑便签">
-                <span class="bento-index">11</span>
-                <div class="p2-memo-header">
-                  <div class="p2-memo-title">备忘录</div>
-                  <div class="p2-memo-subtitle">
-                    <span class="bento-en">MEMO</span>
-<span class="bento-zh">随身便笺</span>
-                  </div>
-                </div>
-                <div class="p2-memo-content" id="p2MemoContent">
-观测指令：进入因果分支前确认时空锚点，警惕逻辑坍缩。
+            <!-- 09 图库 -->
+            <button class="bento-card" type="button" data-app="gallery">
+              <span class="bento-index">09</span>
+              <div class="bento-icon-wrap">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <!-- 战术胶卷 / 影像快门 -->
+                  <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                </svg>
+              </div>
+              <div class="bento-content">
+                <div class="bento-title">图库</div>
+                <div class="bento-subtitle">
+                  <span class="bento-en">GALLERY</span>
+                  <span class="bento-zh">图片管理</span>
                 </div>
               </div>
+            </button>
 
-              <!-- 右侧两张自适应拉伸方卡 (12 积分资产 + 13 储物室) -->
-              <div class="p2-col-stretch">
-                <!-- 12 积分资产 -->
-                <button class="bento-card p2-card-adaptive p2-card-asset p2-credits" type="button" data-app="credits">
-                  <span class="bento-index">12</span>
-                  <!-- 上层：左大图标 + 右侧标题/纯英文副标题 -->
-                  <div class="p2-asset-top-row">
-                    <div class="bento-icon-wrap p2-asset-icon-wrap">
-                      <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <!-- 能量脉冲闪电 / 因果算力资产 -->
-                        <path d="M7 2v11h3v9l7-12h-4l4-8z"/>
-                      </svg>
-                    </div>
-                    <div class="p2-asset-info">
-                      <div class="p2-asset-title">积分资产</div>
-                      <div class="p2-asset-subtitle">
-                        <span class="bento-en">CREDITS</span>
-                      </div>
-                    </div>
-                  </div>
-                  <!-- 下层：通栏重点色底标签 + 数值 -->
-                  <div class="p2-asset-bottom-row">
-                    <span class="p2-asset-badge">积分余额</span>
-                    <span class="p2-asset-badge-val" id="p2CreditsVal">2,480</span>
-                  </div>
-                </button>
-
-                <!-- 13 储物室 -->
-                <button class="bento-card p2-card-adaptive p2-card-asset p2-inventory" type="button" data-app="inventory">
-                  <span class="bento-index">13</span>
-                  <!-- 上层：左大图标 + 右侧标题/纯英文副标题 -->
-                  <div class="p2-asset-top-row">
-                    <div class="bento-icon-wrap p2-asset-icon-wrap">
-                      <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <!-- 空间背包 / 战术行囊 -->
-                        <path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z"/>
-                      </svg>
-                    </div>
-                    <div class="p2-asset-info">
-                      <div class="p2-asset-title">储物室</div>
-                      <div class="p2-asset-subtitle">
-                        <span class="bento-en">INVENTORY</span>
-                      </div>
-                    </div>
-                  </div>
-                  <!-- 下层：通栏重点色底标签 + 数值 -->
-                  <div class="p2-asset-bottom-row">
-                    <span class="p2-asset-badge">仓库容量</span>
-                    <span class="p2-asset-badge-val" id="p2InventoryVal">03 / 50</span>
-                  </div>
-                </button>
+            <!-- 12 积分资产 -->
+            <button class="bento-card" type="button" data-app="credits">
+              <span class="bento-index">12</span>
+              <div class="bento-icon-wrap">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <!-- 能量脉冲闪电 / 因果算力资产 -->
+                  <path d="M7 2v11h3v9l7-12h-4l4-8z"/>
+                </svg>
               </div>
-            </div>
+              <div class="bento-content">
+                <div class="bento-title">积分资产</div>
+                <div class="bento-subtitle">
+                  <span class="bento-en">CREDITS</span>
+                  <span class="bento-zh" id="p2CreditsZh">余额 2,480</span>
+                </div>
+              </div>
+            </button>
 
-          </nav>
+            <!-- 13 储物室 -->
+            <button class="bento-card" type="button" data-app="inventory">
+              <span class="bento-index">13</span>
+              <div class="bento-icon-wrap">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <!-- 空间背包 / 战术行囊 -->
+                  <path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z"/>
+                </svg>
+              </div>
+              <div class="bento-content">
+                <div class="bento-title">储物室</div>
+                <div class="bento-subtitle">
+                  <span class="bento-en">INVENTORY</span>
+                  <span class="bento-zh" id="p2InventoryZh">容量 03 / 50</span>
+                </div>
+              </div>
+            </button>
+
+          </div>
         </div>
 
-        <!-- ================= 第 3 页：生活与私属空间 (Page 03 // LIFE & SPACE) ================= -->
+        <!-- ================= 第 3 页：生活与私属空间 (Page 03 · LIFE & SPACE) ================= -->
         <div class="desktop-carousel-page" data-page-index="2">
-          <nav class="app-bento-grid app-bento-grid-p3" aria-label="生活与私属空间">
+          <div class="desktop-grid" data-grid-page="2">
+            <div class="grid-slots" aria-hidden="true"></div>
 
             <!-- 14. 生活服务 -->
             <button class="bento-card" type="button" data-app="lifeService">
@@ -565,7 +445,7 @@
                 <div class="bento-title">生活服务</div>
                 <div class="bento-subtitle">
                   <span class="bento-en">LIFE SERVICE</span>
-<span class="bento-zh">日常事务</span>
+                  <span class="bento-zh">日常事务</span>
                 </div>
               </div>
             </button>
@@ -583,30 +463,129 @@
                 <div class="bento-title">溯流空间</div>
                 <div class="bento-subtitle">
                   <span class="bento-en">RETRO SPACE</span>
-<span class="bento-zh">私属领地</span>
+                  <span class="bento-zh">私属领地</span>
                 </div>
               </div>
             </button>
-
-          </nav>
+          </div>
         </div>
-
       </div>
     </div>
+    <!-- 组件库存放区：收进组件库的英雄组件挂在这里，不占网格；desktop-grid.js 按布局状态挪进挪出 -->
+    <div id="desktopWidgetStash" class="desktop-widget-stash" hidden aria-hidden="true">
+      <!-- 方案 A · 酸性机能档案卡（4×2，与经典红卡共用同一套资料，默认收在组件库） -->
+      <div class="desktop-hero-widget desktop-hero-acid" data-widget-id="profileAcid">
+        <div class="acid-stage">
+          <!-- 上准星放在底板外，避免上移后被底板的切角与 overflow 裁掉 -->
+          <span class="acid-corner is-tr" aria-hidden="true"></span>
+          <!-- 装饰：右上四枚叉号（实 / 空 / 实 / 实），右缘与上准星对齐 -->
+          <span class="acid-deco-crosses" aria-hidden="true">
+            <svg viewBox="0 0 16 16"><path d="M0 2.5 L2.5 0 L8 5.5 L13.5 0 L16 2.5 L10.5 8 L16 13.5 L13.5 16 L8 10.5 L2.5 16 L0 13.5 L5.5 8 Z"/></svg>
+            <svg viewBox="0 0 16 16" class="is-hollow"><path d="M0 2.5 L2.5 0 L8 5.5 L13.5 0 L16 2.5 L10.5 8 L16 13.5 L13.5 16 L8 10.5 L2.5 16 L0 13.5 L5.5 8 Z"/></svg>
+            <svg viewBox="0 0 16 16"><path d="M0 2.5 L2.5 0 L8 5.5 L13.5 0 L16 2.5 L10.5 8 L16 13.5 L13.5 16 L8 10.5 L2.5 16 L0 13.5 L5.5 8 Z"/></svg>
+            <svg viewBox="0 0 16 16"><path d="M0 2.5 L2.5 0 L8 5.5 L13.5 0 L16 2.5 L10.5 8 L16 13.5 L13.5 16 L8 10.5 L2.5 16 L0 13.5 L5.5 8 Z"/></svg>
+          </span>
+          <!-- 装饰：空心圆 + 横躺电池，与右上叉号同一排，左缘与名字色条、下方方块对齐 -->
+          <span class="acid-deco-icons" aria-hidden="true">
+            <svg viewBox="0 0 13 13" class="acid-icon-ring"><circle class="is-shell" cx="6.5" cy="6.5" r="5.8"/></svg>
+            <svg viewBox="0 0 24 13" class="acid-icon-battery"><rect class="is-shell" x="0.7" y="1.7" width="19.6" height="9.6"/><rect x="21" y="4.5" width="2.5" height="4"/><rect x="3" y="4" width="4" height="5"/><rect x="8.5" y="4" width="4" height="5"/></svg>
+          </span>
+          <!-- 装饰：立绘左侧竖排四枚加号，末枚底边与立绘下沿齐平 -->
+          <span class="acid-deco-plus" aria-hidden="true">
+            <svg viewBox="0 0 8 8"><path d="M3.3 0 H4.7 V3.3 H8 V4.7 H4.7 V8 H3.3 V4.7 H0 V3.3 H3.3 Z"/></svg>
+            <svg viewBox="0 0 8 8"><path d="M3.3 0 H4.7 V3.3 H8 V4.7 H4.7 V8 H3.3 V4.7 H0 V3.3 H3.3 Z"/></svg>
+            <svg viewBox="0 0 8 8"><path d="M3.3 0 H4.7 V3.3 H8 V4.7 H4.7 V8 H3.3 V4.7 H0 V3.3 H3.3 Z"/></svg>
+            <svg viewBox="0 0 8 8"><path d="M3.3 0 H4.7 V3.3 H8 V4.7 H4.7 V8 H3.3 V4.7 H0 V3.3 H3.3 Z"/></svg>
+          </span>
+          <!-- 档案底板：透明无底板，仅承载下准星与竖排英文 -->
+          <div class="profile-card acid-dossier-card">
+            <span class="acid-corner is-br" aria-hidden="true"></span>
+            <span class="acid-vertical-en" aria-hidden="true">RETROFLOW</span>
+          </div>
 
+          <!-- 左侧 3:4 立绘：向上破出档案底板上沿，背后是绯红芯片轮廓线框 -->
+          <div class="photo-stack-wrapper acid-photo-col">
+            <span class="acid-photo-backdrop" aria-hidden="true"></span>
+            <div class="photo-layer-front">
+              <div class="photo-inner">
+                <img alt="酸性档案卡照片" hidden />
+              </div>
+            </div>
+          </div>
+
+          <!-- 右侧信息区：状态胶囊 + 序列号 + 名字 + 签名 + 条码 -->
+          <div class="acid-info">
+            <!-- 名字组：色条 / 名字 / 序列号三排一起位移；背后垫一块极淡的主题色底板 -->
+            <div class="acid-lines">
+              <span class="acid-plate" aria-hidden="true"><i class="acid-plate-tri"></i></span>
+              <span class="acid-name-rule" aria-hidden="true"><i></i><i></i></span>
+              <input type="text" class="profile-name" value="PROXY-0" placeholder="输入名字" spellcheck="false">
+              <div class="acid-status-row">
+              <span class="acid-status-chip">
+                <!-- 四道静态折线，取代原 ACTIVE 文字，颜色与 ENVOY 一致 -->
+                <svg class="acid-status-arrows" viewBox="0 0 20 7" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square">
+                  <path d="M0 0 L3.5 3.5 L0 7"/>
+                  <path d="M5.5 0 L9 3.5 L5.5 7"/>
+                  <path d="M11 0 L14.5 3.5 L11 7"/>
+                  <path d="M16.5 0 L20 3.5 L16.5 7"/>
+                </svg>
+              </span>
+              <span class="acid-serial">
+                <span class="acid-serial-tag">ENVOY</span>
+                <span class="profile-serial-num">NO.000517</span>
+              </span>
+              </div>
+            </div>
+            <!-- 装饰行：左侧四方块（实 / 实 / 空 / 实），右端双圆点（空 / 实） -->
+            <div class="acid-deco-marks" aria-hidden="true">
+              <span class="acid-deco-squares">
+                <i></i><i></i><i class="is-hollow"></i><i></i>
+              </span>
+              <span class="acid-deco-dots">
+                <i class="is-hollow"></i><i></i>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 底栏：左侧在役履历，右侧切角 DIVE 模块 -->
+        <div class="acid-footer">
+          <div class="acid-service">
+            <span class="acid-service-tag">
+              <!-- 纯装饰扇形：外圈描边 + 内部 3/4 扇面 -->
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/>
+                <path d="M12 12 V5.5 A6.5 6.5 0 1 1 5.5 12 Z"/>
+              </svg>
+              <span>SERVICE</span>
+            </span>
+            <!-- 纯装饰进度条：固定约 45% 填充，末端斜切 -->
+            <span class="acid-service-bar" aria-hidden="true"><i></i></span>
+          </div>
+          <button class="acid-dive-module" type="button" data-hero-dive="true" aria-label="快速下潜进入副本">
+            <svg class="acid-dive-x" viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M0 2.5 L2.5 0 L8 5.5 L13.5 0 L16 2.5 L10.5 8 L16 13.5 L13.5 16 L8 10.5 L2.5 16 L0 13.5 L5.5 8 Z"/>
+            </svg>
+            <span class="acid-dive-en">DIVE</span>
+            <span class="acid-dive-zh">进入副本</span>
+            <!-- 实心粗箭头 -->
+            <svg class="acid-dive-arrow" viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M0 5 H8 V1 L16 8 L8 15 V11 H0 Z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
     <!-- 桌面分页指示器（置于桌面内容与 Dock 栏之间） -->
     <div class="desktop-page-indicator" id="desktopPageIndicator" role="tablist" aria-label="桌面分页控制">
-      <button class="page-indicator-dot active" type="button" data-page="0" aria-label="切换至第1页：系统主干" role="tab" aria-selected="true">
+      <button class="page-indicator-dot active" type="button" data-page="0" aria-label="切换至第1页" role="tab" aria-selected="true">
         <span class="dot-core"></span>
-        <span class="dot-label">01 · CORE</span>
       </button>
-      <button class="page-indicator-dot" type="button" data-page="1" aria-label="切换至第2页：媒体与资产" role="tab" aria-selected="false">
+      <button class="page-indicator-dot" type="button" data-page="1" aria-label="切换至第2页" role="tab" aria-selected="false">
         <span class="dot-core"></span>
-        <span class="dot-label">02 · ASSETS</span>
       </button>
-      <button class="page-indicator-dot" type="button" data-page="2" aria-label="切换至第3页：生活与空间" role="tab" aria-selected="false">
+      <button class="page-indicator-dot" type="button" data-page="2" aria-label="切换至第3页" role="tab" aria-selected="false">
         <span class="dot-core"></span>
-        <span class="dot-label">03 · SPACE</span>
       </button>
     </div>
 
@@ -11284,7 +11263,7 @@
   <script src="js/storage.js?v=273"></script>
   <script src="js/data-registry.js?v=403"></script>
   <script src="js/preset-assistants.js?v=3"></script>
-  <script src="js/store.js?v=258"></script>
+  <script src="js/store.js?v=263"></script>
   <script src="js/external-services.js?v=1"></script>
   <script src="js/psych-store.js?v=191"></script>
   <script src="js/psych-archive-app.js?v=198"></script>
@@ -11303,7 +11282,7 @@
   <script src="js/form-editor-modal.js?v=186"></script>
   <script src="js/gallery-store.js?v=304"></script>
   <script src="js/file-store.js?v=301"></script>
-  <script src="js/data-vault.js?v=13"></script>
+  <script src="js/data-vault.js?v=14"></script>
   <script src="js/data-vault-ui.js?v=3"></script>
   <script src="js/keymatch.js?v=1"></script>
   <script src="js/worldbook-engine.js?v=5"></script>
@@ -11313,12 +11292,13 @@
   <script src="js/online-ui.js?v=382"></script>
   <script src="js/avatar-forge.js?v=190"></script>
   <script src="js/gallery-app.js?v=313"></script>
-  <script src="js/profile.js?v=190"></script>
+  <script src="js/profile.js?v=192"></script>
   <script src="js/clock.js?v=186"></script>
-  <script src="js/apps.js?v=245"></script>
+  <script src="js/desktop-grid.js?v=6"></script>
+  <script src="js/apps.js?v=249"></script>
   <script src="js/dock.js?v=187"></script>
-  <script src="js/theme.js?v=210"></script>
-   <script src="js/theme-ui.js?v=225"></script>
+  <script src="js/theme.js?v=213"></script>
+  <script src="js/theme-ui.js?v=226"></script>
   <script src="js/api-core.js?v=191"></script>
   <script src="js/tts-cache.js?v=186"></script>
   <script src="js/api-ui.js?v=208"></script>
@@ -11333,10 +11313,10 @@
   <script src="js/ota-ui.js?v=2"></script>
   <script src="js/settings.js?v=191"></script>
   <script src="js/external-services-ui.js?v=1"></script>
-  <script src="js/persona-ui.js?v=189"></script>
+  <script src="js/persona-ui.js?v=190"></script>
   <script src="js/resonance-ui.js?v=296"></script>
   <script src="js/fork-archive-ui.js?v=35"></script>
-  <script src="js/fork-pick-ui.js?v=19"></script>
+  <script src="js/fork-pick-ui.js?v=20"></script>
 <script src="js/fork-ready-ui.js?v=38"></script>
     <script src="js/fork-transition-ui.js?v=7"></script>
     <script src="js/fork-run-parser.js?v=5"></script>

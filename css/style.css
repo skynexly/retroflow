@@ -4,6 +4,40 @@
   box-sizing: border-box;
 }
 
+/* ==========================================================================
+   启动遮罩（纯色，无内容）
+   冷启动时桌面 DOM 是静态写死的初始态，存档布局与主题着色都是异步后到，
+   中间会看见「初始桌面 → 存档布局 → 主题配色」三段跳。这层纯色把这段
+   窗口整个盖住，等 js/apps.js 确认桌面与磁贴美化都就绪后淡出。
+   z-index 高于全站最高层（16010），壁纸层、Dock、各类弹层都盖得住。
+   ========================================================================== */
+.boot-curtain {
+  position: fixed;
+  inset: 0;
+  z-index: 17000;
+  background-color: var(--bg-color);
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 0.32s ease;
+}
+
+/* 解除后只做淡出，淡完退出命中测试，不挡任何交互 */
+.boot-curtain.is-off {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.boot-curtain.is-gone {
+  display: none;
+}
+
+/* 减少动效偏好下直接切走，不做淡出 */
+@media (prefers-reduced-motion: reduce) {
+  .boot-curtain {
+    transition: none;
+  }
+}
+
 /* 全局滚动条隐藏。
    本项目模拟手机终端界面，任何可视滚动条都会破坏拟物沉浸感，
    而滚动能力本身完全保留（触摸、滚轮、键盘均不受影响）。
@@ -111,10 +145,114 @@ body.has-wallpaper {
   width: 100%;
   max-width: 680px;
   margin: 0 auto;
-   padding: calc(env(safe-area-inset-top, 0px) + clamp(16px, 3vh, 24px)) 10px calc(env(safe-area-inset-bottom, 0px) + 96px);
+  padding: calc(env(safe-area-inset-top, 0px) + clamp(16px, 3vh, 24px)) 10px calc(env(safe-area-inset-bottom, 0px) + 96px);
   display: flex;
   flex-direction: column;
   gap: clamp(14px, 2.5vh, 18px);
+}
+/* ==========================================================================
+   桌面网格系统（3 页 × 4 列 × 5 行等规格）
+   单格高度由 --desktop-cell-h 统一控制，卡片态与图标态均对齐到同一行高，
+   这样 1×1 图标、2×1 卡片、4×2 英雄卡才能严丝合缝地拼在同一套网格上。
+   ========================================================================== */
+.desktop-grid {
+  --desktop-cell-h: clamp(92px, 13.6dvh, 128px);
+  --desktop-gap: clamp(8px, 2.2vw, 12px);
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* 行高下限为 --desktop-cell-h，其余按 1fr 平分轮播区的剩余高度 */
+  grid-template-rows: repeat(5, minmax(var(--desktop-cell-h), 1fr));
+  gap: var(--desktop-gap);
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  /* 超长屏封顶：单行最高 156px，避免磁贴被拉成竖条 */
+  max-height: calc(156px * 5 + var(--desktop-gap) * 4);
+}
+/* 占位格容器：不参与排版，仅在编辑态用作落位参考底块 */
+.grid-slots {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(5, minmax(var(--desktop-cell-h), 1fr));
+  gap: var(--desktop-gap);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+.grid-slot-cell {
+  border-radius: 4px;
+  background-color: rgba(var(--secondary-color-rgb), 0.05);
+}
+body.desktop-editing .grid-slots {
+  opacity: 1;
+}
+/* 拖拽落点预览框：高亮即将入住的区域 */
+.grid-drop-preview {
+  display: none;
+  border-radius: 4px;
+  border: 1.5px dashed rgba(var(--primary-color-rgb), 0.55);
+  background-color: rgba(var(--primary-color-rgb), 0.08);
+  pointer-events: none;
+  z-index: 1;
+}
+.grid-drop-preview.is-active {
+  display: block;
+}
+/* 编辑态：桌面整体进入可整理状态 */
+body.desktop-editing .desktop-grid {
+  touch-action: none;
+}
+/* 编辑态里组件是“可拿起来的物件”，不是滚动区域：
+   不阻断的话，手指一横向移动就被浏览器当成翻页，pointermove 直接丢掉 */
+body.desktop-editing .desktop-carousel-viewport {
+  touch-action: pan-y;
+}
+body.desktop-editing .bento-card,
+body.desktop-editing .desktop-hero-widget {
+  touch-action: none;
+  cursor: grab;
+  animation: desktop-jiggle 0.32s ease-in-out infinite alternate;
+}
+body.desktop-editing .desktop-hero-widget {
+  animation: none;
+}
+body.desktop-editing .bento-card.is-dragging-source,
+body.desktop-editing .desktop-hero-widget.is-dragging-source {
+  opacity: 0.28;
+  animation: none;
+}
+/* 轻微摆动，传达“可以挪”的手感；幅度极小，不干扰阅读 */
+@keyframes desktop-jiggle {
+  from { transform: rotate(-0.32deg); }
+  to   { transform: rotate(0.32deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.desktop-editing .bento-card { animation: none; }
+}
+/* 拖拽浮层：跟随手指的幽灵副本 */
+.desktop-drag-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.92;
+  transform-origin: center center;
+  box-shadow: 0 14px 34px rgba(var(--secondary-color-rgb), 0.22);
+  transition: box-shadow 0.16s ease;
+}
+/* 拖拽期间锁掉页面滚动与文本选择 */
+body.desktop-dragging {
+  user-select: none;
+  -webkit-user-select: none;
+  overscroll-behavior: contain;
+}
+body.desktop-dragging .desktop-carousel-viewport {
+  scroll-snap-type: none;
 }
 
 /* 系统时钟小组件（时分大字阶错落排版，零分割线） */
@@ -173,6 +311,7 @@ body.has-wallpaper {
   font-weight: 500;
 }
 
+/* 复合英雄角色组件容器（承载顶部跑马灯、红卡与破框照片） */
 /* 复合英雄角色组件容器（承载顶部跑马灯、红卡与破框照片） */
 .profile-hero-section {
   position: relative;
@@ -425,6 +564,25 @@ body.has-wallpaper {
 .profile-bio:hover {
   background-color: rgba(var(--bg-color-rgb), 0.15);
 }
+/* 短句：与签名完全同一套输入框重置与字号，字体继承主题 */
+.profile-line {
+  font-size: clamp(11px, 2.8vw, 12.5px);
+  color: var(--bg-color);
+  opacity: 0.75;
+  line-height: 1.35;
+  background: transparent;
+  border: none;
+  outline: none;
+  width: 100%;
+  font-family: inherit;
+  padding: 1px 2px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+.profile-line:focus,
+.profile-line:hover {
+  background-color: rgba(var(--bg-color-rgb), 0.15);
+}
 
 /* 原「全局时空广播跑马灯」样式已移除（.profile-marquee-wrap / .profile-marquee-track /
    .marquee-item / @keyframes marqueeRun）。它在 120Hz 屏上常驻触发合成层重绘，
@@ -528,6 +686,11 @@ body.has-wallpaper {
   /* 顶部留出余量，避免第一页破框头像与跑马灯阴影被 overflow-y 裁切 */
   padding-top: 12px;
   margin-top: -12px;
+  /* 纵向吃掉时钟与分页指示器之间的全部剩余高度，传给网格 */
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .desktop-carousel-viewport::-webkit-scrollbar {
@@ -536,12 +699,16 @@ body.has-wallpaper {
 
 .desktop-carousel-track {
   display: flex;
-  width: 300%;
+  /* 页数由 desktop-grid.js 写入 --desktop-pages，轨道宽度跟着页数走 */
+  width: calc(100% * var(--desktop-pages, 3));
   transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
 }
 
 .desktop-carousel-page {
-  width: calc(100% / 3);
+  width: calc(100% / var(--desktop-pages, 3));
   flex-shrink: 0;
   scroll-snap-align: start;
   scroll-snap-stop: always;
@@ -623,76 +790,1203 @@ body.has-wallpaper {
   font-size: 10.5px;
   opacity: 0.75;
 }
+/* ==========================================================================
+   4×2 复合英雄组件（破框立绘 + 红卡 + 履历条，整体跨 4 列 2 行）
+   高度被严格锁死在两行网格内，内部全部改为紧凑刻度。
+   ========================================================================== */
+.desktop-hero-widget {
+  grid-column: 1 / span 4;
+  grid-row: 1 / span 2;
+  position: relative;
+  height: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 0;
+  z-index: 2;
+}
+/* 英雄卡内部：整体上移，为上下破框的立绘预留呼吸空间，红卡本身不再被撑高 */
+.desktop-hero-widget .profile-hero-section {
+  flex: 0 0 auto;
+  min-height: 0;
+  padding-top: calc(clamp(10px, 2.2vw, 13px) + 13px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* 底层横卡：原版精悍扁平比例，由内容撑高而非占满网格 */
+.desktop-hero-widget .profile-card {
+  width: 100%;
+  height: auto;
+  flex: 0 0 auto;
+  min-height: clamp(108px, 16.5dvh, 126px);
+  padding: clamp(10px, 2.5vw, 13px) clamp(10px, 2.6vw, 14px) clamp(10px, 2.5vw, 13px) clamp(9px, 2.2vw, 12px);
+  gap: clamp(8px, 2vw, 11px);
+  margin-bottom: 0;
+  box-sizing: border-box;
+  overflow: visible;
+  box-shadow: 0 8px 22px rgba(var(--primary-color-rgb), 0.2);
+}
+/* 立绘加宽至接近原版，3:4 立绘明显高于红卡形成上下对称破框 */
+.desktop-hero-widget .photo-stack-wrapper {
+  width: clamp(116px, 30.5vw, 140px);
+}
+.desktop-hero-widget .photo-barcode-seal {
+  left: -13px;
+  width: clamp(30px, 8.6vw, 38px);
+  height: clamp(11px, 3vw, 13px);
+}
+/* 破框带右侧同步指示器：立于红卡上沿之外、立绘右边缘右侧（三态点 + 计数 + SYNC） */
+.desktop-hero-widget .profile-sync-indicator {
+  position: absolute;
+  top: calc(-1 * clamp(20px, 4.6vw, 26px));
+  right: clamp(10px, 2.6vw, 14px);
+  display: flex;
+  align-items: center;
+  gap: 3.5px;
+  color: rgba(var(--secondary-color-rgb), 0.5);
+  font-family: var(--mono-font);
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  text-shadow: none;
+}
+.desktop-hero-widget .profile-sync-indicator .sync-dot {
+  width: 4.5px;
+  height: 4.5px;
+  border-radius: 50%;
+  background-color: rgba(var(--secondary-color-rgb), 0.28);
+  flex-shrink: 0;
+}
+.desktop-hero-widget .profile-sync-indicator .sync-dot.is-lit {
+  background-color: var(--secondary-color);
+}
+.desktop-hero-widget .profile-sync-indicator .sync-num {
+  font-size: clamp(11px, 2.8vw, 12.5px);
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  margin-left: 1px;
+}
+.desktop-hero-widget .profile-sync-indicator .sync-label {
+  font-size: clamp(10px, 2.6vw, 11.5px);
+  font-weight: 400;
+  letter-spacing: 0.8px;
+  opacity: 0.62;
+}
+/* 红卡内部文字紧凑化 */
+.desktop-hero-widget .profile-info {
+  gap: 2px;
+  justify-content: center;
+}
+.desktop-hero-widget .profile-header-group {
+  gap: 1px;
+}
+.desktop-hero-widget .profile-name {
+  font-size: clamp(16.5px, 4.6vw, 20px);
+}
+.desktop-hero-widget .profile-bio {
+  font-size: clamp(11.5px, 2.9vw, 13px);
+}
+.desktop-hero-widget .profile-serial-id {
+  top: 6px;
+  right: 8px;
+  font-size: clamp(8.5px, 2.1vw, 9.5px);
+  gap: 4px;
+}
+.desktop-hero-widget .profile-card-barcode-deco {
+  height: 8px;
+  margin-top: 3px;
+}
+/* 右下角 DIVE 抽拉标签：悬于红卡下沿外侧并放大（bottom -22px，避免与卡片叠压） */
+.desktop-hero-widget .profile-folder-tab {
+  bottom: -22px;
+  height: clamp(22px, 5.6vw, 25px);
+  padding: 0 clamp(26px, 7vw, 34px);
+  gap: 3px;
+  font-size: clamp(10px, 2.6vw, 11.5px);
+}
+.desktop-hero-widget .profile-folder-tab svg {
+  width: 13px;
+  height: 13px;
+}
+/* 左下角水印英文收紧，避免被履历条压到 */
+.desktop-hero-widget .card-bg-watermark {
+  bottom: -15px;
+  font-size: clamp(9px, 2.3vw, 10.5px);
+  letter-spacing: 0.9px;
+}
+/* 履历条：高度可控，不参与撑高 */
+.desktop-hero-widget .service-record-strip {
+  flex: none;
+  padding: 2px 4px;
+  gap: clamp(9px, 2.2vw, 11px);
+  height: clamp(21px, 3.8vw, 26px);
+  /* 吸附到底部吃掉多余留白，18px 再上收 8px 后保底 10px，仍避开 DIVE 标签与水印 */
+  margin-top: auto;
+  margin-bottom: 8px;
+  padding-top: 10px;
+}
+.desktop-hero-widget .service-record-tag {
+  font-size: clamp(10.5px, 2.5vw, 12px);
+  gap: 4px;
+}
+.desktop-hero-widget .service-record-tag svg {
+  width: 14px;
+  height: 14px;
+}
+.desktop-hero-widget .service-metric-item {
+  font-size: clamp(10.5px, 2.5vw, 12px);
+  gap: 3px;
+}
+.desktop-hero-widget .service-metric-item .metric-label {
+  font-size: clamp(10px, 2.4vw, 11.5px);
+}
+.desktop-hero-widget .service-metric-item .metric-val {
+  font-size: clamp(13px, 3.3vw, 15px);
+}
+.desktop-hero-widget .service-metric-item .metric-unit {
+  font-size: clamp(10px, 2.4vw, 11.5px);
+}
+/* ==========================================================================
+   编辑态顶部操作条（浮空胶囊：固定在右上角，不再参与时钟行排版）
+   纵向故意落在时钟行「上方那条空带」——日期/星期列是底部对齐的，
+   它们头顶本来就空着，所以按钮浮在这里既不挤压时钟，也不压住日期文字。
+   ========================================================================== */
+.desktop-edit-bar {
+  display: none;
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 2px);
+  right: clamp(8px, 2.6vw, 14px);
+  /* 高于底部 Dock(100)，低于全屏应用页(900)与各类弹层(14000) */
+  z-index: 300;
+  align-items: center;
+  gap: 5px;
+  padding: 4px;
+  box-sizing: border-box;
+  border-radius: 17px;
+  background-color: rgba(var(--secondary-color-rgb), 0.06);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  -webkit-tap-highlight-color: transparent;
+}
+body.desktop-editing .desktop-edit-bar {
+  display: inline-flex;
+}
+.desktop-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 clamp(8px, 2.2vw, 11px);
+  border: none;
+  border-radius: 13px;
+  background-color: rgba(var(--secondary-color-rgb), 0.08);
+  color: var(--secondary-color);
+  font-family: var(--mono-font);
+  font-size: clamp(10px, 2.4vw, 11px);
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: background-color 0.18s ease, transform 0.18s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.desktop-edit-btn svg {
+  width: 13px;
+  height: 13px;
+  fill: currentColor;
+  display: block;
+}
+.desktop-edit-btn:active {
+  transform: scale(0.95);
+}
+.desktop-edit-btn.is-primary {
+  background-color: var(--primary-color);
+  color: var(--bg-color);
+}
+body.has-wallpaper.has-wallpaper-mask .desktop-edit-btn {
+  background-color: rgba(var(--bg-color-rgb), 0.16);
+  color: rgba(var(--bg-color-rgb), 0.92);
+}
+body.has-wallpaper.has-wallpaper-mask .desktop-edit-btn.is-primary {
+  background-color: var(--primary-color);
+  color: var(--bg-color);
+}
+/* ==========================================================================
+   形态切换胶囊（仅编辑态可见：日常态 display:none，不抢卡片点击热区）
+   ========================================================================== */
+.tile-mode-toggle {
+  display: none;
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 6;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background-color: rgba(var(--secondary-color-rgb), 0.9);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+body.desktop-editing .bento-card .tile-mode-toggle {
+  display: flex;
+}
+.tile-mode-toggle .tile-mode-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+.tile-mode-toggle svg {
+  width: 12px;
+  height: 12px;
+  display: block;
+  fill: none;
+  stroke: var(--bg-color);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+.tile-mode-toggle:active {
+  transform: scale(0.9);
+}
+/* 图标态下胶囊略往内收，避免超出 1×1 格子右边界 */
+.bento-card.is-icon-mode .tile-mode-toggle {
+  top: 0;
+  right: 0;
+  width: 20px;
+  height: 20px;
+}
+/* 编辑态下卡片态左上角留白，标题不压到胶囊下方 */
+body.desktop-editing .bento-card:not(.is-icon-mode) .bento-content {
+  padding-right: 16px;
+}
+/* ==========================================================================
+   组件库：存放区 / 编辑态收起按钮 / 编辑栏入口 / 底部抽屉面板
+   ========================================================================== */
+/* 收进组件库的组件挂在这里，不参与布局 */
+.desktop-widget-stash {
+  display: none !important;
+}
+/* 英雄组件右上角「收进组件库」按钮：仅编辑态可见，浮在立绘与卡片之上 */
+.tile-stash-toggle {
+  display: none;
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 30;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+  color: var(--bg-color);
+  box-shadow: 0 2px 8px rgba(var(--secondary-color-rgb), 0.3);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.18s ease;
+}
+body.desktop-editing .desktop-hero-widget .tile-stash-toggle {
+  display: flex;
+}
+.tile-stash-toggle svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+  fill: none;
+}
+.tile-stash-toggle:active {
+  transform: scale(0.9);
+}
+/* 编辑栏「组件库」按钮：图标为描边 SVG，不能被 .desktop-edit-btn svg 的填充覆盖 */
+.widget-lib-trigger {
+  position: relative;
+}
+.widget-lib-trigger .widget-lib-trigger-icon {
+  display: inline-flex;
+  align-items: center;
+}
+.desktop-edit-btn.widget-lib-trigger svg {
+  fill: none;
+}
+.widget-lib-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background-color: var(--primary-color);
+  color: var(--bg-color);
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  box-sizing: border-box;
+}
+.widget-lib-badge[hidden] {
+  display: none !important;
+}
+/* 底部抽屉：沿用 .avatar-modal-backdrop / .avatar-modal-sheet 的遮罩与滑入动画 */
+.widget-lib-backdrop[hidden] {
+  display: none !important;
+}
+.widget-lib-sheet {
+  /* 顶部让出安全区（灵动岛 / 刘海），面板再高也不顶到状态栏 */
+  max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 48px);
+  gap: 14px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.widget-lib-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.widget-lib-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.widget-lib-title-cn {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--secondary-color);
+  letter-spacing: 0.5px;
+}
+.widget-lib-title-en {
+  font-family: var(--mono-font);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  color: rgba(var(--secondary-color-rgb), 0.45);
+}
+.widget-lib-close {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background-color: rgba(var(--secondary-color-rgb), 0.08);
+  color: var(--secondary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.widget-lib-close svg {
+  width: 15px;
+  height: 15px;
+  display: block;
+  fill: none;
+}
+.widget-lib-close:active {
+  transform: scale(0.92);
+}
+.widget-lib-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  /* 预览组件的破框立绘会略探出舞台，留出左右余量不被裁掉 */
+  padding: 2px 2px 4px;
+}
+.widget-lib-item {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 12px 14px;
+  border-radius: 12px;
+  background-color: var(--card-bg-color);
+  flex-shrink: 0;
+}
+.widget-lib-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.widget-lib-item-name {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+.widget-lib-item-cn {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--secondary-color);
+  white-space: nowrap;
+}
+.widget-lib-item-en {
+  font-family: var(--mono-font);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: rgba(var(--secondary-color-rgb), 0.45);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.widget-lib-item-tags {
+  display: flex;
+  gap: 5px;
+  flex-shrink: 0;
+}
+.widget-lib-tag {
+  height: 18px;
+  padding: 0 7px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  background-color: rgba(var(--secondary-color-rgb), 0.08);
+  color: rgba(var(--secondary-color-rgb), 0.7);
+  font-family: var(--mono-font);
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1;
+}
+.widget-lib-item.is-stashed .widget-lib-tag.is-state {
+  background-color: var(--primary-color);
+  color: var(--bg-color);
+}
+/* 预览舞台：宽度给 JS 量取缩放比，高度由 JS 按缩放后尺寸写入；不加左右内边距以免量错 */
+.widget-lib-preview-stage {
+  position: relative;
+  width: 100%;
+  overflow: visible;
+  margin-top: 6px;
+}
+.widget-lib-clone {
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin: 0;
+  transform-origin: top left;
+  pointer-events: none;
+  user-select: none;
+  animation: none !important;
+}
+.widget-lib-clone .tile-stash-toggle {
+  display: none !important;
+}
+.widget-lib-action {
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background-color: rgba(var(--secondary-color-rgb), 0.08);
+  color: var(--secondary-color);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.18s ease;
+}
+.widget-lib-action.is-primary {
+  background-color: var(--primary-color);
+  color: var(--bg-color);
+}
+.widget-lib-action:active {
+  transform: scale(0.97);
+}
+/* ==========================================================================
+   方案 A · 酸性机能档案卡（.desktop-hero-acid，4×2）
+   - 色彩只用现有主题变量：底板 card-bg / 衬块与水印 primary / 文字与模块 secondary /
+     状态灯 decor / 反白字 bg
+   - 立绘单向上破框：底部收在底板内，顶部连同绯红切角衬块探出底板上沿
+   - 不用分割线，层次全靠实色块反差、切角与准星
+   ========================================================================== */
+.desktop-hero-widget.desktop-hero-acid {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+.desktop-hero-acid .acid-stage {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  /* 立绘宽度（无容器查询时的兜底刻度） */
+  --acid-photo-w: clamp(96px, 27vw, 118px);
+  --acid-photo-h: calc(var(--acid-photo-w) * 4 / 3);
+  /* 底板上沿 = 立绘顶端再往下 22px，保证立绘始终破出 22px */
+  --acid-card-top: max(14px, calc(100% - 10px - var(--acid-photo-h) + 22px));
+  /* 右侧两枚准星的垂直收紧量：上准星下移、下准星上移，各挪一半 */
+  --acid-corner-tighten: 12px;
+  /* 上准星单独的额外下移量（只影响上准星） */
+  --acid-corner-tr-drop: 6px;
+  /* 右侧信息区左缘：顶部圆环电池、名字上方色条、下方方块三者共用这一条竖线 */
+  --acid-info-x: calc(10px + var(--acid-photo-w) + 16px);
+  /* 顶部一排图标高度：右上叉号与圆环电池共用 */
+  --acid-cross-size: 13px;
+}
+/* 支持容器查询时，立绘随舞台高度伸缩：高不超过舞台减 16px，宽不超过舞台的 36% */
+@supports (container-type: size) {
+  .desktop-hero-acid .acid-stage {
+    container-type: size;
+    --acid-photo-w: min(calc((100cqh - 16px) * 0.75), 36cqw);
+  }
+}
+/* 档案底板：覆盖 .profile-card 的红底、内边距、外边距与最小高度
+   —— 无底板模式：背景全透明，只保留准星 / 水印 / 竖排英文这些「浮在空中的机能记号」 */
+.desktop-hero-widget.desktop-hero-acid .acid-dossier-card {
+  position: absolute;
+  top: var(--acid-card-top);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: auto;
+  height: auto;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  gap: 0;
+  display: block;
+  background-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  /* 右上、左下两处切角 */
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+  overflow: hidden;
+  z-index: 1;
+}
+/* 右侧两枚 L 型准星 */
+.desktop-hero-acid .acid-corner {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-color: var(--secondary-color);
+  border-style: solid;
+  border-width: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+.desktop-hero-acid .acid-corner.is-tr {
+  /* 上准星：贴在底板上沿之外，向下收进收紧量的一半，再额外下移一档 */
+  top: calc(var(--acid-card-top) - 8px + var(--acid-corner-tighten) / 2 + var(--acid-corner-tr-drop));
+  right: 7px;
+  border-top-width: 2px;
+  border-right-width: 2px;
+}
+.desktop-hero-acid .acid-corner.is-br {
+  /* 下准星：自底边向上收进收紧量的一半 */
+  bottom: calc(7px + var(--acid-corner-tighten) / 2);
+  right: 7px;
+  border-bottom-width: 2px;
+  border-right-width: 2px;
+}
+/* 右缘竖排英文 */
+.desktop-hero-acid .acid-vertical-en {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  writing-mode: vertical-rl;
+  /* 换用机能展示字体（Bebas Neue）：竖排大写更紧凑，字号微调补回视觉高度 */
+  font-family: var(--display-font);
+  font-size: 8px;
+  /* Bebas 只有 Regular 一档，写 700 会被合成假粗体，边缘发糊 */
+  font-weight: 400;
+  /* Bebas 单字推进宽度比等宽体窄，字距放大到 3px 以维持整条竖排的总长度 */
+  letter-spacing: 3px;
+  color: rgba(var(--secondary-color-rgb), 0.4);
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+  z-index: 2;
+}
+/* 舞台装饰（主题色）：右上四枚叉号，右缘与上准星对齐，底边距上准星 6px；
+   尺寸收到 13px，--acid-cross-size 同时管叉号大小与 top 算式，底边位置不变 */
+.desktop-hero-acid .acid-deco-crosses {
+  position: absolute;
+  right: 7px;
+  top: max(0px, calc(var(--acid-card-top) - 8px + var(--acid-corner-tighten) / 2 + var(--acid-corner-tr-drop) - 6px - var(--acid-cross-size)));
+  display: flex;
+  gap: 5px;
+  color: var(--primary-color);
+  pointer-events: none;
+  z-index: 4;
+}
+.desktop-hero-acid .acid-deco-crosses svg {
+  width: var(--acid-cross-size);
+  height: var(--acid-cross-size);
+  display: block;
+  fill: currentColor;
+  overflow: visible;
+}
+.desktop-hero-acid .acid-deco-crosses svg.is-hollow {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linejoin: miter;
+}
+/* 空心圆 + 横躺电池：top 与叉号同一算式、高度同为 --acid-cross-size，两组上下边对齐；
+   左缘与名字色条、下方方块对齐 */
+.desktop-hero-acid .acid-deco-icons {
+  position: absolute;
+  left: var(--acid-info-x);
+  top: max(0px, calc(var(--acid-card-top) - 8px + var(--acid-corner-tighten) / 2 + var(--acid-corner-tr-drop) - 6px - var(--acid-cross-size)));
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: var(--acid-cross-size);
+  color: var(--primary-color);
+  pointer-events: none;
+  z-index: 3;
+}
+.desktop-hero-acid .acid-deco-icons svg {
+  display: block;
+  height: var(--acid-cross-size);
+  fill: currentColor;
+  overflow: visible;
+}
+.desktop-hero-acid .acid-deco-icons .acid-icon-ring {
+  width: var(--acid-cross-size);
+}
+.desktop-hero-acid .acid-deco-icons .acid-icon-battery {
+  width: calc(var(--acid-cross-size) * 24 / 13);
+}
+/* 空心圆与电池外壳共用描边，粗细与空心叉号一致 */
+.desktop-hero-acid .acid-deco-icons .is-shell {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linejoin: miter;
+}
+/* 立绘左侧竖排四枚加号：末枚底边与立绘下沿齐平 */
+.desktop-hero-acid .acid-deco-plus {
+  position: absolute;
+  left: 0;
+  bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--primary-color);
+  pointer-events: none;
+  z-index: 3;
+}
+.desktop-hero-acid .acid-deco-plus svg {
+  width: 8px;
+  height: 8px;
+  display: block;
+  fill: currentColor;
+}
+/* 立绘列：覆盖 .photo-stack-wrapper 的宽度与纵向居中 */
+.desktop-hero-widget.desktop-hero-acid .photo-stack-wrapper {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  width: var(--acid-photo-w);
+  height: var(--acid-photo-h);
+  margin: 0;
+  display: block;
+  z-index: 3;
+}
+/* 立绘背后的芯片轮廓：只画线条，无实心底色 —— 向右上错开，露出一圈线框 */
+.desktop-hero-acid .acid-photo-backdrop {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  bottom: 14px;
+  left: 8px;
+  --chip-line: 1.5px;
+  --chip-chamfer: 12px;
+  background-color: transparent;
+  background-image:
+    /* 上边：右侧 12px 让给斜切 */
+    linear-gradient(var(--primary-color), var(--primary-color)),
+    /* 下边 */
+    linear-gradient(var(--primary-color), var(--primary-color)),
+    /* 左边 */
+    linear-gradient(var(--primary-color), var(--primary-color)),
+    /* 右边：从斜切处往下 */
+    linear-gradient(var(--primary-color), var(--primary-color)),
+    /* 右上斜切：12×12 方块的对角线 */
+    linear-gradient(to top right,
+      transparent calc(50% - 0.75px),
+      var(--primary-color) calc(50% - 0.75px),
+      var(--primary-color) calc(50% + 0.75px),
+      transparent calc(50% + 0.75px));
+  background-repeat: no-repeat;
+  background-position:
+    0 0,
+    0 100%,
+    0 0,
+    100% 100%,
+    100% 0;
+  background-size:
+    calc(100% - var(--chip-chamfer)) var(--chip-line),
+    100% var(--chip-line),
+    var(--chip-line) 100%,
+    var(--chip-line) calc(100% - var(--chip-chamfer)),
+    var(--chip-chamfer) var(--chip-chamfer);
+  pointer-events: none;
+  z-index: 0;
+}
+/* 立绘相框：取消 translateY(-50%) 居中，铺满立绘列 */
+.desktop-hero-widget.desktop-hero-acid .photo-layer-front {
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform: none;
+  border-radius: 0;
+  z-index: 1;
+}
+.desktop-hero-widget.desktop-hero-acid .photo-layer-front:hover {
+  transform: translateY(-3px);
+}
+.desktop-hero-widget.desktop-hero-acid .photo-layer-front:active {
+  transform: scale(0.98);
+}
+.desktop-hero-widget.desktop-hero-acid .photo-inner {
+  border-radius: 0;
+}
+/* 右侧信息区：与底板同高，从立绘右侧起排 */
+.desktop-hero-acid .acid-info {
+  position: absolute;
+  top: var(--acid-card-top);
+  left: var(--acid-info-x);
+  right: 0;
+  bottom: 0;
+  /* 底部 24px 让给绝对定位的装饰行（方块 + 圆点），文字组在剩余高度里居中 */
+  padding: 10px 26px 24px 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+  z-index: 4;
+  /* 基准上提量（不含集体下移），只在算式里用 */
+  --acid-base-lift: clamp(-40px, -6vw, -28px);
+  /* 集体下移量：在原 15px 基础上再下移 13px，状态行与大名字一起往下 */
+  --acid-shift: 28px;
+  /* 统一位移量：状态行 / 名字 / 签名 / 短句共用 */
+  --acid-lift: calc(var(--acid-base-lift) + var(--acid-shift));
+  /* 文字组与状态行同步位移，状态行紧贴在大名字上方 */
+  --acid-lift-text: var(--acid-lift);
+  /* 名字 / 签名 / 短句三排的统一行距 */
+  --acid-line-gap: 3px;
+}
+/* 序列号行：已挪进名字组、排在名字下方，随名字组一起位移，自身不再单独位移 */
+.desktop-hero-acid .acid-status-row {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  /* 名字字底留白约 7px + 行距 3px + 本行 15px 高里文字上方约 4px，
+     合计约 14px；收 16px 后编号字顶压进名字字底约 2px */
+  margin-top: -16px;
+}
+/* 状态位：只剩四道静态折线，配色与右侧 ENVOY 完全一致 */
+.desktop-hero-acid .acid-status-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 15px;
+  padding: 0;
+  flex-shrink: 0;
+  user-select: none;
+}
+.desktop-hero-acid .acid-status-arrows {
+  width: 20px;
+  height: 7px;
+  display: block;
+  flex-shrink: 0;
+  /* 与 .acid-serial（外层 0.7）+ ENVOY（额外 0.6）等效，两者同色 */
+  color: rgba(var(--secondary-color-rgb), 0.7);
+  opacity: 0.6;
+}
+.desktop-hero-acid .acid-serial {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  /* 换用机能展示字体（Bebas Neue），编号字形更窄更利落 */
+  font-family: var(--display-font);
+  font-size: clamp(9px, 2.3vw, 10px);
+  font-weight: 400;
+  letter-spacing: 0.6px;
+  color: rgba(var(--secondary-color-rgb), 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  user-select: none;
+}
+.desktop-hero-acid .acid-serial-tag {
+  opacity: 0.6;
+}
+/* 名字组：色条 / 名字 / 序列号三排，同一个位移组，行距统一由 --acid-line-gap 管 */
+.desktop-hero-acid .acid-lines {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  gap: var(--acid-line-gap);
+  min-width: 0;
+  flex: 0 0 auto;
+  /* 三排作为一个整体一起位移，行距不受影响 */
+  transform: translateY(var(--acid-lift-text));
+}
+/* 名字背后的浅底板：极淡的主题色，从名字上部斜后方起，一直铺到右下角三角 */
+.desktop-hero-acid .acid-plate {
+  position: absolute;
+  top: calc(28% + 5px);
+  left: 14px;
+  right: -8px;
+  bottom: -9px;
+  z-index: 0;
+  background-color: rgba(var(--primary-color-rgb), 0.05);
+  pointer-events: none;
+}
+/* 底板右下角内侧的实心直角三角（直角朝右下） */
+.desktop-hero-acid .acid-plate-tri {
+  position: absolute;
+  right: 11px;
+  bottom: 22px;
+  width: 12px;
+  height: 12px;
+  background-color: var(--primary-color);
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+}
+/* 名字上方两道色条：短条右端斜切，长条左端斜切；左缘与顶部竖条、下方方块对齐 */
+.desktop-hero-acid .acid-name-rule {
+  position: relative;
+  z-index: 1;
+  /* 只把色条本身往下挪 7px 贴近名字，不改名字组高度，其他元素不动 */
+  top: 7px;
+  display: flex;
+  gap: 9px;
+  height: 6px;
+  margin-bottom: 1px;
+  pointer-events: none;
+}
+.desktop-hero-acid .acid-name-rule i {
+  display: block;
+  height: 100%;
+  background-color: var(--primary-color);
+}
+.desktop-hero-acid .acid-name-rule i:first-child {
+  width: 18px;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
+}
+.desktop-hero-acid .acid-name-rule i:last-child {
+  width: 82px;
+  clip-path: polygon(4px 0, 100% 0, 100% 100%, 0 100%);
+}
+/* 名字：超大中空字，内部全透明（透出背景 / 壁纸），只留深墨描边；不随字数缩小 */
+.desktop-hero-widget.desktop-hero-acid .profile-name {
+  /* 去掉短句后省出约 18px 高度，全部让给名字：390 屏约 55px */
+  font-size: clamp(44px, 14vw, 56px);
+  /* 走「英文窄体 + 中文黑体」混排通道：英文落到 Bebas Neue 窄体，
+     中文自动回落到系统黑体栈，且脱离 body 的 --main-font 继承链，
+     主题字体与自定义字体都改不动它 */
+  font-family: var(--display-heiti-font);
+  /* 字重统一 400：Bebas Neue 只有 Regular 一档，写 600 会触发合成假粗体
+     把镂空内腔糊小；中文回落黑体在 400 下骨架依旧清晰 */
+  font-weight: 400;
+  line-height: 0.9;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  /* 描边收到 0.9px：往内吃掉的部分减半，边缘更细、镂空更大 */
+  -webkit-text-stroke: 0.9px var(--secondary-color);
+  caret-color: var(--secondary-color);
+  position: relative;
+  z-index: 1;
+  padding: 0 2px;
+  margin-left: -2px;
+  letter-spacing: 1px;
+}
+.desktop-hero-widget.desktop-hero-acid .profile-name::placeholder {
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: 0.8px rgba(var(--secondary-color-rgb), 0.4);
+}
+.desktop-hero-widget.desktop-hero-acid .profile-bio {
+  /* 走「英文窄体 + 中文黑体」混排通道：英文用 Bebas Neue（其小写字形与
+     对应大写同形同高，整句呈现为窄体全大写），中文自动回落系统黑体 */
+  font-family: var(--display-heiti-font);
+  font-size: clamp(10.5px, 2.6vw, 11.5px);
+  /* Bebas 只有 Regular 一档，显式声明 400 避免继承父级粗体后合成假粗 */
+  font-weight: 400;
+  letter-spacing: 0.6px;
+  color: var(--secondary-color);
+  opacity: 0.68;
+  padding: 0 2px;
+  margin-left: -2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* 签名下方那排可编辑短句：字号与签名完全一致，仅靠更淡的透明度分层 */
+.desktop-hero-widget.desktop-hero-acid .profile-line {
+  /* 与签名同一个混排通道，仅靠更淡的透明度分层 */
+  font-family: var(--display-heiti-font);
+  font-size: clamp(10.5px, 2.6vw, 11.5px);
+  font-weight: 400;
+  letter-spacing: 0.6px;
+  color: var(--secondary-color);
+  opacity: 0.5;
+  padding: 0 2px;
+  margin-left: -2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.desktop-hero-widget.desktop-hero-acid .profile-name:focus,
+.desktop-hero-widget.desktop-hero-acid .profile-name:hover,
+.desktop-hero-widget.desktop-hero-acid .profile-bio:focus,
+.desktop-hero-widget.desktop-hero-acid .profile-bio:hover,
+.desktop-hero-widget.desktop-hero-acid .profile-line:focus,
+.desktop-hero-widget.desktop-hero-acid .profile-line:hover {
+  background-color: rgba(var(--secondary-color-rgb), 0.07);
+}
+/* 装饰行：取代条码。底边与立绘下沿齐平（底板内 10px），左齐文字，右端双圆点靠近下准星 */
+.desktop-hero-acid .acid-deco-marks {
+  position: absolute;
+  left: 0;
+  right: 22px;
+  bottom: 10px;
+  height: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--primary-color);
+  pointer-events: none;
+  user-select: none;
+}
+.desktop-hero-acid .acid-deco-squares,
+.desktop-hero-acid .acid-deco-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.desktop-hero-acid .acid-deco-squares i,
+.desktop-hero-acid .acid-deco-dots i {
+  display: block;
+  width: 8px;
+  height: 8px;
+  box-sizing: border-box;
+  background-color: currentColor;
+  border: 1.5px solid currentColor;
+}
+.desktop-hero-acid .acid-deco-dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.desktop-hero-acid .acid-deco-squares i.is-hollow,
+.desktop-hero-acid .acid-deco-dots i.is-hollow {
+  background-color: transparent;
+}
+/* 底栏：左侧在役履历，右侧切角 DIVE 模块 */
+.desktop-hero-acid .acid-footer {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  height: clamp(26px, 7vw, 30px);
+  margin-top: 6px;
+  margin-bottom: 2px;
+}
+.desktop-hero-acid .acid-service {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding-left: 2px;
+  color: var(--secondary-color);
+}
+.desktop-hero-acid .acid-service-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  /* 换用机能展示字体（Bebas Neue） */
+  font-family: var(--display-font);
+  font-size: clamp(11px, 2.8vw, 12.5px);
+  font-weight: 400;
+  letter-spacing: 1px;
+  flex-shrink: 0;
+}
+.desktop-hero-acid .acid-service-tag svg {
+  width: 13px;
+  height: 13px;
+  fill: currentColor;
+  display: block;
+}
+/* 纯装饰进度条：细描边外框，左侧固定 45% 实心填充，填充末端斜切 */
+.desktop-hero-acid .acid-service-bar {
+  position: relative;
+  display: block;
+  width: clamp(48px, 14vw, 64px);
+  height: 7px;
+  box-sizing: border-box;
+  border: 1px solid currentColor;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+.desktop-hero-acid .acid-service-bar i {
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  left: 1px;
+  width: 45%;
+  background-color: currentColor;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
+}
+.desktop-hero-acid .acid-dive-module {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 12px 0 16px;
+  border: none;
+  /* 无底色：去掉实心底板，字色与图标反转为前景墨色 */
+  background-color: transparent;
+  color: var(--secondary-color);
+  font-family: inherit;
+  cursor: pointer;
+  clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.18s ease;
+  flex-shrink: 0;
+}
+.desktop-hero-acid .acid-dive-module:active {
+  transform: scale(0.96);
+}
+.desktop-hero-acid .acid-dive-en {
+  /* 换用机能展示字体（Bebas Neue），与底栏左侧 SERVICE 同一个通道 */
+  font-family: var(--display-font);
+  font-size: clamp(12px, 3vw, 13.5px);
+  font-weight: 400;
+  letter-spacing: 1.2px;
+}
+.desktop-hero-acid .acid-dive-zh {
+  /* 中文标签锁定黑体硬通道：与左侧 DIVE 的窄体英文形成粗细对比，
+     且不受主题字体 / 自定义字体影响 */
+  font-family: var(--heiti-font);
+  font-size: clamp(9.5px, 2.4vw, 10.5px);
+  opacity: 0.72;
+}
+.desktop-hero-acid .acid-dive-module svg {
+  width: 13px;
+  height: 13px;
+  fill: currentColor;
+  display: block;
+  flex-shrink: 0;
+}
+/* 前置 × 号：主题色，取代原发光小圆点 */
+.desktop-hero-acid .acid-dive-module .acid-dive-x {
+  width: 9px;
+  height: 9px;
+  fill: var(--primary-color);
+  margin-right: 1px;
+}
+/* 末尾实心粗箭头 */
+.desktop-hero-acid .acid-dive-module .acid-dive-arrow {
+  width: 12px;
+  height: 12px;
+  margin-left: 1px;
+}
+/* 壁纸遮罩开启时：底板外的履历文字反白，与经典红卡的履历条一致 */
+body.has-wallpaper.has-wallpaper-mask .desktop-hero-acid .acid-service {
+  color: rgba(var(--bg-color-rgb), 0.9);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
+}
+/* 无底 DIVE 模块在壁纸遮罩下同样反白，与履历文字保持同一层可读性 */
+body.has-wallpaper.has-wallpaper-mask .desktop-hero-acid .acid-dive-module {
+  color: rgba(var(--bg-color-rgb), 0.92);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
+}
 
 
 /* ==========================================================================
    桌面应用矩阵（第 1 页：2 列 Bento Grid 机能磁贴）
    ========================================================================== */
-.app-bento-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: clamp(10px, 2.5vw, 14px);
-  width: 100%;
-}
-
-.app-bento-grid-p3 {
-  margin-top: 12px;
-}
-
+/* ==========================================================================
+   普通磁贴两种形态
+   - 卡片态（2×1）：纵排，小图标在左上、数字水印在右上，标题副题在图标下方
+   - 图标态（1×1）：原生手机桌面图标，透明无底，图标在上、名称在下
+   卡片态的内边距与图标按重构前原版刻度（padding 14–18 / 图标 34–40），
+   因单行网格高度化到 92–128px，纵向三等分后原版间距会顶出，
+   故 padding 收到 8–11px、gap 收到 6–8px，其余刻度照原版。
+   ========================================================================== */
 .bento-card {
+  height: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   background-color: var(--card-bg-color);
   border: none;
   border-radius: 4px;
-  padding: clamp(14px, 3.5vw, 18px) clamp(12px, 3vw, 16px);
+  padding: clamp(8px, 2vw, 11px) clamp(9px, 2.2vw, 12px);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 12px;
+  justify-content: space-between;
+  gap: clamp(6px, 1.6vw, 8px);
   cursor: pointer;
   font-family: inherit;
   text-align: left;
   position: relative;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(var(--secondary-color-rgb), 0.04);
-  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), 
-              background-color 0.2s ease, 
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+              background-color 0.2s ease,
               box-shadow 0.2s ease;
   user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  grid-column: span 2;
+  grid-row: span 1;
+  z-index: 2;
 }
-
 .bento-card:hover {
   transform: translateY(-2px);
   background-color: rgba(var(--card-bg-color-rgb), 0.85);
   box-shadow: 0 8px 20px rgba(var(--secondary-color-rgb), 0.08);
 }
-
 .bento-card:active {
   transform: scale(0.98);
 }
-
-/* 磁贴右上角超大超粗数字水印（与左侧图标同排呼应，15% 重点色深绯红） */
+body.desktop-editing .bento-card:hover,
+body.desktop-editing .bento-card:active {
+  transform: none;
+}
+/* 磁贴右上角数字水印（原版量级，14% 透明度不遮字，故允许压到标题行右侧） */
 .bento-index {
   position: absolute;
-  top: clamp(10px, 2.8vw, 15px);
-  right: clamp(10px, 2.5vw, 14px);
+  top: clamp(4px, 1.2vw, 7px);
+  right: clamp(7px, 1.8vw, 10px);
   font-family: var(--mono-font);
-  font-size: clamp(34px, 8.5vw, 42px);
+  font-size: clamp(34px, 8.6vw, 44px);
   font-weight: 900;
-  color: rgba(var(--primary-color-rgb), 0.15);
+  color: rgba(var(--primary-color-rgb), 0.14);
   line-height: 0.85;
   letter-spacing: -2px;
   user-select: none;
   pointer-events: none;
   z-index: 1;
-  transition: color 0.22s ease, transform 0.22s ease;
+  transition: color 0.22s ease;
 }
-
 .bento-card:hover .bento-index {
-  color: rgba(var(--primary-color-rgb), 0.28);
-  transform: translateY(-1px) scale(1.02);
+  color: rgba(var(--primary-color-rgb), 0.26);
 }
-
-/* 图标容器：深墨黑/木褐底色微倒角方块 */
+/* 图标底座（原版小尺寸刻度 34–40px） */
 .bento-icon-wrap {
   width: clamp(34px, 8.5vw, 40px);
   height: clamp(34px, 8.5vw, 40px);
@@ -708,812 +2002,118 @@ body.has-wallpaper {
   z-index: 2;
   transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
-
-/* 重点色单点视觉锚定图标底色（仅 06 系统商城，形成对角线平衡） */
+/* 重点色单点视觉锚定图标底色（仅 06 系统商城） */
 .bento-card[data-app="supply"] .bento-icon-wrap {
   background-color: var(--primary-color);
   box-shadow: 0 4px 10px rgba(var(--primary-color-rgb), 0.25);
 }
-
 .bento-card:hover .bento-icon-wrap {
   transform: scale(1.05);
 }
-
 .bento-icon-wrap svg {
   width: clamp(18px, 4.5vw, 22px);
   height: clamp(18px, 4.5vw, 22px);
   fill: var(--bg-color);
   display: block;
 }
-
-/* 文字内容区 */
+/* 文字内容区：卡片态排在图标下方，标题副题紧贴 */
 .bento-content {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   width: 100%;
+  min-width: 0;
   position: relative;
   z-index: 2;
 }
-
-/* 磁贴主标题：跟随反色，不写死黑色（按钮元素不继承 body 文字色，须显式指定） */
 .bento-title {
   color: var(--secondary-color);
-}
-
-/* ==========================================================================
-   桌面应用矩阵（第 2 页：随身物资与媒体中心 弹性自适应 Bento Grid）
-   ========================================================================== */
-.app-bento-grid-p2 {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(10px, 2.5vw, 14px);
-  width: 100%;
-  height: 100%;
-  box-sizing: border-box;
-}
-
-/* 上段 & 下段 2 列自适应网格行 */
-.p2-row-top {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: clamp(10px, 2.5vw, 14px);
-  width: 100%;
-}
-
-.p2-row-bottom {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: clamp(10px, 2.5vw, 14px);
-  width: 100%;
-  min-height: clamp(138px, 33vw, 158px);
-}
-
-/* 垂直自适应拉伸列 (容纳 2 个等分卡片) */
-.p2-col-stretch {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(10px, 2.5vw, 14px);
-  height: 100%;
-  min-height: 0;
-  justify-content: space-between;
-}
-
-/* 下段右列专属：12 积分资产 & 13 储物室 (上层左右图文 + 下层通栏重点色底机能标) */
-.bento-card.p2-card-asset {
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: stretch;
-  gap: clamp(12px, 3vw, 18px);
-  padding: clamp(11px, 2.6vw, 14px) clamp(12px, 3vw, 16px);
-  position: relative;
-  overflow: hidden;
-}
-
-.bento-card.p2-card-asset .bento-index {
-  top: clamp(6px, 1.8vw, 10px);
-  right: clamp(10px, 2.5vw, 14px);
-  font-size: clamp(30px, 7.5vw, 38px);
-}
-
-.p2-asset-top-row {
-  display: flex;
-  align-items: center;
-  gap: clamp(10px, 2.5vw, 14px);
-  width: 100%;
-}
-
-.p2-asset-icon-wrap {
-  width: clamp(34px, 8.5vw, 40px);
-  height: clamp(34px, 8.5vw, 40px);
-  flex-shrink: 0;
-  border-radius: 3px;
-  background-color: var(--secondary-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.p2-asset-icon-wrap svg {
-  width: clamp(18px, 4.5vw, 22px);
-  height: clamp(18px, 4.5vw, 22px);
-  fill: var(--bg-color);
-  display: block;
-}
-
-.p2-asset-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  text-align: left;
-}
-
-.p2-asset-title {
-  font-size: clamp(14px, 3.6vw, 16px);
-  font-weight: 500;
-  color: var(--text-color);
-  line-height: 1.25;
-}
-
-.p2-asset-subtitle {
-  font-family: var(--mono-font);
-  font-size: clamp(9px, 2.2vw, 10.5px);
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  color: var(--text-muted);
-  line-height: 1.2;
-  white-space: nowrap;
-}
-
-.p2-asset-subtitle .bento-en {
-  opacity: 0.65;
-  letter-spacing: 0.6px;
-}
-
-/* 下层通栏机能数值行 */
-.p2-asset-bottom-row {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 6px;
-  width: 100%;
-}
-
-.p2-asset-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5px 5.5px;
-  border-radius: 2px;
-  background-color: var(--primary-color);
-  color: var(--bg-color);
-  font-family: var(--main-font);
-  font-size: 9.5px;
-  font-weight: 500;
-  letter-spacing: 0.4px;
-  line-height: 1.2;
-}
-
-.p2-asset-badge-val {
-  font-family: var(--mono-font);
-  font-size: clamp(11.5px, 2.8vw, 13px);
-  font-weight: 800;
-  color: var(--text-color);
-  letter-spacing: 0.3px;
-}
-
-/* 上段专属：07 收藏馆 & 08 阅读（高度对齐右侧 4:5 图库大卡，尺寸全面对标第一页标准磁贴） */
-.p2-row-top .bento-card.p2-card-adaptive {
-  flex: 1 1 0;
-  min-height: 0;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: clamp(9px, 2.2vw, 12px) clamp(12px, 3vw, 16px);
-  gap: 8px;
-  box-sizing: border-box;
-}
-
-.p2-row-top .bento-card.p2-card-adaptive .bento-index {
-  top: clamp(10px, 2.8vw, 15px);
-  right: clamp(10px, 2.5vw, 14px);
-  font-size: clamp(34px, 8.5vw, 42px);
-}
-
-.p2-row-top .bento-card.p2-card-adaptive .bento-icon-wrap {
-  width: clamp(34px, 8.5vw, 40px);
-  height: clamp(34px, 8.5vw, 40px);
-}
-
-.p2-row-top .bento-card.p2-card-adaptive .bento-icon-wrap svg {
-  width: clamp(18px, 4.5vw, 22px);
-  height: clamp(18px, 4.5vw, 22px);
-}
-
-.p2-row-top .bento-card.p2-card-adaptive .bento-title {
-  font-size: clamp(15px, 3.8vw, 17px);
-}
-
-/* 2. 右侧 4:5 纵向比例大图库相框卡 (内嵌 1:1 图片相框 + 底部 PIC 入口条) */
-.bento-card-p2-gallery {
-  aspect-ratio: 4 / 5;
-  width: 100%;
-  background-color: var(--card-bg-color);
-  border-radius: 4px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 2px 8px rgba(var(--secondary-color-rgb), 0.04);
-  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s ease;
-  position: relative;
-}
-
-.bento-card-p2-gallery:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(var(--secondary-color-rgb), 0.08);
-}
-
-/* 图库 1:1 正方形相框视口（5px 卡片色内框，拟物相纸留边） */
-.p2-gallery-frame {
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  background-color: rgba(var(--secondary-color-rgb), 0.1);
-  position: relative;
-  overflow: hidden;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  border: 5px solid var(--card-bg-color);
-  box-sizing: border-box;
-}
-
-.p2-gallery-frame img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  /* 桌面图库封面是快照代表图（多为横构图/风景），居中裁最能保住主体 */
-  object-position: center;
-  display: block;
-}
-
-.p2-gallery-frame img[hidden],
-.p2-gallery-frame img:not([src]),
-.p2-gallery-frame img[src=""] {
-  display: none !important;
-}
-
-.p2-gallery-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 12px;
-  color: var(--text-muted);
-}
-
-/* 封面已加载时占位图必须彻底隐藏（display:flex 会覆盖 hidden 属性） */
-.p2-gallery-placeholder[hidden] {
-  display: none !important;
-}
-
-.p2-gallery-placeholder svg {
-  width: 26px;
-  height: 26px;
-  fill: currentColor;
-  opacity: 0.4;
-}
-
-.p2-gallery-ph-text {
-  font-family: var(--mono-font);
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0.8px;
-  opacity: 0.6;
-}
-
-.p2-gallery-hover-tag {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  background-color: rgba(var(--secondary-color-rgb), 0.75);
-  color: var(--bg-color);
-  font-size: 9px;
-  font-weight: 600;
-  padding: 3px 6px;
-  border-radius: 3px;
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  opacity: 0;
-  transform: translateY(-3px);
-  /* 悬停才出现的小角标：关闭态用 visibility 退出合成，否则 backdrop-filter 常驻 */
-  visibility: hidden;
-  transition: all 0.2s ease;
-  backdrop-filter: blur(4px);
-  user-select: none;
-}
-
-.p2-gallery-hover-tag svg {
-  width: 10px;
-  height: 10px;
-  fill: currentColor;
-}
-
-.p2-gallery-frame:hover .p2-gallery-hover-tag {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-}
-
-/* 图库底部导航条：图标 + 两排文字 + 光标指示器，右侧 09 大字水印垫底 */
-.p2-gallery-footer-bar {
-  flex: 1;
-  min-height: 0;
-  width: 100%;
-  border: none;
-  background-color: var(--card-bg-color);
-  padding: 6px 10px;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-  user-select: none;
-  position: relative;
-  overflow: hidden;
-}
-
-.p2-gallery-footer-bar:hover {
-  background-color: rgba(var(--secondary-color-rgb), 0.04);
-}
-
-/* 右侧超粗数字水印：垫在中文主标下方，与右缘留出呼吸间隙 */
-.p2-gallery-index {
-  position: absolute;
-  top: 50%;
-  right: clamp(30px, 8vw, 38px);
-  transform: translateY(-50%);
-  font-family: var(--mono-font);
-  font-size: clamp(28px, 7vw, 36px);
-  font-weight: 900;
-  color: rgba(var(--primary-color-rgb), 0.1);
-  line-height: 0.85;
-  letter-spacing: -2px;
-  user-select: none;
-  pointer-events: none;
-  z-index: 0;
-  transition: color 0.22s ease;
-}
-
-.p2-gallery-footer-bar:hover .p2-gallery-index {
-  color: rgba(var(--primary-color-rgb), 0.2);
-}
-
-.p2-gallery-icon-wrap {
-  width: 26px;
-  height: 26px;
-  flex-shrink: 0;
-  border-radius: 3px;
-  background-color: var(--secondary-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--bg-color);
-  position: relative;
-  overflow: hidden;
-  z-index: 1;
-}
-
-.p2-gallery-icon-wrap svg {
-  width: 16px;
-  height: 16px;
-  fill: currentColor;
-}
-
-/* 两排文字列：上排中文主标 + 下排机能副标 */
-.p2-gallery-text-col {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  text-align: left;
-  position: relative;
-  z-index: 1;
-}
-
-.p2-gallery-zh {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--secondary-color);
-  line-height: 1.2;
-  letter-spacing: 0.3px;
-}
-
-.p2-gallery-subtitle {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-.p2-gallery-en {
-  font-family: var(--mono-font);
-  font-size: 8px;
-  font-weight: 700;
-  color: var(--text-muted);
-  letter-spacing: 0.3px;
-}
-
-
-.p2-gallery-desc {
-  font-size: 8.5px;
-  color: var(--text-muted);
-}
-
-.p2-gallery-indicator-wrap {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  position: relative;
-  z-index: 1;
-}
-
-.p2-gallery-arrow {
-  width: 14px;
-  height: 14px;
-  fill: var(--primary-color);
-  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.p2-gallery-footer-bar:hover .p2-gallery-arrow {
-  transform: translateX(3px);
-}
-
-/* 4. 横贯全幅：10 黑胶唱片音乐播放器 (AUDIO DECK，黑胶拟物机能中枢) */
-.bento-card-p2-music {
-  position: relative;
-  width: 100%;
-  flex: 1;
-  min-height: clamp(120px, 30vw, 150px);
-  background-color: var(--card-bg-color);
-  border-radius: 4px;
-  padding: clamp(6px, 1.8vw, 10px) clamp(16px, 4vw, 22px);
-  display: flex;
-  align-items: center;
-  gap: clamp(16px, 4vw, 24px);
-  box-shadow: 0 2px 8px rgba(var(--secondary-color-rgb), 0.04);
-  user-select: none;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.bento-card-p2-music .bento-index {
-  top: clamp(8px, 2vw, 12px);
-  right: clamp(12px, 3vw, 16px);
-  font-size: clamp(34px, 8.5vw, 42px);
-}
-
-/* 拟物黑胶唱片：极致放大，几乎撑满垂直高度 */
-.p2-vinyl-wrap {
-  width: clamp(112px, 28vw, 138px);
-  height: clamp(112px, 28vw, 138px);
-  flex-shrink: 0;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.p2-vinyl-disc {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: radial-gradient(circle, #2a2a2a 0%, #161616 45%, #0d0d0d 75%, #181818 100%);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55), inset 0 0 0 1.5px rgba(255, 255, 255, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  animation: vinylRotate 3.6s linear infinite;
-  animation-play-state: paused;
-  will-change: transform;
-}
-
-.p2-audio-deck.is-playing .p2-vinyl-disc {
-  animation-play-state: running;
-}
-
-@keyframes vinylRotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.p2-vinyl-grooves {
-  position: absolute;
-  inset: 6px;
-  border-radius: 50%;
-  border: 1px dashed rgba(255, 255, 255, 0.08);
-  box-shadow: 
-    inset 0 0 0 4px rgba(255, 255, 255, 0.02),
-    inset 0 0 0 12px rgba(0, 0, 0, 0.5),
-    inset 0 0 0 16px rgba(255, 255, 255, 0.025),
-    inset 0 0 0 26px rgba(0, 0, 0, 0.4);
-  pointer-events: none;
-}
-
-/* 拟物黑胶高光：随唱片同步旋转的对角双扇形光带（灯下划扫质感） */
-.p2-vinyl-sheen {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: conic-gradient(
-    from 35deg at 50% 50%,
-    rgba(255, 255, 255, 0.2) 0deg,
-    rgba(255, 255, 255, 0.03) 40deg,
-    rgba(255, 255, 255, 0) 90deg,
-    rgba(255, 255, 255, 0.03) 140deg,
-    rgba(255, 255, 255, 0.22) 180deg,
-    rgba(255, 255, 255, 0.03) 220deg,
-    rgba(255, 255, 255, 0) 270deg,
-    rgba(255, 255, 255, 0.03) 320deg,
-    rgba(255, 255, 255, 0.2) 360deg
-  );
-  pointer-events: none;
-  z-index: 1;
-  mix-blend-mode: screen;
-}
-
-.p2-vinyl-center-label {
-  width: clamp(42px, 10.5vw, 52px);
-  height: clamp(42px, 10.5vw, 52px);
-  border-radius: 50%;
-  background-color: var(--primary-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  position: relative;
-  z-index: 2;
-  box-shadow: 0 0 8px rgba(0, 0, 0, 0.7);
-}
-
-.p2-vinyl-center-label img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.p2-vinyl-core-hole {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: #0d0d0d;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.85);
-}
-
-/* 播放器右侧信息区：收窄聚焦，精致机能排版 */
-.p2-audio-info-col {
-  flex: 1;
-  min-width: 0;
-  max-width: 240px;
-  display: flex;
-  flex-direction: column;
-  gap: clamp(8px, 2vw, 11px);
-}
-
-.p2-audio-header {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  min-width: 0;
-  padding-right: 28px; /* 为右上角 10 号水印留出避让空间 */
-}
-
-.p2-audio-track-name {
-  font-size: clamp(14px, 3.6vw, 16px);
-  font-weight: 700;
-  color: var(--text-color);
+  font-size: clamp(13px, 3.6vw, 15px);
+  font-weight: 400;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.3;
+  line-height: 1.15;
 }
-
-.p2-audio-lyric {
-  font-size: clamp(10px, 2.5vw, 11.5px);
-  font-weight: 500;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  letter-spacing: 0.2px;
-  line-height: 1.3;
-}
-
-.p2-audio-progress-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.p2-audio-progress-bar {
-  width: 100%;
-  height: 3.5px;
-  background-color: rgba(var(--secondary-color-rgb), 0.08);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.p2-audio-progress-fill {
-  height: 100%;
-  background-color: var(--primary-color);
-  border-radius: 2px;
-  transition: width 0.3s ease;
-}
-
-.p2-audio-time-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.p2-audio-time {
+.bento-subtitle {
   font-family: var(--mono-font);
-  font-size: 8.5px;
-  color: var(--text-muted);
-}
-
-.p2-audio-controls {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-}
-
-.p2-audio-btn {
-  background: none;
-  border: none;
-  padding: 2px 4px;
-  color: var(--secondary-color);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.15s ease, color 0.15s ease, opacity 0.15s ease;
-}
-
-.p2-audio-btn:hover {
-  color: var(--primary-color);
-  transform: scale(1.1);
-}
-
-.p2-audio-btn:active {
-  transform: scale(0.92);
-}
-
-.p2-audio-btn svg {
-  width: 16px;
-  height: 16px;
-  fill: currentColor;
-}
-
-/* 两侧辅助键 (循环/播放列表)：精致沉浸微阶梯 */
-.p2-audio-aux-btn {
-  opacity: 0.75;
-}
-
-.p2-audio-aux-btn:hover {
-  opacity: 1;
-}
-
-.p2-audio-aux-btn svg {
-  width: 14.5px;
-  height: 14.5px;
-}
-
-.p2-audio-aux-btn.is-active {
-  color: var(--primary-color);
-  opacity: 1;
-}
-
-.p2-audio-play-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background-color: var(--secondary-color);
-  color: var(--bg-color);
-  padding: 0;
-  box-shadow: 0 2px 8px rgba(var(--secondary-color-rgb), 0.25);
-  flex-shrink: 0;
-}
-
-.p2-audio-play-btn:hover {
-  background-color: var(--primary-color);
-  color: var(--bg-color);
-}
-
-.p2-audio-play-btn svg {
-  width: 15px;
-  height: 15px;
-  fill: currentColor;
-}
-
-/* 5. 左下高卡：11 备忘录/随身便笺（撑满行高，规范化标题+副标题+正文，底部与右列像素级对齐） */
-.bento-card-p2-memo {
-  width: 100%;
-  height: 100%;
-  background-color: var(--card-bg-color);
-  border-radius: 4px;
-  padding: clamp(11px, 2.6vw, 14px) clamp(12px, 3vw, 16px);
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  gap: clamp(8px, 2vw, 12px);
-  box-shadow: 0 2px 8px rgba(var(--secondary-color-rgb), 0.04);
-  cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s ease;
-  user-select: none;
-  position: relative;
-  overflow: hidden;
-  box-sizing: border-box;
-}
-
-.bento-card-p2-memo:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(var(--secondary-color-rgb), 0.08);
-}
-
-.bento-card-p2-memo:active {
-  transform: scale(0.98);
-}
-
-.bento-card-p2-memo .bento-index {
-  top: clamp(6px, 1.8vw, 10px);
-  right: clamp(10px, 2.5vw, 14px);
-  font-size: clamp(30px, 7.5vw, 38px);
-}
-
-.p2-memo-header {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  padding-right: 28px; /* 避让右上角 11 水印 */
-}
-
-.p2-memo-title {
-  font-size: clamp(14px, 3.6vw, 16px);
-  font-weight: 500;
-  color: var(--text-color);
-  line-height: 1.25;
-}
-
-.p2-memo-subtitle {
-  font-family: var(--mono-font);
-  font-size: clamp(9px, 2.2vw, 10.5px);
-  font-weight: 600;
+  font-size: clamp(9px, 2.2vw, 10px);
+  font-weight: 400;
   display: flex;
   align-items: center;
   gap: 3.5px;
   color: var(--text-muted);
   line-height: 1.2;
   white-space: nowrap;
-}
-
-.p2-memo-subtitle .bento-en {
-  opacity: 0.65;
-  letter-spacing: 0.6px;
-}
-
-
-.p2-memo-subtitle .bento-zh {
-  font-family: var(--main-font);
-  opacity: 0.55;
-  font-weight: 500;
-}
-
-.p2-memo-content {
-  font-size: clamp(11px, 2.7vw, 12px);
-  color: var(--text-color);
-  line-height: 1.5;
-  opacity: 0.85;
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-  word-break: break-word;
+}
+.bento-subtitle .bento-en {
+  opacity: 0.85;
+  letter-spacing: 0.4px;
+}
+.bento-subtitle .bento-zh {
+  font-family: var(--main-font);
+  opacity: 0.75;
+  font-weight: 400;
+}
+/* ----------------------------- 图标态 1×1 ----------------------------- */
+.bento-card.is-icon-mode {
+  grid-column: span 1;
+  grid-row: span 1;
+  padding: 4px 2px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(9px, 2.4vw, 13px);
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  overflow: visible;
+}
+.bento-card.is-icon-mode:hover,
+.bento-card.is-icon-mode:active {
+  transform: none;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+.bento-card.is-icon-mode .bento-icon-wrap {
+  width: clamp(52px, 12.8vw, 64px);
+  height: clamp(52px, 12.8vw, 64px);
+  border-radius: 12px;
+}
+.bento-card.is-icon-mode .bento-icon-wrap svg {
+  width: clamp(27px, 6.6vw, 33px);
+  height: clamp(27px, 6.6vw, 33px);
+}
+.bento-card.is-icon-mode:hover .bento-icon-wrap {
+  transform: scale(1.04);
+}
+.bento-card.is-icon-mode .bento-content {
+  flex: none;
+  width: 100%;
+  align-items: center;
+  gap: 0;
+}
+.bento-card.is-icon-mode .bento-title {
+  text-align: center;
+  width: 100%;
+  font-size: clamp(10.5px, 2.7vw, 12px);
+  font-weight: 400;
+}
+.bento-card.is-icon-mode .bento-index,
+.bento-card.is-icon-mode .bento-subtitle {
+  display: none;
+}
+/* 图标态上的自定义背景/去底座不再生效，避免残留卡框 */
+.bento-card.is-icon-mode .tile-has-bg-bg {
+  background: none !important;
+}
+/* 深色壁纸遮罩下，图标态名称自动反白保可读性 */
+body.has-wallpaper.has-wallpaper-mask .bento-card.is-icon-mode .bento-title {
+  color: rgba(var(--bg-color-rgb), 0.92);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
 }
 
 /* ==========================================================================
@@ -1523,72 +2123,44 @@ body.has-wallpaper {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 7px;
   margin: 12px auto 6px;
   user-select: none;
 }
 
+/* 每枚指示器 = 一个纯方块容器，方块本身在 .dot-core 上 */
 .page-indicator-dot {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
-  border-radius: 12px;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 2px;
   border: none;
-  background-color: rgba(var(--secondary-color-rgb), 0.04);
-  color: var(--text-muted);
+  background: none;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  -webkit-tap-highlight-color: transparent;
 }
 
+/* 方块本体：未选中是低对比灰，选中切成重点色并放大 1.5 倍 */
 .page-indicator-dot .dot-core {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background-color: var(--text-muted);
-  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.page-indicator-dot .dot-label {
-  font-family: var(--mono-font);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-}
-
-.page-indicator-dot.active {
-  background-color: var(--secondary-color);
-  color: var(--bg-color);
-  box-shadow: 0 2px 8px rgba(var(--secondary-color-rgb), 0.15);
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 1px;
+  background-color: rgba(var(--secondary-color-rgb), 0.22);
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+              background-color 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .page-indicator-dot.active .dot-core {
   background-color: var(--primary-color);
-  transform: scale(1.2);
+  transform: scale(1.5);
 }
 
-.bento-subtitle {
-  font-family: var(--mono-font);
-  font-size: clamp(9px, 2.2vw, 10px);
-  font-weight: 600;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 3.5px;
-  color: var(--text-muted);
-  line-height: 1.2;
-}
-
-.bento-subtitle .bento-en {
-  opacity: 0.85;
-  letter-spacing: 0.4px;
-}
-
-
-.bento-subtitle .bento-zh {
-  font-family: var(--main-font);
-  opacity: 0.75;
-  font-weight: 500;
+/* 传统指示器不再承载序号，标签节点保留但隐藏，兼容旧 DOM */
+.page-indicator-dot .dot-label {
+  display: none;
 }
 
 /* ==========================================================================
@@ -2400,6 +2972,20 @@ body.has-wallpaper.has-wallpaper-mask .card-bg-watermark span {
   text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
 }
 
+/* 3.1 红卡上沿外的同步指示器：与左下角英文同款提亮，保证深色壁纸下可读 */
+body.has-wallpaper.has-wallpaper-mask .profile-sync-indicator {
+  color: rgba(var(--bg-color-rgb), 0.72);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
+}
+
+body.has-wallpaper.has-wallpaper-mask .profile-sync-indicator .sync-dot {
+  background-color: rgba(var(--bg-color-rgb), 0.4);
+}
+
+body.has-wallpaper.has-wallpaper-mask .profile-sync-indicator .sync-dot.is-lit {
+  background-color: rgba(var(--bg-color-rgb), 0.9);
+}
+
 /* 4. 在役履历状态栏。注意 .service-metric-item 自带 color，
       会截断容器的继承，必须单独覆盖，否则里面的中文标签与单位不会反白。 */
 body.has-wallpaper.has-wallpaper-mask .service-record-strip {
@@ -2435,51 +3021,34 @@ body.has-wallpaper.has-wallpaper-mask .service-record-tag {
 
 
 /* ==========================================================================
-   磨砂玻璃透光激活时：13 张桌面卡片半透毛玻璃化，芯片图标与红卡保持实色
+   磨砂玻璃透光激活时：仅卡片态磁贴半透毛玻璃化
+   图标态（1×1）本身无底板，必须排除，否则会浮出一个玻璃方块
    ========================================================================== */
-
-body.has-frosted-glass .bento-card,
-body.has-frosted-glass .bento-card-p2-gallery,
-body.has-frosted-glass .bento-card-p2-music,
-body.has-frosted-glass .bento-card-p2-memo {
+body.has-frosted-glass .bento-card:not(.is-icon-mode) {
   background-color: rgba(var(--card-bg-color-rgb), 0.65) !important;
   backdrop-filter: blur(16px) saturate(140%);
   -webkit-backdrop-filter: blur(16px) saturate(140%);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
-
-body.has-frosted-glass .bento-card:hover,
-body.has-frosted-glass .bento-card-p2-gallery:hover,
-body.has-frosted-glass .bento-card-p2-music:hover,
-body.has-frosted-glass .bento-card-p2-memo:hover {
+body.has-frosted-glass .bento-card:not(.is-icon-mode):hover {
   background-color: rgba(var(--card-bg-color-rgb), 0.78) !important;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), inset 0 0 0 1px rgba(255, 255, 255, 0.18);
 }
-
-/* 图库卡片内部子结构适配磨砂透光 */
-body.has-frosted-glass .p2-gallery-footer-bar {
+/* 图标态强制透明无底，无论是否开启磨砂 */
+body.has-frosted-glass .bento-card.is-icon-mode {
   background-color: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
 }
-
-body.has-frosted-glass .p2-gallery-frame {
-  border-color: rgba(var(--card-bg-color-rgb), 0.45);
-}
-
 /* ==========================================================================
    桌面磁贴图标美化：自定义背景 / 自定义图标 / 移除底座
    ========================================================================== */
-
 /* 卡片自定义背景：覆盖原色与磨砂（背景图不透光，两者互斥） */
 .profile-card.tile-has-bg,
 .bento-card.tile-has-bg,
-.bento-card-p2-gallery.tile-has-bg,
-.bento-card-p2-music.tile-has-bg,
-.bento-card-p2-memo.tile-has-bg,
 body.has-frosted-glass .profile-card.tile-has-bg,
-body.has-frosted-glass .bento-card.tile-has-bg,
-body.has-frosted-glass .bento-card-p2-gallery.tile-has-bg,
-body.has-frosted-glass .bento-card-p2-music.tile-has-bg,
-body.has-frosted-glass .bento-card-p2-memo.tile-has-bg {
+body.has-frosted-glass .bento-card.tile-has-bg {
   position: relative;
   background-size: cover !important;
   background-position: center !important;
@@ -2487,7 +3056,15 @@ body.has-frosted-glass .bento-card-p2-memo.tile-has-bg {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
-
+/* 图标态不显示卡片级背景图：形态切换时立即退成原生图标质感 */
+.bento-card.is-icon-mode.tile-has-bg,
+body.has-frosted-glass .bento-card.is-icon-mode.tile-has-bg {
+  background-image: none !important;
+  background-color: transparent !important;
+}
+.bento-card.is-icon-mode.tile-has-bg::before {
+  display: none;
+}
 /* 防花文字保护：背景图上叠一层暗调渐变膜（垫在背景图之上、内容之下，不改任何子元素定位） */
 .tile-has-bg::before {
   content: '';
@@ -2498,7 +3075,6 @@ body.has-frosted-glass .bento-card-p2-memo.tile-has-bg {
   pointer-events: none;
   z-index: -1;
 }
-
 /* 自定义图标图片：填入图标容器（按 cover 居中裁切铺满，圆角继承底座） */
 .tile-custom-icon {
   width: 100%;
@@ -2507,10 +3083,8 @@ body.has-frosted-glass .bento-card-p2-memo.tile-has-bg {
   display: block;
   border-radius: inherit;
 }
-
 /* 移除底座：图标容器透明无阴影，异形悬浮 */
-.bento-icon-wrap.is-nobase,
-.p2-gallery-icon-wrap.is-nobase {
+.bento-icon-wrap.is-nobase {
   background-color: transparent !important;
   box-shadow: none !important;
 }

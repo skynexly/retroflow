@@ -48,7 +48,12 @@
 
   // 桌面红卡关联字段（仅序列号共享，那是全局唯一的身份编号；
   // 红卡的名字与照片都是独立装饰内容，由 profile.js 单独管理，这里不碰）
-  const desktopSerial = document.getElementById('profileSerialNum');
+  // 桌面可同时摆多张红卡类组件，序列号逐张同步（含收在组件库里的）
+  function syncDesktopSerial(text) {
+    document.querySelectorAll('#profileSerialNum, .desktop-hero-widget .profile-serial-num').forEach((el) => {
+      el.textContent = text;
+    });
+  }
 
   let currentAvatarSrc = null;
   let isOpen = false;
@@ -96,7 +101,7 @@
     // 编号可能被护栏改回真值，回填表单与红卡保持一致
     const serialNo = Store.getSerialNo();
     if (serialNoInput) serialNoInput.value = serialNo;
-    if (desktopSerial) desktopSerial.textContent = `NO.${serialNo}`;
+    syncDesktopSerial(`NO.${serialNo}`);
 
     if (viaExit) {
       // 退出即归档是隐式动作，必须给回执，否则用户无从判断存没存上
@@ -1259,7 +1264,7 @@
   function init() {
     const serial = Store.getSerialNo();
     // 未领取（空串）时呈待签发态，避免显示裸 NO.
-    if (desktopSerial) desktopSerial.textContent = serial ? `NO.${serial}` : 'NO.------';
+    syncDesktopSerial(serial ? `NO.${serial}` : 'NO.------');
     if (serialNoInput) serialNoInput.value = serial;
     restoreAvatar();
     restoreFaceId();

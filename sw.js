@@ -56,6 +56,7 @@ const SHELL_ASSETS = [
   './js/profile.js',
   './js/clock.js',
   './js/apps.js',
+  './js/desktop-grid.js',
   './js/dock.js',
   './js/theme.js',
   './js/theme-ui.js',

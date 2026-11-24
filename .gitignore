@@ -72,3 +72,9 @@ release.keystore
 # 本机签名材料的离线备份目录（若放在工作区内）
 secrets/
 .signing/
+
+# 3D 桌面实验草稿（本地私有，不入仓库）
+prototype/
+
+# 3D 桌面依赖（three.js 及插件；待桌面方案定稿后一并入库）
+vendor/

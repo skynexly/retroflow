@@ -41,8 +41,17 @@
      --mono-font 为机能等宽通道，专供编号、时钟、序列号等需要
      等宽对齐的战术组件，不受自定义字体影响，保证数字不歪斜。
      --display-font 为机能展示通道，专供大号编号、卡片英文标签等
-     强调元素，使用 Bebas Neue 窄长无衬线体，力量感与工业感更强。 */
-  --main-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-  --mono-font: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  --display-font: 'BebasNeue', 'Arial Narrow', 'Helvetica Neue', sans-serif;
+     强调元素，使用 Bebas Neue 窄长无衬线体，力量感与工业感更强。
+     --heiti-font 为黑体硬通道：不随 --main-font 切换，也不受自定义字体影响。
+     专供需要稳定字形骨架的镂空 / 描边大标题（如执行员名字），
+     保证字重和笔画粗细在任何主题字体下都一致。
+     --display-heiti-font 为「英文窄体 + 中文黑体」混排通道：Bebas Neue 在最前，
+     其后直接衔接系统黑体栈。之所以不能写成 var(--display-font), var(--heiti-font)，
+     是因为 --display-font 尾部自带通用族 sans-serif，通用族一旦命中就会终止
+     回退链，后面的黑体栈永远不会被取用，中文会落到系统默认字体上。 */
+   --main-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+   --mono-font: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+   --display-font: 'BebasNeue', 'Arial Narrow', 'Helvetica Neue', sans-serif;
+   --heiti-font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+   --display-heiti-font: 'BebasNeue', -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
 }

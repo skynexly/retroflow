@@ -687,10 +687,10 @@ ${sizeAdjustLine}      }
 
   /* ---------------- 桌面磁贴图标美化 ---------------- */
 
-  // 15 张桌面卡片的美化配置清单。
-  // canIcon=false 的卡片（音乐/备忘录）是功能组件形态，只支持换背景。
+  // 15 张桌面卡片的美化配置清单（桌面网格重构后共 14 个可排布组件）。
+  // 红卡为 4×2 复合组件固定位，仅支持换背景；其余应用卡片均支持 图标/背景 定制。
   const TILE_DEFS = [
-    { id: 'profile',   name: '红卡',     index: '00', bgSel: '.profile-card',                    iconSel: null,                                                 canIcon: false },
+    { id: 'profile',   name: '红卡',     index: '00', bgSel: '.profile-card:not(.acid-dossier-card)', iconSel: null,                                              canIcon: false },
     { id: 'forks',     name: '副本库',   index: '01', bgSel: '.bento-card[data-app="forks"]',     iconSel: '.bento-card[data-app="forks"] .bento-icon-wrap',     canIcon: true },
     { id: 'memory',    name: '数据归档', index: '02', bgSel: '.bento-card[data-app="memory"]',    iconSel: '.bento-card[data-app="memory"] .bento-icon-wrap',    canIcon: true },
     { id: 'persona',   name: '个人档案', index: '03', bgSel: '.bento-card[data-app="persona"]',   iconSel: '.bento-card[data-app="persona"] .bento-icon-wrap',   canIcon: true },
@@ -699,9 +699,7 @@ ${sizeAdjustLine}      }
     { id: 'supply',    name: '系统商城', index: '06', bgSel: '.bento-card[data-app="supply"]',    iconSel: '.bento-card[data-app="supply"] .bento-icon-wrap',    canIcon: true },
     { id: 'vault',     name: '收藏馆',   index: '07', bgSel: '.bento-card[data-app="vault"]',     iconSel: '.bento-card[data-app="vault"] .bento-icon-wrap',     canIcon: true },
     { id: 'reader',    name: '阅读',     index: '08', bgSel: '.bento-card[data-app="reader"]',    iconSel: '.bento-card[data-app="reader"] .bento-icon-wrap',    canIcon: true,  canBg: true },
-    { id: 'gallery',   name: '图库',     index: '09', bgSel: null,                                 iconSel: '#bentoGalleryCard .p2-gallery-icon-wrap',            canIcon: true,  canBg: false },
-    { id: 'music',     name: '音乐',     index: '10', bgSel: '#bentoAudioDeck',                   iconSel: null,                                                 canIcon: false, canBg: true },
-    { id: 'memo',      name: '备忘录',   index: '11', bgSel: '#bentoMemoCard',                    iconSel: null,                                                 canIcon: false, canBg: true },
+    { id: 'gallery',   name: '图库',     index: '09', bgSel: '.bento-card[data-app="gallery"]',   iconSel: '.bento-card[data-app="gallery"] .bento-icon-wrap',   canIcon: true,  canBg: true },
     { id: 'credits',   name: '积分资产', index: '12', bgSel: '.bento-card[data-app="credits"]',   iconSel: '.bento-card[data-app="credits"] .bento-icon-wrap',   canIcon: true },
     { id: 'inventory', name: '储物室',   index: '13', bgSel: '.bento-card[data-app="inventory"]', iconSel: '.bento-card[data-app="inventory"] .bento-icon-wrap', canIcon: true },
     { id: 'lifeService', name: '生活服务', index: '14', bgSel: '.bento-card[data-app="lifeService"]', iconSel: '.bento-card[data-app="lifeService"] .bento-icon-wrap', canIcon: true },
@@ -760,24 +758,35 @@ ${sizeAdjustLine}      }
   async function applyTileBackground(id) {
     const def = getTileDef(id);
     if (!def || def.canBg === false) return;
-    const el = document.querySelector(def.bgSel);
-    if (!el) return;
+    // 酸性机能档案卡不跟随红卡背景：它是「不要背景」的独立组件，
+    // 先清掉可能残留的旧背景（历史数据里红卡背景曾同时写到两张卡上）
+    const acidCards = document.querySelectorAll('.desktop-hero-acid .acid-dossier-card');
+    acidCards.forEach((el) => {
+      el.style.backgroundImage = '';
+      el.classList.remove('tile-has-bg');
+    });
+    // 红卡类组件的选择器已排除 .acid-dossier-card，这里只会命中经典红卡
+    const els = document.querySelectorAll(def.bgSel);
+    if (!els.length) return;
     const cfg = getTileConfig(id);
     const bgKey = DataRegistry.key.tileBg(id);
-
     if (cfg.hasBg) {
       const src = await Storage.getAssetSrc(bgKey);
       if (src) {
         revokeTileUrl(bgKey);
         if (typeof src === 'string' && src.startsWith('blob:')) tileObjectUrls[bgKey] = src;
-        el.style.backgroundImage = `url("${src}")`;
-        el.classList.add('tile-has-bg');
+        els.forEach((el) => {
+          el.style.backgroundImage = `url("${src}")`;
+          el.classList.add('tile-has-bg');
+        });
         return;
       }
     }
     // 无背景：还原
-    el.style.backgroundImage = '';
-    el.classList.remove('tile-has-bg');
+    els.forEach((el) => {
+      el.style.backgroundImage = '';
+      el.classList.remove('tile-has-bg');
+    });
   }
 
   // 应用单张卡片的图标与底座

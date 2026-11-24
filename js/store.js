@@ -47,6 +47,7 @@ const Store = (() => {
     // decor 域
     decorCardName: 'decor/card.name',
     decorCardBio: 'decor/card.bio',
+    decorCardLine: 'decor/card.line',
     decorThemeColors: 'decor/theme.colors',
     decorCustomColorPalettes: 'decor/theme.customColorPalettes',
     decorThemeWallpaperMask: 'decor/theme.wallpaperMask',
@@ -55,6 +56,8 @@ const Store = (() => {
     decorThemeActiveFontId: 'decor/theme.activeFontId',
     decorTileConfigs: 'decor/theme.tileConfigs',
     decorTileNoBaseGlobal: 'decor/theme.tileNoBaseGlobal',
+    // 桌面网格布局（图标/卡片形态 + 每页格位坐标）
+    decorDesktopLayout: 'decor/desktop.layout',
     // memo 域
     memoContent: 'memo/content',
     // config 域
@@ -162,8 +165,19 @@ const Store = (() => {
     }
   };
 
-  const DEFAULT_CARD_NAME = '执行员';
+  const DEFAULT_CARD_NAME = 'PROXY-0';
   const DEFAULT_CARD_BIO = 'I arrive as a variable, never as a witness.';
+  /* 签名下方那排可编辑短句的预设：与签名同一套机能符号语法，仅靠透明度分层 */
+  const DEFAULT_CARD_LINE = ':: -- * -- :: [SIGNAL::STABLE] :: #000517';
+  /* 旧版默认文案：用于把已存在存档里的旧值平滑迁移到新默认，避免真机上
+     用户必须手动清空存档才能看到新文案。仅在读到完全相同的字符串时替换，
+     用户自己改过的内容一律不动。 */
+  const LEGACY_CARD_NAME = '执行员';
+  const LEGACY_CARD_BIO = '00 :: [X-RAY] :: + :: <VOID_WALKER> :: 01';
+  const LEGACY_CARD_LINE = 'Signal stable, no drift.';
+  function migrateCardDefault(v, legacy, next) {
+    return v === legacy ? next : v;
+  }
   const DEFAULT_MEMO = '';
 
   // 预设世界书：全局分类下的「破限」，仅在首次装载（从未播种过）时写入一次。
@@ -211,6 +225,7 @@ const Store = (() => {
     decor: {
       cardName: DEFAULT_CARD_NAME,
       cardBio: DEFAULT_CARD_BIO,
+      cardLine: DEFAULT_CARD_LINE,
       themeColors: {},
       customColorPalettes: [],
       themeWallpaperMask: null,
@@ -218,7 +233,9 @@ const Store = (() => {
       themeFontListMeta: [],
       themeActiveFontId: 'default',
       tileConfigs: {},
-      tileNoBaseGlobal: false
+      tileNoBaseGlobal: false,
+      // 桌面网格布局：{ version, pages: { 0: [...], 1: [...], 2: [...] } }，null 表示用默认布局
+      desktopLayout: null
     },
     memo: {
       content: DEFAULT_MEMO
@@ -387,8 +404,12 @@ const Store = (() => {
       data.roster.relations = asArray(pick(raw, K.rosterRelations, []));
 
       // decor
-      data.decor.cardName = pick(raw, K.decorCardName, DEFAULT_CARD_NAME);
-      data.decor.cardBio = pick(raw, K.decorCardBio, DEFAULT_CARD_BIO);
+      data.decor.cardName = migrateCardDefault(
+        pick(raw, K.decorCardName, DEFAULT_CARD_NAME), LEGACY_CARD_NAME, DEFAULT_CARD_NAME);
+      data.decor.cardBio = migrateCardDefault(
+        pick(raw, K.decorCardBio, DEFAULT_CARD_BIO), LEGACY_CARD_BIO, DEFAULT_CARD_BIO);
+      data.decor.cardLine = migrateCardDefault(
+        pick(raw, K.decorCardLine, DEFAULT_CARD_LINE), LEGACY_CARD_LINE, DEFAULT_CARD_LINE);
       data.decor.themeColors = asObject(pick(raw, K.decorThemeColors, {}));
       data.decor.customColorPalettes = asArray(pick(raw, K.decorCustomColorPalettes, []));
       data.decor.themeWallpaperMask = pick(raw, K.decorThemeWallpaperMask, null);
@@ -397,6 +418,7 @@ const Store = (() => {
       data.decor.themeActiveFontId = pick(raw, K.decorThemeActiveFontId, 'default');
       data.decor.tileConfigs = asObject(pick(raw, K.decorTileConfigs, {}));
       data.decor.tileNoBaseGlobal = Boolean(pick(raw, K.decorTileNoBaseGlobal, false));
+      data.decor.desktopLayout = pick(raw, K.decorDesktopLayout, null);
 
       // memo
       data.memo.content = pick(raw, K.memoContent, DEFAULT_MEMO);
@@ -530,6 +552,11 @@ const Store = (() => {
       get: () => data.decor.cardBio,
       set: (v) => { data.decor.cardBio = v == null ? '' : String(v); }
     },
+    'decor.cardLine': {
+      key: K.decorCardLine,
+      get: () => data.decor.cardLine,
+      set: (v) => { data.decor.cardLine = v == null ? '' : String(v); }
+    },
     'decor.themeColors': {
       key: K.decorThemeColors,
       get: () => data.decor.themeColors,
@@ -569,6 +596,11 @@ const Store = (() => {
       key: K.decorTileNoBaseGlobal,
       get: () => data.decor.tileNoBaseGlobal,
       set: (v) => { data.decor.tileNoBaseGlobal = Boolean(v); }
+    },
+    'decor.desktopLayout': {
+      key: K.decorDesktopLayout,
+      get: () => data.decor.desktopLayout,
+      set: (v) => { data.decor.desktopLayout = (v && typeof v === 'object') ? v : null; }
     },
     'memo.content': {
       key: K.memoContent,
@@ -879,11 +911,11 @@ const Store = (() => {
     envoy: [K.envoyIdentity, K.envoyMasks, K.envoyPsych],
     roster: [K.rosterCharacters, K.rosterNpcs, K.rosterAssistants, K.rosterRelations],
     decor: [
-      K.decorCardName, K.decorCardBio, K.decorThemeColors,
+      K.decorCardName, K.decorCardBio, K.decorCardLine, K.decorThemeColors,
       K.decorCustomColorPalettes,
       K.decorThemeWallpaperMask, K.decorThemeFrostedGlass,
       K.decorThemeFontListMeta, K.decorThemeActiveFontId,
-      K.decorTileConfigs, K.decorTileNoBaseGlobal
+      K.decorTileConfigs, K.decorTileNoBaseGlobal, K.decorDesktopLayout
     ],
     memo: [K.memoContent],
     config: [K.configApiNodes, K.configApiActiveNodeId, K.configApiSlots, K.configExternalServices],

@@ -617,11 +617,9 @@
   const tileClearAllBtn = document.getElementById('tileClearAllBtn');
   const tileClearCancelBtn = document.getElementById('tileClearCancelBtn');
 
-  // 占位 SVG（红卡/音乐/备忘录在列表里的缩略图）
+  // 占位 SVG（红卡在列表里的缩略图；其余卡片优先克隆桌面原生 SVG）
   const TILE_PLACEHOLDER_SVG = {
-    profile: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4V6h16v12zm-8-2h6v-2h-6v2zm0-4h6v-2h-6v2zm-5 4h3v-6H7v6z"/></svg>',
-    music: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v10.55A4 4 0 1014 17V7h4V3h-6z"/></svg>',
-    memo: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>'
+    profile: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4V6h16v12zm-8-2h6v-2h-6v2zm0-4h6v-2h-6v2zm-5 4h3v-6H7v6z"/></svg>'
   };
 
   let currentTileId = ThemeEngine.getTileDefs()[0] ? ThemeEngine.getTileDefs()[0].id : 'forks';
@@ -660,7 +658,7 @@
       const originSvg = document.querySelector(def.iconSel + ' svg');
       if (originSvg) svgMarkup = originSvg.outerHTML;
     }
-    if (!svgMarkup) svgMarkup = TILE_PLACEHOLDER_SVG[def.id] || TILE_PLACEHOLDER_SVG.memo;
+    if (!svgMarkup) svgMarkup = TILE_PLACEHOLDER_SVG[def.id] || TILE_PLACEHOLDER_SVG.profile;
     thumb.innerHTML = svgMarkup;
     return thumb;
   }

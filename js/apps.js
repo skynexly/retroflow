@@ -1,31 +1,79 @@
 /**
  * 溯流计划 · 桌面应用矩阵与分页交互控制器
- * 管理多页滑动、指示器同步、Page 02 拟物黑胶、相框与磁贴路由
+ * 职责：多页轮播滑动、指示器同步、磁贴点击路由。
+ * 网格落位 / 图标⇄卡片切换 / 长按拖拽编辑由 js/desktop-grid.js 接管。
  */
 (() => {
-  // 1. 分页滑动与指示器同步
+  // 1. 分页滑动与指示器同步（页数不写死，随桌面实际占用的页数动态增减）
   const viewport = document.getElementById('desktopCarouselViewport');
-  const indicatorDots = document.querySelectorAll('.page-indicator-dot');
+  const indicator = document.getElementById('desktopPageIndicator');
   let currentPage = 0;
+  let pageCount = indicator ? (indicator.querySelectorAll('.page-indicator-dot').length || 3) : 3;
+
+  /** 指示器按钮：只承载一枚方块，序号与模块名都不再显示 */
+  function buildDot(idx) {
+    const btn = document.createElement('button');
+    const isActive = idx === currentPage;
+    btn.className = 'page-indicator-dot' + (isActive ? ' active' : '');
+    btn.type = 'button';
+    btn.dataset.page = String(idx);
+    btn.setAttribute('role', 'tab');
+    btn.setAttribute('aria-label', '切换至第' + (idx + 1) + '页');
+    btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    btn.innerHTML = '<span class="dot-core"></span>';
+    return btn;
+  }
+
+  function renderIndicators() {
+    if (!indicator) return;
+    const dots = indicator.querySelectorAll('.page-indicator-dot');
+    // 数量对得上就只校正索引与语义（兼容 index.html 里写死的初始按钮）
+    if (dots.length === pageCount) {
+      dots.forEach((dot, idx) => {
+        dot.dataset.page = String(idx);
+        dot.setAttribute('aria-label', '切换至第' + (idx + 1) + '页');
+      });
+      updateIndicator(currentPage);
+      return;
+    }
+    indicator.textContent = '';
+    for (let i = 0; i < pageCount; i++) indicator.appendChild(buildDot(i));
+    updateIndicator(currentPage);
+  }
 
   function setPage(pageIndex, smooth = true) {
     if (!viewport) return;
-    currentPage = pageIndex;
+    const idx = Math.max(0, Math.min(pageCount - 1, pageIndex));
+    currentPage = idx;
     const scrollWidth = viewport.clientWidth;
     viewport.scrollTo({
-      left: pageIndex * scrollWidth,
+      left: idx * scrollWidth,
       behavior: smooth ? 'smooth' : 'auto'
     });
-    updateIndicator(pageIndex);
+    updateIndicator(idx);
   }
 
   function updateIndicator(pageIndex) {
-    indicatorDots.forEach((dot) => {
+    if (!indicator) return;
+    indicator.querySelectorAll('.page-indicator-dot').forEach((dot) => {
       const idx = parseInt(dot.dataset.page, 10);
       const isActive = idx === pageIndex;
       dot.classList.toggle('active', isActive);
       dot.setAttribute('aria-selected', isActive ? 'true' : 'false');
     });
+  }
+
+  /** 由 desktop-grid.js 在长出 / 收回页面后调用 */
+  function setPageCount(count) {
+    const next = Math.max(1, Math.round(Number(count) || 1));
+    if (next === pageCount) {
+      renderIndicators();
+      return pageCount;
+    }
+    pageCount = next;
+    if (currentPage > pageCount - 1) currentPage = pageCount - 1;
+    renderIndicators();
+    return pageCount;
   }
 
   if (viewport) {
@@ -44,14 +92,30 @@
     }, { passive: true });
   }
 
-  indicatorDots.forEach((dot) => {
-    dot.addEventListener('click', () => {
+  // 事件委派：指示器按钮会被动态重建，不能逐个绑定
+  if (indicator) {
+    indicator.addEventListener('click', (e) => {
+      const dot = e.target && typeof e.target.closest === 'function'
+        ? e.target.closest('.page-indicator-dot')
+        : null;
+      if (!dot) return;
       const idx = parseInt(dot.dataset.page, 10);
       if (!isNaN(idx)) setPage(idx, true);
     });
-  });
+  }
 
-  // 2. 磁贴路由点击分发（Page 01 与 Page 02 通用）
+  renderIndicators();
+
+  // 供 desktop-grid.js 在编辑态跨页翻页 / 页数变化时调用
+  window.DesktopCarousel = {
+    setPage,
+    setPageCount,
+    getPageCount: () => pageCount,
+    getCurrentPage: () => currentPage,
+    updateIndicator
+  };
+
+  // 2. 磁贴路由点击分发
   function handleAppClick(appId, appName) {
     console.log(`[Retroflow] 正在进入模块：${appName} (${appId})`);
     if (appId === 'persona') {
@@ -101,211 +165,59 @@
 
   // 绑定所有带有 data-app 的磁贴卡片与按钮
   document.querySelectorAll('[data-app]').forEach((el) => {
-    el.addEventListener('click', (e) => {
-      // 如果点击的是相框内部的封面，不要触发进入图库
-      if (e.target.closest('#bentoGalleryFrame')) return;
+    el.addEventListener('click', () => {
+      // 编辑模式下点击不进入模块；刚结束拖拽/长按的这一次点击同样拦截
+      if (document.body.classList.contains('desktop-editing')) return;
+      if (window.DesktopGrid && typeof DesktopGrid.isSuppressClick === 'function' && DesktopGrid.isSuppressClick()) {
+        return;
+      }
       const appId = el.dataset.app;
-      const appTitle = el.querySelector('.bento-title, .p2-gallery-zh')?.textContent || appId;
+      const appTitle = el.querySelector('.bento-title')?.textContent || appId;
       handleAppClick(appId, appTitle);
     });
   });
 
-  // 3. Page 02 图库相框封面更换
-  const galleryFrame = document.getElementById('bentoGalleryFrame');
-  const galleryCoverImg = document.getElementById('bentoGalleryCoverImg');
-  const galleryPlaceholder = document.getElementById('bentoGalleryPlaceholder');
-  const ASSET_KEY_GALLERY_COVER = DataRegistry.key.galleryCover();
-  let galleryCoverObjectUrl = null;
+  /* ---------------- 启动遮罩解除 ----------------
+     纯色遮罩盖住「静态初始桌面 → 存档布局 → 主题着色」这段窗口。
+     正常路径由 Boot.onReady('desktop') 在 DesktopGrid.init 与 applyAllTiles 之后调用；
+     同时挂一个兜底定时器，任一路径抛异常或 Boot 卡住也会强制揭开，
+     绝不把界面永久留在遮罩下。
+     注意：必须定义在 Boot.onReady 之前——Boot 已就绪时 onReady 会同步跑回调，
+     若状态变量声明在后会撞上暂时性死区。 */
+  let bootCurtainReleased = false;
 
-  function applyGalleryCover(src) {
-    if (!galleryCoverImg) return;
-    // 释放上一枚 objectURL，避免内存泄漏
-    if (galleryCoverObjectUrl && galleryCoverObjectUrl !== src) {
-      Storage.revokeAssetSrc(galleryCoverObjectUrl);
-      galleryCoverObjectUrl = null;
-    }
-    if (typeof src === 'string' && src.startsWith('blob:')) {
-      galleryCoverObjectUrl = src;
-    }
-    galleryCoverImg.src = src;
-    galleryCoverImg.hidden = false;
-    if (galleryPlaceholder) galleryPlaceholder.hidden = true;
-  }
-
-  async function loadGalleryCover() {
-    try {
-      const src = await Storage.getAssetSrc(ASSET_KEY_GALLERY_COVER);
-      if (src) applyGalleryCover(src);
-    } catch (e) {
-      /* ignore */
+  function releaseBootCurtain() {
+    if (bootCurtainReleased) return;
+    bootCurtainReleased = true;
+    const curtain = document.getElementById('bootCurtain');
+    document.body.classList.remove('is-booting');
+    if (!curtain) return;
+    curtain.classList.add('is-off');
+    const finish = () => {
+      if (curtain.parentElement) curtain.classList.add('is-gone');
+    };
+    // 等淡出走完再退出渲染树；减少动效偏好下过渡为 0，直接收尾
+    const reduced = window.matchMedia
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) {
+      finish();
+    } else {
+      setTimeout(finish, 360);
     }
   }
 
-  // 封面加载失败时回退到占位图，避免出现裂图
-  if (galleryCoverImg) {
-    galleryCoverImg.addEventListener('error', () => {
-      galleryCoverImg.removeAttribute('src');
-      galleryCoverImg.hidden = true;
-      if (galleryPlaceholder) galleryPlaceholder.hidden = false;
-    });
-  }
+  // 兜底：无论 Boot 是否正常完成，最多 2.2 秒后一定揭开
+  setTimeout(releaseBootCurtain, 2200);
 
-  if (galleryFrame) {
-    galleryFrame.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (!window.ImagePicker || typeof ImagePicker.open !== 'function') return;
-      ImagePicker.open({
-        title: '更换图库桌面快照封面',
-        onSelect: async (res) => {
-          if (!res) return;
-          if (res.type === 'file' && res.file) {
-            // 先用 objectURL 即时预览，再把压缩后的 Blob 固化进 IndexedDB
-            applyGalleryCover(URL.createObjectURL(res.file));
-            const blob = await Storage.compressImage(res.file, 1200, 0.9);
-            await Storage.setAsset(ASSET_KEY_GALLERY_COVER, blob);
-          } else if (res.type === 'url' && res.url) {
-            applyGalleryCover(res.url);
-            await Storage.setAsset(ASSET_KEY_GALLERY_COVER, res.url);
-          }
-        }
-      });
-    });
-  }
-
-  // 4. Page 02 拟物黑胶唱片机能控制
-  const audioDeck = document.getElementById('bentoAudioDeck');
-  const playBtn = document.getElementById('p2AudioPlayBtn');
-  const loopBtn = document.getElementById('p2AudioLoopBtn');
-  const playlistBtn = document.getElementById('p2AudioPlaylistBtn');
-  const prevBtn = document.getElementById('p2AudioPrevBtn');
-  const nextBtn = document.getElementById('p2AudioNextBtn');
-  const iconPlay = playBtn ? playBtn.querySelector('.icon-play') : null;
-  const iconPause = playBtn ? playBtn.querySelector('.icon-pause') : null;
-  let isAudioPlaying = false;
-  let isAudioLoop = false;
-
-  if (playBtn && audioDeck) {
-    playBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      isAudioPlaying = !isAudioPlaying;
-      audioDeck.classList.toggle('is-playing', isAudioPlaying);
-      if (iconPlay) iconPlay.hidden = isAudioPlaying;
-      if (iconPause) iconPause.hidden = !isAudioPlaying;
-
-      if (window.RetroToast && isAudioPlaying) {
-        RetroToast.show({
-          tag: 'AUDIO 声纹广播',
-          message: '已开始播放：溯流协议 · 主题因果波',
-          detail: '黑胶唱机同调运转中。',
-          type: 'info'
-        });
-      }
-    });
-  }
-
-  // 扩展按键事件绑定 (预留音乐库与模式扩展)
-  if (loopBtn) {
-    loopBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      isAudioLoop = !isAudioLoop;
-      loopBtn.classList.toggle('is-active', isAudioLoop);
-      if (window.RetroToast) {
-        RetroToast.show({
-          tag: 'AUDIO 播放模式',
-          message: isAudioLoop ? '单曲循环已启用' : '列表顺序播放',
-          type: 'info'
-        });
-      }
-    });
-  }
-
-  if (playlistBtn) {
-    playlistBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (window.RetroToast) {
-        RetroToast.show({
-          tag: 'AUDIO 音轨阵列',
-          message: '声纹列表库构筑中',
-          detail: '默认音轨：溯流协议 · 主题因果波',
-          type: 'info'
-        });
-      }
-    });
-  }
-
-  if (prevBtn) {
-    prevBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (window.RetroToast) {
-        RetroToast.show({
-          tag: 'AUDIO 音轨切换',
-          message: '已回退至上一因果频段',
-          type: 'info'
-        });
-      }
-    });
-  }
-
-  if (nextBtn) {
-    nextBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (window.RetroToast) {
-        RetroToast.show({
-          tag: 'AUDIO 音轨切换',
-          message: '已切至下一因果频段',
-          type: 'info'
-        });
-      }
-    });
-  }
-
-  // 5. Page 02 战术便签在线编辑
-  const memoCard = document.getElementById('bentoMemoCard');
-  const memoContent = document.getElementById('p2MemoContent');
-
-  function fillMemo() {
-    const saved = Store.memo.content;
-    if (saved && memoContent) {
-      memoContent.textContent = saved;
-    }
-  }
-
-  if (memoCard) {
-    memoCard.addEventListener('click', async () => {
-      if (!window.TextEditorModal || typeof TextEditorModal.edit !== 'function') return;
-      const current = memoContent ? memoContent.textContent.trim() : '';
-      const updated = await TextEditorModal.edit({
-        title: '随身便笺编辑',
-        tag: 'MEMO 备忘录',
-        value: current,
-        placeholder: '写下当前的副本观测备忘、线索或警示...',
-        maxLength: 500
-      });
-      if (updated !== null && memoContent) {
-        memoContent.textContent = updated || '暂无备忘事项。';
-        const ok = await Store.save('memo.content', updated || '');
-        if (!ok && window.RetroToast) {
-          RetroToast.show({
-            tag: 'STORAGE 写入失败',
-            message: '便笺保存失败',
-            detail: '存储空间可能已满，内容未能固化。',
-            type: 'error'
-          });
-        }
-      }
-    });
-  }
-
-  // 配置装载完成后再填充数据
+  // 3. 配置装载完成后再应用桌面磁贴美化（背景 / 图标 / 移除底座）
   Boot.onReady('desktop', async () => {
-    fillMemo();
-    await loadGalleryCover();
-    // 应用桌面磁贴图标美化（背景 / 图标 / 移除底座）
+    if (window.DesktopGrid && typeof DesktopGrid.init === 'function') {
+      try { DesktopGrid.init(); } catch (e) { /* ignore */ }
+    }
     if (window.ThemeEngine && typeof ThemeEngine.applyAllTiles === 'function') {
       try { await ThemeEngine.applyAllTiles(); } catch (e) { /* ignore */ }
     }
+    // 桌面布局与磁贴美化都落位后才揭开启动遮罩，避免看见中间态跳变
+    releaseBootCurtain();
   });
-
-  // 向注册表声明桌面装饰位在用的键
-  DataRegistry.registerUsageProvider('desktop', () => [ASSET_KEY_GALLERY_COVER]);
 })();

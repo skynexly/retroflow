@@ -10,12 +10,20 @@
 (() => {
   const KEY_CARD_PHOTO = DataRegistry.key.profileCard();
 
-  const avatarWrapper = document.querySelector('.photo-layer-front');
-  const avatarImg = document.querySelector('.photo-inner img');
-  const nameInput = document.querySelector('.profile-name');
-  const bioInput = document.querySelector('.profile-bio');
-  const serialNumEl = document.getElementById('profileSerialNum');
-  const serviceDaysEl = document.getElementById('serviceDaysVal');
+  /*
+   * 桌面上可以同时摆多张红卡类组件（经典红卡 / 酸性档案卡），
+   * 它们共用同一套照片、名字、签名、序列号与在役天数。
+   * 节点按选择器实时查询：收进组件库的组件挂在 #desktopWidgetStash 里，同样能被同步到。
+   */
+  const HERO = '.desktop-hero-widget';
+  const all = (sel) => Array.prototype.slice.call(document.querySelectorAll(sel));
+  const photoTriggers = () => all(HERO + ' .photo-layer-front');
+  const photoImgs = () => all(HERO + ' .photo-inner img');
+  const nameInputs = () => all(HERO + ' .profile-name');
+  const bioInputs = () => all(HERO + ' .profile-bio');
+  const lineInputs = () => all(HERO + ' .profile-line');
+  const serialEls = () => all('#profileSerialNum, ' + HERO + ' .profile-serial-num');
+  const serviceDaysEls = () => all('#serviceDaysVal, ' + HERO + ' .service-days-val');
 
   let currentObjectUrl = null;
 
@@ -25,9 +33,11 @@
       Storage.revokeAssetSrc(currentObjectUrl);
     }
     currentObjectUrl = src.startsWith('blob:') ? src : null;
-    avatarImg.src = src;
-    avatarImg.hidden = false;
-    avatarImg.style.opacity = '1';
+    photoImgs().forEach((img) => {
+      img.src = src;
+      img.hidden = false;
+      img.style.opacity = '1';
+    });
   }
 
   /** 回到空态：只留装饰底色，不留裂图 */
@@ -37,9 +47,11 @@
       currentObjectUrl = null;
     }
     // 先置空再移除属性，避免残留已解码帧闪现
-    avatarImg.src = '';
-    avatarImg.removeAttribute('src');
-    avatarImg.hidden = true;
+    photoImgs().forEach((img) => {
+      img.src = '';
+      img.removeAttribute('src');
+      img.hidden = true;
+    });
   }
 
   async function saveCardPhoto(value) {
@@ -64,6 +76,7 @@
 
   const saveName = debounce((value) => Store.save('decor.cardName', value), 300);
   const saveBio = debounce((value) => Store.save('decor.cardBio', value), 300);
+  const saveLine = debounce((value) => Store.save('decor.cardLine', value), 300);
 
   /** 序列号只读转发，真相源在 Store */
   function getSerialId() {
@@ -72,9 +85,11 @@
 
   /** 刷新红卡上的编号显示。未领取（空串）时呈待签发态，不显示裸 NO. */
   function renderSerial(id) {
-    if (!serialNumEl) return;
+    const els = serialEls();
+    if (!els.length) return;
     const clean = String(id || '').trim();
-    serialNumEl.textContent = clean ? `NO.${clean}` : 'NO.------';
+    const text = clean ? `NO.${clean}` : 'NO.------';
+    els.forEach((el) => { el.textContent = text; });
   }
 
   /**
@@ -84,7 +99,8 @@
    * 尚未入职时显示占位符，不谎报天数。
    */
   function renderServiceDays() {
-    if (!serviceDaysEl) return;
+    const els = serviceDaysEls();
+    if (!els.length) return;
 
     let days = 0;
     try {
@@ -98,11 +114,11 @@
       days = 0;
     }
 
-    serviceDaysEl.textContent = days > 0 ? String(days) : '--';
+    const text = days > 0 ? String(days) : '--';
+    els.forEach((el) => { el.textContent = text; });
   }
 
-  // 点击红卡照片打开通用选择器
-  avatarWrapper.addEventListener('click', () => {
+  function openPhotoPicker() {
     ImagePicker.open({
       title: '更换红卡照片',
       onSelect: async (res) => {
@@ -121,15 +137,35 @@
         }
       }
     });
-  });
+  }
 
-  nameInput.addEventListener('input', (e) => saveName(e.target.value));
-  bioInput.addEventListener('input', (e) => saveBio(e.target.value));
+  /** 一张卡上改了名字 / 签名，其余卡立刻跟上 */
+  function mirrorValue(list, source, value) {
+    list.forEach((el) => {
+      if (el !== source && el.value !== value) el.value = value;
+    });
+  }
+
+  // 点击任一红卡照片打开通用选择器
+  photoTriggers().forEach((el) => el.addEventListener('click', openPhotoPicker));
+
+  nameInputs().forEach((el) => el.addEventListener('input', (e) => {
+    mirrorValue(nameInputs(), e.target, e.target.value);
+    saveName(e.target.value);
+  }));
+  bioInputs().forEach((el) => el.addEventListener('input', (e) => {
+    mirrorValue(bioInputs(), e.target, e.target.value);
+    saveBio(e.target.value);
+  }));
+  lineInputs().forEach((el) => el.addEventListener('input', (e) => {
+    mirrorValue(lineInputs(), e.target, e.target.value);
+    saveLine(e.target.value);
+  }));
 
   // 图源失效（远端 URL 挂了、Blob 被回收）时退回空态，不留裂图
-  avatarImg.addEventListener('error', () => {
-    if (avatarImg.getAttribute('src')) clearCardPhoto();
-  });
+  photoImgs().forEach((img) => img.addEventListener('error', () => {
+    if (img.getAttribute('src')) clearCardPhoto();
+  }));
 
   // 档案侧改了编号后同步红卡显示
   window.addEventListener('retroflow:serial-changed', (e) => {
@@ -143,8 +179,9 @@
 
   // 配置数据装载完成后再填充界面
   Boot.onReady('profile', async () => {
-    nameInput.value = Store.decor.cardName;
-    bioInput.value = Store.decor.cardBio;
+    nameInputs().forEach((el) => { el.value = Store.decor.cardName; });
+    bioInputs().forEach((el) => { el.value = Store.decor.cardBio; });
+    lineInputs().forEach((el) => { el.value = Store.decor.cardLine; });
     renderSerial(Store.getSerialNo());
     renderServiceDays();
     const src = await Storage.getAssetSrc(KEY_CARD_PHOTO);

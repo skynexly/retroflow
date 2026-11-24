@@ -577,13 +577,13 @@ const ForkPickUI = (() => {
     ensureElements();
 
     // 1. 桌面红卡右下角「DIVE // 进入副本」抽拉标签
-    const profileFolderTab = document.querySelector('.profile-folder-tab');
-    if (profileFolderTab) {
-      profileFolderTab.addEventListener('click', (e) => {
+    //    以及酸性档案卡右下角切角 DIVE 模块（两张卡可同时在桌面上）
+    document.querySelectorAll('.profile-folder-tab, [data-hero-dive="true"]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
         e.preventDefault();
         handleFastDive();
       });
-    }
+    });
 
     // 2. 底部 Dock 栏「快速下潜」中央反应堆按键
     const dockDiveCore = document.querySelector('.dock-dive-core[data-action="quick-dive"]');

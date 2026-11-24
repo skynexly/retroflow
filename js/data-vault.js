@@ -126,6 +126,7 @@ const DataVault = (() => {
         K.decorCustomColorPalettes,
         K.decorThemeWallpaperMask, K.decorThemeFrostedGlass,
         K.decorTileConfigs, K.decorTileNoBaseGlobal,
+        K.decorDesktopLayout,
         K.decorThemeFontListMeta, K.decorThemeActiveFontId
       ],
       // 私聊对话壁纸的键落在 online 域下（online/chat.wallpaper.*），
