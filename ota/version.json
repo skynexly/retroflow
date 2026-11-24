@@ -31,19 +31,21 @@
   "schemaVersion": 1,
   "channel": "stable",
   "latest": {
-    "version": "1.4.0",
-    "build": 1325,
+    "version": "1.5.0",
+    "build": 1326,
     "minBinary": 7,
-    "releasedAt": "2026-11-23T15:06:17Z",
+    "releasedAt": "2026-11-24T15:35:41Z",
     "notes": [
-      "清理全站冗余符号，界面文字与图标进一步精简。",
-      "私聊通知改为逐条错峰弹出，入场新增回弹落定动效。"
+      "桌面网格引擎重构：组件支持跨页拖拽，页数按需伸缩",
+      "桌面卡片序号改为按位置自动编号，跨页连续",
+      "修复启动时闪现初始桌面（新增启动遮罩）",
+      "红卡签名恢复为默认英文文案"
     ],
     "packages": {
       "full": {
-        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1325/retroflow-ota-full-b1325.zip",
-        "sha256": "b3de69403e5b71e7250c55bbc8507c16da131183f90dfc9d4cb2cdde74c0f3bb",
-        "size": 2146469
+        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1326/retroflow-ota-full-b1326.zip",
+        "sha256": "65f02e9c1c65251c07cd32ea067d83596c950f47471b1ea8370404ed4272b6d4",
+        "size": 2171543
       },
       "patch": {
         "sinceBuild": 0,
@@ -53,5 +55,5 @@
       }
     }
   },
-  "_status": "已发布 build 1325（全量包，字体常驻不打包）。patch 差分留待后续。"
+  "_status": "已发布 build 1326（全量包，字体常驻不打包）。patch 差分留待后续。"
 }
