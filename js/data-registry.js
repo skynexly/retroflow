@@ -182,6 +182,8 @@ const DataRegistry = (() => {
     // —— memory 域（记忆库元配置）——
     /** 记忆库全局配置（提取开关、预算参数、播种标记） */
     memoryConfig: () => `${DOMAINS.memory.prefix}config`,
+    /** 助手核心档案（浓缩正文、已吸收记忆 id、整理设置、手动备份） */
+    memoryCoreProfile: () => `${DOMAINS.memory.prefix}core_profile`,
 
     // —— envoy 域（用户自己，含马甲分身）——
     /** 个人档案立绘 */

@@ -8,10 +8,12 @@
  * 只负责解析和逐条校验，不调用 API，也不写库。
  *
  * 结果：
- *   { ok: true,  memories: [...], dropped: [{index, reason, item}], warnings: [{index, message}] }
- *   { ok: false, error: '...', memories: [], dropped: [], warnings: [] }
+ *   { ok: true, memories: [...], completed: [...], dropped: [...], completedDropped: [...], warnings: [...] }
+ *   { ok: false, error: '...', memories: [], completed: [], dropped: [], completedDropped: [], warnings: [] }
  * 标签缺失或整体 JSON 无法解析才算整体失败；空数组是成功，条数为 0。
+ * completed 校验旧待办勾选的结构；是否在本次清单内、能否完成由存储层复核。
  * 单条不合格只丢弃该条并记录原因；正文超出字数只记提示，不丢弃。
+
  * ============================================================================
  */
 const AssistantMemoryParser = (() => {
@@ -179,12 +181,41 @@ const AssistantMemoryParser = (() => {
     return { memory };
   }
 
+  /** 与存储层一致：不仅检查外形，也排除 2026-02-31 这类不存在的日期。 */
+  function validDateOnly(raw) {
+    const value = str(raw);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return '';
+    const date = new Date(`${value}T12:00:00`);
+    if (Number.isNaN(date.getTime())) return '';
+    const p = (n) => String(n).padStart(2, '0');
+    return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}` === value ? value : '';
+  }
+
+  /** 校验一条旧待办勾选。白名单和原记录状态由存储层复核。 */
+  function validateCompletion(item, warn) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return { reason: '不是对象' };
+    const id = str(item.id);
+    if (!id) return { reason: '缺少旧待办 id' };
+    const completedDate = validDateOnly(item.completedDate);
+    if (!completedDate) return { reason: `完成日期不合法：${str(item.completedDate) || '（空）'}` };
+    const completionNote = str(item.completionNote);
+    if (!completionNote) return { reason: '缺少完成说明 completionNote' };
+    if (!Array.isArray(item.evidence)) return { reason: 'evidence 不是数组' };
+    const evidence = item.evidence.filter((e) => typeof e === 'string' && e.trim()).map((e) => e.trim());
+    if (!evidence.length) return { reason: '缺少原文依据 evidence' };
+    if (evidence.length !== item.evidence.length) warn('evidence 中有空项或非字符串项，已忽略');
+    if (Array.from(completionNote).length > 60) warn('完成说明超过 60 字，写入时按存储上限处理');
+    return { completion: { id, completedDate, completionNote, evidence } };
+  }
+
   /**
    * 解析模型输出。
    * @param {string} text 模型的完整回复
    */
   function parse(text) {
-    const fail = (error) => ({ ok: false, error, memories: [], dropped: [], warnings: [] });
+    const fail = (error) => ({
+      ok: false, error, memories: [], completed: [], dropped: [], completedDropped: [], warnings: []
+    });
 
     const inner = extractTagged(text);
     if (inner === null) return fail(`输出中没有 <${TAG}> 标签`);
@@ -200,7 +231,9 @@ const AssistantMemoryParser = (() => {
     else return fail('JSON 中没有 memories 数组');
 
     const memories = [];
+    const completed = [];
     const dropped = [];
+    const completedDropped = [];
     const warnings = [];
     if (parsed.repaired) warnings.push({ index: -1, message: '原始 JSON 不合法，已经过补救后解析' });
     if (Array.isArray(root)) warnings.push({ index: -1, message: '外层缺少 memories 字段，已按数组解析' });
@@ -212,7 +245,20 @@ const AssistantMemoryParser = (() => {
       else dropped.push({ index, reason: res.reason, item });
     });
 
-    return { ok: true, memories, dropped, warnings };
+    // 旧格式没有 completed，按空数组处理；字段存在但外形错误时不牵连已解析的新记忆。
+    let completionList = [];
+    if (root && !Array.isArray(root) && typeof root === 'object' && root.completed != null) {
+      if (Array.isArray(root.completed)) completionList = root.completed;
+      else warnings.push({ index: -1, message: 'completed 不是数组，已按空数组处理' });
+    }
+    completionList.forEach((item, index) => {
+      const warn = (message) => warnings.push({ index, message: `completed[${index}]：${message}` });
+      const res = validateCompletion(item, warn);
+      if (res.completion) completed.push(res.completion);
+      else completedDropped.push({ index, reason: res.reason, item });
+    });
+
+    return { ok: true, memories, completed, dropped, completedDropped, warnings };
   }
 
   return {

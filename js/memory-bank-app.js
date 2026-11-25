@@ -223,7 +223,7 @@ const MemoryBankApp = (() => {
   /** 编辑面板的 visualViewport 监听卸载函数 */
   let assistantKeyboardCleanup = null;
   /** 当前选中的 Tab：daily | fork | char */
-  let currentTab = 'fork';
+  let currentTab = 'daily';
   /** 「其他分支」是否展开 */
   let othersExpanded = false;
   /** 本次持有的封面 objectURL，重绘或关页统一释放 */
@@ -1669,6 +1669,11 @@ const MemoryBankApp = (() => {
 
   function renderAssistantMemory() {
     if (!viewportEl) return;
+    if (window.MemoryAutoAudit && typeof window.MemoryAutoAudit.checkDue === 'function') {
+      window.MemoryAutoAudit.checkDue('assistant-memory').catch((err) => {
+        console.warn('[MemoryBank] 自动巡检到期检查失败：', err);
+      });
+    }
     resetAssistantListTools();
     wallRenderSeq++;
     currentTab = 'daily';
@@ -2271,18 +2276,36 @@ const MemoryBankApp = (() => {
           <span class="settings-title-en">MEMORY PRISM</span>
           <span class="settings-title-zh">助手记忆</span>
         </div>
-        <button class="mem-audit-btn" id="memAuditBtn" type="button"
-          aria-label="记忆巡检：分析并合并重复、矛盾的记忆" title="记忆巡检">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.55"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M6 5V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-3"/>
-            <rect x="2" y="5" width="11" height="16" rx="2"/>
-            <path d="M5.5 9h4M5.5 12h3"/>
-            <circle cx="17" cy="16" r="4"/>
-            <path d="m19.8 18.8 2.2 2.2"/>
-          </svg>
-        </button>
+        <div class="mem-header-actions">
+          <button class="mem-audit-btn" id="memCoreProfileBtn" type="button"
+            aria-label="核心档案：把助手记忆浓缩成长期档案" title="核心档案">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.55"
+              stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+              <path d="M4 3h11l5 5v13H4z"/>
+              <path d="M15 3v5h5"/>
+              <rect x="7" y="9" width="5" height="5"/>
+              <path d="M14.5 10.5h2.5M14.5 13h2.5M7 17.5h10"/>
+            </svg>
+          </button>
+          <button class="mem-audit-btn" id="memAuditBtn" type="button"
+            aria-label="记忆巡检：分析并合并重复、矛盾的记忆" title="记忆巡检">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.55"
+              stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+              <path d="M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5"/>
+              <path d="M12 8.5l3.5 3.5-3.5 3.5-3.5-3.5z"/>
+              <path d="M4.5 12h2.5M17 12h2.5"/>
+            </svg>
+          </button>
+        </div>
       `;
+      const coreProfileBtn = headerEl.querySelector('#memCoreProfileBtn');
+      if (coreProfileBtn) {
+        coreProfileBtn.addEventListener('click', () => {
+          if (window.CoreProfileModal && typeof window.CoreProfileModal.open === 'function') {
+            window.CoreProfileModal.open();
+          }
+        });
+      }
       const auditBtn = headerEl.querySelector('#memAuditBtn');
       if (auditBtn) {
         auditBtn.addEventListener('click', () => {
@@ -2607,7 +2630,7 @@ const MemoryBankApp = (() => {
         window.history.pushState({ rfPage: 'memory-bank' }, '', '#memory-bank');
       } catch (_) {}
     }
-    await renderWall();
+    renderDaily();
     if (viewportEl) viewportEl.scrollTop = 0;
   }
 
@@ -2721,6 +2744,18 @@ const MemoryBankApp = (() => {
       }
     }, 320);
   }
+
+  // 巡检已写库后强制重读缓存；只就地刷新正在浏览的分类，不打扰其他页面。
+  window.addEventListener('retroflow:memory-audit-completed', async () => {
+    const store = assistantStore();
+    if (!store || typeof store.load !== 'function') return;
+    try {
+      await store.load(true);
+      if (isOpened && isAssistantMemory && currentAssistantCategory) updateAssistantList();
+    } catch (err) {
+      console.warn('[MemoryBank] 巡检后刷新助手记忆失败：', err);
+    }
+  });
 
   // 系统返回键 / 手势返回：按 hash 决定退到格墙还是收起整页
   window.addEventListener('popstate', () => {

@@ -19,7 +19,7 @@
 
   <!-- 样式资产（带构建版本戳穿透 HTTP 磁盘缓存） -->
   <link rel="stylesheet" href="css/variables.css?v=192">
-  <link rel="stylesheet" href="css/style.css?v=986">
+  <link rel="stylesheet" href="css/style.css?v=990">
   <link rel="stylesheet" href="css/fork-deck-camera.css?v=3">
   <link rel="stylesheet" href="css/api-call-log.css?v=4">
   <link rel="stylesheet" href="css/life-service.css?v=129">
@@ -767,12 +767,21 @@
       </div>
 
       <div class="memory-audit-modal-body">
-        <!-- 自动巡检开关（即将推出，暂时禁用） -->
-        <div class="memory-audit-row disabled">
-          <span class="memory-audit-label">每周自动巡检</span>
-          <div class="memory-audit-toggle disabled">
-            <span class="memory-audit-hint">即将推出</span>
-          </div>
+        <!-- 自动巡检：默认关闭，开启七天后首次执行 -->
+        <div class="memory-audit-auto-block">
+          <label class="memory-audit-row" for="memAutoAuditToggle">
+            <span class="memory-audit-auto-copy">
+              <span class="memory-audit-label">每周自动巡检</span>
+              <span class="memory-audit-auto-status" id="memAutoAuditStatus">开启后每 7 天检查相似记忆</span>
+            </span>
+            <span class="theme-switch-wrap">
+              <input type="checkbox" id="memAutoAuditToggle" class="theme-switch-input" role="switch" aria-label="每周自动巡检">
+              <span class="theme-switch-track" aria-hidden="true">
+                <span class="theme-switch-thumb"></span>
+              </span>
+            </span>
+          </label>
+          <div class="memory-audit-last-result" id="memAuditLastResult" hidden></div>
         </div>
 
         <!-- 立刻巡检按钮 -->
@@ -800,6 +809,120 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- ========================================================================
+       核心档案控制弹窗 (Core Profile Modal)
+       居中显示、零分割线、纯 SVG 图标；外壳复用记忆巡检弹窗
+       ========================================================================== -->
+  <div id="coreProfileModalOverlay" class="memory-audit-modal-overlay" hidden>
+    <div class="memory-audit-modal-card core-profile-modal-card" role="dialog" aria-modal="true" aria-label="核心档案">
+      <div class="memory-audit-modal-header">
+        <span class="memory-audit-modal-tag">PROFILE 核心档案</span>
+        <button class="memory-audit-modal-close" id="coreProfileCloseBtn" type="button" aria-label="关闭">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="memory-audit-modal-body">
+        <!-- 统计 -->
+        <div class="core-profile-stats">
+          <div class="core-profile-stat">
+            <span class="core-profile-stat-value" id="coreProfileStatPending">--</span>
+            <span class="core-profile-stat-label">待整理</span>
+          </div>
+          <div class="core-profile-stat">
+            <span class="core-profile-stat-value" id="coreProfileStatAbsorbed">--</span>
+            <span class="core-profile-stat-label">已吸收</span>
+          </div>
+          <div class="core-profile-stat">
+            <span class="core-profile-stat-value" id="coreProfileStatChars">--</span>
+            <span class="core-profile-stat-label">字数/上限</span>
+          </div>
+        </div>
+
+        <!-- 查看 / 提取 -->
+        <button class="memory-audit-btn secondary" id="coreProfileViewBtn" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+          </svg>
+          <span>查看核心档案</span>
+        </button>
+        <button class="memory-audit-btn primary" id="coreProfileExtractBtn" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+          </svg>
+          <span>提取核心档案</span>
+        </button>
+
+        <!-- 参数 -->
+        <div class="core-profile-group">
+          <label class="memory-audit-row core-profile-field" for="coreProfileBatchInput">
+            <span class="core-profile-field-text">
+              <span class="memory-audit-label">提取记忆条数</span>
+              <span class="memory-audit-hint">每次 <span id="coreProfileBatchRange">1~500</span> 条</span>
+            </span>
+            <input class="core-profile-input" id="coreProfileBatchInput" type="number" inputmode="numeric" step="1">
+          </label>
+          <label class="memory-audit-row core-profile-field" for="coreProfileCharsInput">
+            <span class="core-profile-field-text">
+              <span class="memory-audit-label">档案字数上限</span>
+              <span class="memory-audit-hint"><span id="coreProfileCharsRange">200~20000</span> 字</span>
+            </span>
+            <input class="core-profile-input" id="coreProfileCharsInput" type="number" inputmode="numeric" step="1">
+          </label>
+          <!-- 自动提取（即将推出，暂时禁用） -->
+          <div class="memory-audit-row disabled">
+            <span class="memory-audit-label">自动提取核心档案</span>
+            <div class="memory-audit-toggle disabled">
+              <span class="memory-audit-hint">即将推出</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 备份与进度 -->
+        <div class="core-profile-group">
+          <div class="core-profile-group-title">恢复提取前档案</div>
+          <div class="memory-audit-backup-info" id="coreProfileBackupInfo">暂无备份</div>
+          <div class="core-profile-btn-pair">
+            <button class="memory-audit-btn secondary" id="coreProfileRestoreBtn" type="button" disabled>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9z"/>
+              </svg>
+              <span>恢复备份</span>
+            </button>
+            <button class="memory-audit-btn secondary core-profile-danger" id="coreProfileResetBtn" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+              </svg>
+              <span>重置进度</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       核心档案全屏编辑页 (Core Profile Editor)
+       六个板块分格展示，逐条增删改；顶栏带灵动岛安全区
+       ========================================================================== -->
+  <div id="coreProfileEditorPage" class="core-profile-editor" hidden>
+    <div class="settings-header core-profile-editor-header">
+      <button class="settings-back-btn" id="coreProfileEditorBack" type="button" aria-label="返回核心档案面板">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+        </svg>
+      </button>
+      <div class="settings-header-title core-profile-editor-title">
+        <span class="settings-title-zh">核心档案</span>
+      </div>
+      <span class="core-profile-editor-count" id="coreProfileEditorCount">0/0</span>
+      <button class="core-profile-editor-save" id="coreProfileEditorSave" type="button" disabled>保存</button>
+    </div>
+    <div class="core-profile-editor-body" id="coreProfileEditorBody"></div>
   </div>
 
   <!-- 系统助理随行悬浮球 (Tactical Assistant Orb) -->
@@ -11282,7 +11405,7 @@
   <script src="js/form-editor-modal.js?v=186"></script>
   <script src="js/gallery-store.js?v=304"></script>
   <script src="js/file-store.js?v=301"></script>
-  <script src="js/data-vault.js?v=14"></script>
+  <script src="js/data-vault.js?v=15"></script>
   <script src="js/data-vault-ui.js?v=3"></script>
   <script src="js/keymatch.js?v=1"></script>
   <script src="js/worldbook-engine.js?v=5"></script>
@@ -11324,12 +11447,13 @@
   <script src="js/fork-doc-ui.js?v=16"></script>
   <script src="js/fork-run-store.js?v=26"></script>
   <script src="js/memory-store.js?v=1"></script>
-  <script src="js/assistant-memory-store.js?v=4"></script>
+  <script src="js/assistant-memory-store.js?v=5"></script>
   <script src="js/memory-vectors.js?v=1"></script>
-  <script src="js/memory-auditor.js?v=4"></script>
-  <script src="js/assistant-memory-parser.js?v=1"></script>
-  <script src="js/memory-bank-app.js?v=8"></script>
-  <script src="js/memory-audit-modal.js?v=3"></script>
+  <script src="js/memory-auditor.js?v=6"></script>
+  <script src="js/memory-auto-audit.js?v=1"></script>
+  <script src="js/assistant-memory-parser.js?v=2"></script>
+  <script src="js/memory-bank-app.js?v=12"></script>
+  <script src="js/memory-audit-modal.js?v=4"></script>
   <script src="js/fork-run-wallpaper.js?v=1"></script>
   <script src="js/fork-run-settings.js?v=19"></script>
   <script src="js/fork-run-api.js?v=24"></script>
@@ -11350,16 +11474,21 @@
   <script src="js/online-chat-settings.js?v=4"></script>
   <script src="js/system-chat-store.js?v=3"></script>
   <script src="js/assistant-chat-core.js?v=6"></script>
-<script src="js/system-chat-ui.js?v=374"></script>
+<script src="js/system-chat-ui.js?v=375"></script>
    <script src="js/fork-deck-asst.js?v=22"></script>
    <script src="js/fork-deck-camera.js?v=2"></script>
   <script src="js/system-chat-orb.js?v=26"></script>
   <script src="js/file-store-ui.js?v=303"></script>
   <script src="js/chat-history-search-ui.js?v=4"></script>
-  <script src="js/assistant-memory-prompt.js?v=1"></script>
-  <script src="js/assistant-memory-extractor.js?v=2"></script>
+  <script src="js/assistant-memory-prompt.js?v=2"></script>
+  <script src="js/assistant-memory-extractor.js?v=3"></script>
   <script src="js/assistant-memory-recall.js?v=2"></script>
-  <script src="js/system-chat-settings.js?v=318"></script>
+  <script src="js/assistant-profile-prompt.js?v=1"></script>
+  <script src="js/assistant-profile-parser.js?v=1"></script>
+  <script src="js/assistant-profile-store.js?v=1"></script>
+  <script src="js/assistant-profile-extractor.js?v=1"></script>
+  <script src="js/core-profile-modal.js?v=1"></script>
+  <script src="js/system-chat-settings.js?v=319"></script>
   <script src="js/vendor/feel.js?v=1"></script>
   <script src="js/life-store.js?v=11"></script>
   <script src="js/life-stats.js?v=2"></script>

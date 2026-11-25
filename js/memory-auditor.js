@@ -3,8 +3,11 @@
  * 溯流计划 · 记忆巡检引擎 (Memory Auditor)
  * ============================================================================
  * 职责：
- *   1. 关键词聚类：用并查集找出相似关键词组（妈/妈妈/母亲 → 一组）
- *   2. 分批打包：每批最多 50 条记忆，按相似关键词组聚合
+ *   1. 候选分组：两条记忆满足任一规则即同组（并查集传递）
+ *      ① 主关键词相似；② 一方主关键词与另一方普通关键词相似；
+ *      ③ 两条都有有效向量且相似度够高；④ 双方全部关键词里至少两对相似。
+ *      比较关键词时，同义词表里同一组的词（如 爸爸/父亲/爹）视为相同。
+ *   2. 分批打包：每批最多 50 条记忆，超过 50 条的组均分拆批
  *   3. AI 判断：发给主模型，返回 JSON 格式的合并指令
  *   4. 执行合并：更新记忆、删除旧记录、记录 mergeLog
  *   5. 备份恢复：巡检前自动备份，支持一键恢复
@@ -17,6 +20,39 @@ const MemoryAuditor = (() => {
   const MEM_CURSOR_PREFIX = 'sysChat/memcursor.'; // 记忆提取进度点 doc 键前缀
   const KEYWORD_SIMILARITY_THRESHOLD = 0.7; // 关键词相似度阈值
   const TITLE_BOOST_THRESHOLD = 0.5; // title 词汇交集可以降低关键词阈值到这个值
+  const VECTOR_SIMILARITY_THRESHOLD = 0.8; // 两条记忆向量余弦相似度达到此值即同组
+  const MIN_KEYWORD_PAIRS = 2; // 规则④：双方关键词里至少这么多对相似（一对一配对）
+  const VECTOR_SOURCE = 'assistant'; // 助手记忆在向量表里的 source 名，与 memory-vectors.js 登记名一致
+
+  // 同义词表：同一组内的词比较时视为完全相同。字面差距大、编辑距离认不出的称呼放这里。
+  // 表里的单字（爸、妈、娘……）只按同义词匹配，不参与「短词是长词一部分」的规则，
+  // 避免「娘」和「姑娘」、「爷」和「大爷」被认成相似。
+  const SYNONYM_GROUPS = [
+    ['父亲', '爸爸', '爸', '爹', '老爸', '爹地', '爸比', '老爹', '我爸', '父', '家父', '阿爸'],
+    ['母亲', '妈妈', '妈', '娘', '老妈', '妈咪', '我妈', '母', '家母', '阿妈', '阿娘'],
+    ['爷爷', '祖父', '爷'],
+    ['奶奶', '祖母'],
+    ['外公', '姥爷', '外祖父'],
+    ['外婆', '姥姥', '外祖母'],
+    ['丈夫', '老公'],
+    ['妻子', '老婆', '媳妇'],
+    ['男朋友', '男友'],
+    ['女朋友', '女友'],
+    ['哥哥', '兄长']
+  ];
+  /** 词 → 所在同义词组的代表词（组内第一个） */
+  const SYNONYM_CANON = new Map();
+  SYNONYM_GROUPS.forEach((g) => g.forEach((w) => SYNONYM_CANON.set(w, g[0])));
+
+  // 所有巡检入口共用同一份分类范围；预检与真实巡检不得各写一套。
+  const AUDIT_SCHEMA = {
+    tabbed: {
+      operator: ['info', 'habit', 'like', 'dislike', 'relationship', 'daily_piece', 'recent_status'],
+      self: ['understanding', 'desire', 'shadow', 'wish', 'emotion']
+    },
+    flat: ['bond', 'events', 'pending', 'knowledge']
+    // forks 明确跳过：副本记忆结构不同，且内容较少
+  };
 
   // 停用词表（简单版）
   const STOP_WORDS = new Set([
@@ -49,6 +85,11 @@ const MemoryAuditor = (() => {
       return win.SystemChatPrompt.resolveConfig();
     }
     return null;
+  }
+
+  function hasAvailableModel() {
+    const cfg = resolveModel();
+    return Boolean(cfg && cfg.baseUrl && cfg.modelId);
   }
 
   function dataVault() {
@@ -85,14 +126,29 @@ const MemoryAuditor = (() => {
     return dp[m][n];
   }
 
+  /** 关键词的比较用形式：去首尾空白，同义词换成代表词 */
+  function canonicalKeyword(w) {
+    const s = String(w == null ? '' : w).trim();
+    return SYNONYM_CANON.get(s) || s;
+  }
+
   /**
-   * 关键词相似度：字符包含 + 编辑距离
-   * "妈" ↔ "妈妈" → 0.9
+   * 关键词相似度：同义词表 + 字符包含 + 编辑距离
+   * "爸爸" ↔ "父亲" → 1（同义词）
+   * "妈" ↔ "妈妈" → 1（同义词）
+   * "风瑾" ↔ "风瑾哥哥" → 0.9（包含）
+   * "娘" ↔ "姑娘" → 0（同义词表单字不走包含规则）
    * "小张" ↔ "张三" → 0.5（不够聚）
    */
   function keywordSimilarity(a, b) {
+    a = String(a == null ? '' : a).trim();
+    b = String(b == null ? '' : b).trim();
     if (!a || !b) return 0;
     if (a === b) return 1;
+    const ca = SYNONYM_CANON.get(a);
+    const cb = SYNONYM_CANON.get(b);
+    if (ca && ca === cb) return 1;
+    if ((a.length === 1 && ca) || (b.length === 1 && cb)) return 0;
     const [short, long] = a.length <= b.length ? [a, b] : [b, a];
     // 短词是长词的子串 → 高相似度
     if (long.includes(short)) {
@@ -170,89 +226,207 @@ const MemoryAuditor = (() => {
     }
   }
 
+  /* ======================= 向量读取 ======================= */
+
   /**
-   * 聚类关键词：a↔b 相似、b↔c 相似 → a、b、c 聚成一组
-   * @param {Array<object>} records 记忆列表
-   * @returns {Array<Array<string>>} 相似关键词组
+   * 读取本机向量表，返回 recordId → {vector, textHash}。只读库，不请求向量接口。
+   * 只保留当前向量模型生成的向量；未配置向量模型或读取失败时返回空 Map（规则③跳过）。
    */
-  function clusterKeywords(records) {
-    const uf = new UnionFind();
-    const keywordToRecords = new Map(); // primaryKeyword → [记忆列表]
-
-    // 收集所有关键词
-    records.forEach((r) => {
-      const kw = r.primaryKeyword || '';
-      if (!kw) return;
-      if (!keywordToRecords.has(kw)) keywordToRecords.set(kw, []);
-      keywordToRecords.get(kw).push(r);
-    });
-
-    const keywords = Array.from(keywordToRecords.keys());
-
-    // 1. 相同关键词但有多条记录 → 也作为候选组（最基础的重复）
-    keywords.forEach((kw) => {
-      const recs = keywordToRecords.get(kw) || [];
-      if (recs.length >= 2) {
-        // 自己跟自己 union，确保这个关键词被记录到并查集里
-        uf.union(kw, kw);
-      }
-    });
-
-    // 2. 两两比较不同关键词的相似度
-    for (let i = 0; i < keywords.length; i++) {
-      for (let j = i + 1; j < keywords.length; j++) {
-        const kw1 = keywords[i];
-        const kw2 = keywords[j];
-        const kwSim = keywordSimilarity(kw1, kw2);
-
-        if (kwSim >= KEYWORD_SIMILARITY_THRESHOLD) {
-          // 直接相似，聚合
-          uf.union(kw1, kw2);
-        } else if (kwSim >= TITLE_BOOST_THRESHOLD) {
-          // 关键词不够相似，但如果 title 有交集，也聚合
-          const records1 = keywordToRecords.get(kw1) || [];
-          const records2 = keywordToRecords.get(kw2) || [];
-          let hasOverlap = false;
-          for (const r1 of records1) {
-            for (const r2 of records2) {
-              if (hasTitleOverlap(r1.title, r2.title)) {
-                hasOverlap = true;
-                break;
-              }
-            }
-            if (hasOverlap) break;
-          }
-          if (hasOverlap) {
-            uf.union(kw1, kw2);
-          }
+  async function loadVectorIndex() {
+    const index = new Map();
+    const mv = getWin().MemoryVectors;
+    const st = storage();
+    if (!mv || typeof mv.getConfig !== 'function' || !st || typeof st.getVectorsBySource !== 'function') return index;
+    const config = mv.getConfig();
+    if (!config) return index;
+    try {
+      const rows = await st.getVectorsBySource(VECTOR_SOURCE);
+      (rows || []).forEach((v) => {
+        if (v && v.recordId && v.modelName === config.modelId && v.vector && v.vector.length) {
+          index.set(v.recordId, { vector: v.vector, textHash: v.textHash });
         }
-      }
+      });
+    } catch (err) {
+      console.warn('[MemoryAuditor] 读取向量失败，本次巡检不用向量：', err);
+      index.clear();
     }
+    return index;
+  }
 
-    // 返回聚类结果：[[kw1, kw2], [kw3], ...]
-    const groups = uf.getGroups();
-    // 只返回有 2 个及以上关键词的组（单个关键词不需要合并）
-    // 但相同关键词的多条记录已被上面 union 过，会作为一个单元素组出现
-    return groups;
+  /** 记忆当前内容对应的有效向量；内容改过（指纹不一致）或没有向量时返回 null */
+  function validVector(record, vectorIndex) {
+    if (!record || !record.id || !vectorIndex || !vectorIndex.size) return null;
+    const hit = vectorIndex.get(record.id);
+    if (!hit) return null;
+    const mv = getWin().MemoryVectors;
+    if (!mv || typeof mv.hashText !== 'function' || typeof mv.assistantVectorText !== 'function') return null;
+    const text = String(mv.assistantVectorText(record) || '').trim();
+    if (!text || mv.hashText(text) !== hit.textHash) return null;
+    return hit.vector;
+  }
+
+  /* ======================= 候选分组 ======================= */
+
+  /** 一条记忆的全部关键词（主关键词 + 普通关键词），同义词只留一个 */
+  function recordKeywords(record) {
+    const out = [];
+    const seen = new Set();
+    const push = (w) => {
+      const s = String(w == null ? '' : w).trim();
+      if (!s) return;
+      const canon = canonicalKeyword(s);
+      if (seen.has(canon)) return;
+      seen.add(canon);
+      out.push(s);
+    };
+    push(record && record.primaryKeyword);
+    (record && Array.isArray(record.keywords) ? record.keywords : []).forEach(push);
+    return out;
   }
 
   /**
-   * 按关键词组分组记忆
+   * 两组关键词里能配出多少对相似（≥ 阈值）的词。一对一配对，同一个词不重复使用。
+   * 二分图最大匹配（增广路），达到 need 即提前返回。
+   */
+  function countKeywordPairs(wordsA, wordsB, sim, need) {
+    const adj = wordsA.map((a) => {
+      const list = [];
+      wordsB.forEach((b, j) => { if (sim(a, b) >= KEYWORD_SIMILARITY_THRESHOLD) list.push(j); });
+      return list;
+    });
+    const matchB = new Array(wordsB.length).fill(-1);
+    const tryAssign = (i, visited) => {
+      for (const j of adj[i]) {
+        if (visited[j]) continue;
+        visited[j] = true;
+        if (matchB[j] === -1 || tryAssign(matchB[j], visited)) {
+          matchB[j] = i;
+          return true;
+        }
+      }
+      return false;
+    };
+    let count = 0;
+    for (let i = 0; i < wordsA.length; i++) {
+      if (!adj[i].length) continue;
+      if (tryAssign(i, new Array(wordsB.length).fill(false))) {
+        count++;
+        if (need && count >= need) return count;
+      }
+    }
+    return count;
+  }
+
+  /** 两条记忆是否应进同一个候选组（四条规则任一成立） */
+  function shouldPair(a, b, sim) {
+    const pa = String(a.record.primaryKeyword || '').trim();
+    const pb = String(b.record.primaryKeyword || '').trim();
+
+    // ① 主关键词相似；相似度在 0.5~0.7 之间时要求标题有相同的词
+    if (pa && pb) {
+      const s = sim(pa, pb);
+      if (s >= KEYWORD_SIMILARITY_THRESHOLD) return true;
+      if (s >= TITLE_BOOST_THRESHOLD && hasTitleOverlap(a.record.title, b.record.title)) return true;
+    }
+
+    // ② 一方主关键词与另一方普通关键词相似
+    if (pa && b.words.some((w) => sim(pa, w) >= KEYWORD_SIMILARITY_THRESHOLD)) return true;
+    if (pb && a.words.some((w) => sim(pb, w) >= KEYWORD_SIMILARITY_THRESHOLD)) return true;
+
+    // ③ 两条都有有效向量且相似度够高
+    if (a.vector && b.vector) {
+      const mv = getWin().MemoryVectors;
+      if (mv && typeof mv.cosine === 'function' && mv.cosine(a.vector, b.vector) >= VECTOR_SIMILARITY_THRESHOLD) return true;
+    }
+
+    // ④ 双方全部关键词里至少两对相似
+    if (a.words.length >= MIN_KEYWORD_PAIRS && b.words.length >= MIN_KEYWORD_PAIRS
+      && countKeywordPairs(a.words, b.words, sim, MIN_KEYWORD_PAIRS) >= MIN_KEYWORD_PAIRS) return true;
+
+    return false;
+  }
+
+  /**
+   * 超过 BATCH_SIZE 的组：按主关键词排序让相近的挨在一起，再均分成若干份。
+   * 均分后每份至少 BATCH_SIZE/2 条，不会出现单条的份。
+   */
+  function splitOversizedGroup(group) {
+    const recs = group.records;
+    if (recs.length <= BATCH_SIZE) return [group];
+    const sorted = recs.slice().sort((x, y) => {
+      const kx = canonicalKeyword(x.primaryKeyword);
+      const ky = canonicalKeyword(y.primaryKeyword);
+      return kx < ky ? -1 : (kx > ky ? 1 : 0);
+    });
+    const parts = Math.ceil(sorted.length / BATCH_SIZE);
+    const out = [];
+    let start = 0;
+    for (let p = 0; p < parts; p++) {
+      const size = Math.floor(sorted.length / parts) + (p < sorted.length % parts ? 1 : 0);
+      const slice = sorted.slice(start, start + size);
+      start += size;
+      out.push({ keywords: primaryKeywordsOf(slice), records: slice });
+    }
+    return out;
+  }
+
+  /** 组内记忆的主关键词（去重，保持顺序） */
+  function primaryKeywordsOf(records) {
+    const seen = new Set();
+    const out = [];
+    records.forEach((r) => {
+      const k = String(r.primaryKeyword || '').trim();
+      if (k && !seen.has(k)) { seen.add(k); out.push(k); }
+    });
+    return out;
+  }
+
+  /**
+   * 候选分组：记忆两两判断，满足任一规则即并入同组（a↔b、b↔c → a、b、c 一组）。
+   * 只输出 ≥2 条的组；超过 BATCH_SIZE 的组已均分拆开。
    * @param {Array<object>} records 记忆列表
-   * @param {Array<Array<string>>} clusters 关键词组
+   * @param {Map} [vectorIndex] loadVectorIndex() 的结果；不传则不用向量
    * @returns {Array<{keywords: string[], records: object[]}>}
    */
-  function groupRecordsByCluster(records, clusters) {
-    const result = [];
-    clusters.forEach((kwGroup) => {
-      const kwSet = new Set(kwGroup);
-      const matchedRecords = records.filter(r => kwSet.has(r.primaryKeyword));
-      if (matchedRecords.length >= 2) {
-        result.push({
-          keywords: kwGroup,
-          records: matchedRecords
-        });
+  function groupCandidates(records, vectorIndex) {
+    const list = (Array.isArray(records) ? records : []).filter(Boolean);
+    if (list.length < 2) return [];
+
+    // 关键词相似度缓存：同一对词只算一次
+    const cache = new Map();
+    const sim = (x, y) => {
+      if (x === y) return x ? 1 : 0;
+      const key = x < y ? `${x}\u0000${y}` : `${y}\u0000${x}`;
+      let v = cache.get(key);
+      if (v === undefined) {
+        v = keywordSimilarity(x, y);
+        cache.set(key, v);
       }
+      return v;
+    };
+
+    const items = list.map((record) => ({
+      record,
+      words: recordKeywords(record),
+      vector: validVector(record, vectorIndex)
+    }));
+
+    const uf = new UnionFind();
+    for (let i = 0; i < items.length; i++) uf.find(i);
+    for (let i = 0; i < items.length; i++) {
+      for (let j = i + 1; j < items.length; j++) {
+        if (uf.find(i) === uf.find(j)) continue; // 已经同组，不用再判断
+        if (shouldPair(items[i], items[j], sim)) uf.union(i, j);
+      }
+    }
+
+    const result = [];
+    uf.getGroups().forEach((idxs) => {
+      if (idxs.length < 2) return;
+      idxs.sort((x, y) => x - y);
+      const recs = idxs.map((i) => items[i].record);
+      splitOversizedGroup({ keywords: primaryKeywordsOf(recs), records: recs })
+        .forEach((g) => result.push(g));
     });
     return result;
   }
@@ -333,7 +507,7 @@ const MemoryAuditor = (() => {
     let userMessage = `【category: ${categoryName} / groupId: ${groupName}】\n\n`;
     
     groups.forEach((group, idx) => {
-      userMessage += `组 ${idx + 1}（相似关键词：${group.keywords.join('、')}）：\n`;
+      userMessage += `组 ${idx + 1}（组内主关键词：${group.keywords.join('、')}）：\n`;
       group.records.forEach((r, rIdx) => {
         const time = r.time || '';
         const title = r.title || '';
@@ -703,7 +877,8 @@ const MemoryAuditor = (() => {
       cursors: cursors
     };
 
-    await st.setDoc(BACKUP_KEY, backup);
+    const ok = await st.setDoc(BACKUP_KEY, backup);
+    if (!ok) throw new Error('巡检备份写入失败');
     console.log('[MemoryAuditor] 备份已创建:', backup.timestamp);
     return backup.timestamp;
   }
@@ -780,6 +955,17 @@ const MemoryAuditor = (() => {
       } catch (_) { /* ignore */ }
     }
 
+    // 恢复的是巡检前的助手记忆，不应回滚核心档案或自动巡检配置。
+    // memory 块导入会覆盖固定 docKeys，这里用当前值补齐导入包。
+    for (const key of ['memory/core_profile', 'memory/config']) {
+      try {
+        const current = await st.getDoc(key);
+        if (current !== null && current !== undefined) pkg.payload.docs[key] = current;
+      } catch (err) {
+        throw new Error(`读取保留配置失败：${(err && err.message) || err}`);
+      }
+    }
+
     const dv = dataVault();
     if (!dv || typeof dv.applyImport !== 'function') {
       throw new Error('DataVault 未初始化');
@@ -803,12 +989,49 @@ const MemoryAuditor = (() => {
   /* ======================= 主入口 ======================= */
 
   /**
+   * 只读预检：复用真实巡检的聚类规则，不写记忆、不请求模型、不覆盖备份。
+   * @returns {Promise<{groupCount: number, recordCount: number}>}
+   */
+  async function inspectCandidates() {
+    const st = store();
+    if (!st || typeof st.list !== 'function') {
+      throw new Error('AssistantMemoryStore 未初始化');
+    }
+    if (typeof st.load === 'function') {
+      try { await st.load(); } catch (err) {
+        throw new Error(`助手记忆加载失败：${(err && err.message) || err}`);
+      }
+    }
+
+    let groupCount = 0;
+    let recordCount = 0;
+    const vectorIndex = await loadVectorIndex();
+    const inspect = (records) => {
+      if (!Array.isArray(records) || records.length < 2) return;
+      const groups = groupCandidates(records, vectorIndex);
+      groupCount += groups.length;
+      groups.forEach((group) => { recordCount += group.records.length; });
+    };
+
+    for (const category of Object.keys(AUDIT_SCHEMA.tabbed)) {
+      const allRecords = st.list(category);
+      for (const groupId of AUDIT_SCHEMA.tabbed[category]) {
+        inspect(allRecords.filter((record) => record.groupId === groupId));
+      }
+    }
+    for (const category of AUDIT_SCHEMA.flat) inspect(st.list(category));
+
+    return { groupCount, recordCount };
+  }
+
+  /**
    * 巡检一个 Tab
    * @param {string} category 分类（如 'operator'）
    * @param {string} groupId Tab ID（如 'recent_status'）
+   * @param {Map} [vectorIndex] 已读好的向量表（auditAll 传入，避免每个 Tab 重读）
    * @returns {Promise<{merged: number, skipped: number}>}
    */
-  async function audit(category, groupId) {
+  async function audit(category, groupId, vectorIndex) {
     const st = store();
     if (!st || typeof st.list !== 'function') {
       throw new Error('AssistantMemoryStore 未初始化');
@@ -818,7 +1041,7 @@ const MemoryAuditor = (() => {
     const allRecords = st.list(category);
     const records = allRecords.filter(r => r.groupId === groupId);
 
-    return auditRecords(category, groupId, records);
+    return auditRecords(category, groupId, records, vectorIndex);
   }
 
   /**
@@ -826,23 +1049,18 @@ const MemoryAuditor = (() => {
    * @param {string} category 分类
    * @param {string} groupId Tab ID（无 Tab 分类时传 'all'）
    * @param {Array<object>} records 该组的所有记忆
+   * @param {Map} [vectorIndex] 已读好的向量表；不传则本次自己读
    * @returns {Promise<{merged: number, skipped: number}>}
    */
-  async function auditRecords(category, groupId, records) {
+  async function auditRecords(category, groupId, records, vectorIndex) {
     if (records.length < 2) {
       console.log('[MemoryAuditor] 记忆数量少于 2 条，无需巡检');
       return { merged: 0, skipped: 0 };
     }
 
-    // 2. 关键词聚类
-    const clusters = clusterKeywords(records);
-    if (clusters.length === 0) {
-      console.log('[MemoryAuditor] 未发现相似关键词组');
-      return { merged: 0, skipped: 0 };
-    }
-
-    // 3. 按关键词组分组记忆
-    const groups = groupRecordsByCluster(records, clusters);
+    // 2-3. 候选分组（四条规则 + 同义词，超过 50 条的组已均分拆开）
+    const index = vectorIndex instanceof Map ? vectorIndex : await loadVectorIndex();
+    const groups = groupCandidates(records, index);
     if (groups.length === 0) {
       console.log('[MemoryAuditor] 未发现需要合并的记忆组');
       return { merged: 0, skipped: 0 };
@@ -873,7 +1091,7 @@ const MemoryAuditor = (() => {
       totalSkipped += result.skipped;
     };
 
-    // 按组打包：凑到 50 条就发一批，单组不拆
+    // 按组打包：凑到 50 条就发一批（groupCandidates 已把超过 50 条的组拆开）
     let batch = [];
     let batchRecordCount = 0;
 
@@ -913,22 +1131,12 @@ const MemoryAuditor = (() => {
       }
     }
 
-    // 分类定义：operator/self 有 groupId，其他分类直接聚合所有记录
-    const SCHEMA = {
-      // 有 Tab 的分类：逐个 groupId 巡检
-      tabbed: {
-        operator: ['info', 'habit', 'like', 'dislike', 'relationship', 'daily_piece', 'recent_status'],
-        self: ['understanding', 'desire', 'shadow', 'wish', 'emotion']
-      },
-      // 没有 Tab 的分类：聚合所有记录一起巡检
-      flat: ['bond', 'events', 'pending', 'knowledge']
-      // forks 明确跳过：副本记忆结构不同，且内容较少
-    };
-
+    // 分类范围与只读预检共用 AUDIT_SCHEMA，避免两处规则漂移。
     let totalMerged = 0;
     let totalSkipped = 0;
     let totalFailed = 0;
     let firstError = '';
+    const vectorIndex = await loadVectorIndex();
 
     const add = (result) => {
       totalMerged += result.merged || 0;
@@ -938,21 +1146,21 @@ const MemoryAuditor = (() => {
     };
 
     // 1. 处理有 Tab 的分类
-    for (const category of Object.keys(SCHEMA.tabbed)) {
-      const groupIds = SCHEMA.tabbed[category];
+    for (const category of Object.keys(AUDIT_SCHEMA.tabbed)) {
+      const groupIds = AUDIT_SCHEMA.tabbed[category];
       for (const groupId of groupIds) {
-        add(await audit(category, groupId));
+        add(await audit(category, groupId, vectorIndex));
       }
     }
 
     // 2. 处理没有 Tab 的分类：把整个分类当作一个"Tab"来巡检
-    for (const category of SCHEMA.flat) {
+    for (const category of AUDIT_SCHEMA.flat) {
       // 读取该分类下所有记忆（这些分类没有 groupId）
       const allRecords = st.list(category);
       if (allRecords.length < 2) continue;
 
       // groupId 传空：normalize 对无 Tab 分类不写 groupId
-      add(await auditRecords(category, '', allRecords));
+      add(await auditRecords(category, '', allRecords, vectorIndex));
     }
 
     return { merged: totalMerged, skipped: totalSkipped, failed: totalFailed, firstError };
@@ -961,6 +1169,8 @@ const MemoryAuditor = (() => {
   return {
     audit,
     auditAll,
+    hasAvailableModel,
+    inspectCandidates,
     createBackup,
     getBackupInfo,
     restoreBackup,
@@ -969,7 +1179,12 @@ const MemoryAuditor = (() => {
       levenshtein,
       keywordSimilarity,
       extractTitleWords,
-      clusterKeywords,
+      canonicalKeyword,
+      countKeywordPairs,
+      splitOversizedGroup,
+      groupCandidates,
+      loadVectorIndex,
+      SYNONYM_CANON,
       escapeControlCharsInStrings,
       parseAuditJSON
     }

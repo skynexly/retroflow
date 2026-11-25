@@ -614,6 +614,7 @@ Ta现在活生生地在你眼前，并非你的臆想，也绝非一个幻影，
    *                          非空时切「副本场景模式」：精简世界观 + 副本通信场景 + 副本信息头。
    * @param {Object} [options]
    * @param {string} [options.memoryStable] 助手记忆的常驻段（AssistantMemoryRecall.prepare 的 stable）
+   * @param {string} [options.coreProfile] 核心档案正文（AssistantProfileStore.refreshCache 的结果），空或全（暂无）不注入
    * @returns {string}
    */
   function buildSystemPrompt(history, sceneCtx, options) {
@@ -688,6 +689,8 @@ Ta现在活生生地在你眼前，并非你的臆想，也绝非一个幻影，
     // 助手记忆：总说明、永久与常驻记忆（AssistantMemoryRecall 产出的 stable 段）。
     // 只在记忆库变化时才变，放系统提示词不破坏前缀缓存；本轮命中的记忆走深度注入。
     const memoryBlock = options && typeof options.memoryStable === 'string' ? options.memoryStable.trim() : '';
+    const coreProfileBlock = buildCoreProfileBlock(options);
+    if (coreProfileBlock) sections.push(coreProfileBlock);
     if (memoryBlock) sections.push(memoryBlock);
 
     // 世界书注入：全局分类无条件生效，助手分类只在系统助手对话生效。
@@ -758,6 +761,19 @@ Ta现在活生生地在你眼前，并非你的臆想，也绝非一个幻影，
       return nodes.find(n => n && n.id === activeId) || nodes[0] || null;
     }
     return null;
+  }
+
+  /**
+   * 核心档案注入段：只认调用方显式传入的 options.coreProfile（与 memoryStable 同口径）。
+   * 档案为空或六个板块全是（暂无）时返回空串，不注入。
+   * @param {Object} [options]
+   * @returns {string}
+   */
+  function buildCoreProfileBlock(options) {
+    const content = options && typeof options.coreProfile === 'string' ? options.coreProfile.trim() : '';
+    if (!content) return '';
+    if (typeof AssistantProfileParser !== 'undefined' && AssistantProfileParser.isEmptyProfile(content)) return '';
+    return `<核心档案>\n${content}\n</核心档案>`;
   }
 
   /* ================= 公共接口 ================= */

@@ -321,13 +321,22 @@ const AssistantMemoryStore = (() => {
     return { put: puts.length, removed: removeIds.length };
   }
 
+  function localDateOf(value) {
+    const time = typeof value === 'number' ? value : Date.parse(value);
+    if (!Number.isFinite(time)) return '';
+    const d = new Date(time);
+    const p = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  }
+
   /**
-   * 批量写入新记忆（供未来的提取流程使用）。
-   * 自动为每条生成 id、标记来源，并按 Tab 上限淘汰最早的非永久记录。
-   * @param {Array<object>} items 解析器输出的记忆
-   * @param {{source?: 'auto'|'manual', docs?: Array<{key: string, value: any}>}} opts
-   *   docs：与记忆同一事务提交的配置文本（提取进度点）；没有可写入的记忆时也会提交
-   * @returns {Promise<{added: Array<object>, removed: Array<object>, rejected: Array<{item: object, reason: string}>}>}
+   * 批量写入新记忆，并复核、勾选本次清单中已完成的旧待办。
+   * 自动为每条新记忆生成 id、标记来源，并按 Tab 上限淘汰最早的非永久记录。
+   * @param {Array<object>} items 解析器输出的新记忆
+   * @param {{source?: 'auto'|'manual', docs?: Array<{key: string, value: any}>, completions?: Array<object>, pendingIds?: Array<string>}} opts
+   *   completions：解析器输出的旧待办勾选；pendingIds：本次实际注入提示词的待办 id 白名单
+   *   docs：与记忆同一事务提交的配置文本（提取进度点）；没有新记忆时也会随有效勾选提交
+   * @returns {Promise<{added: Array<object>, removed: Array<object>, rejected: Array<{item: object, reason: string}>, completed: Array<object>, completionRejected: Array<{item: object, reason: string}>}>}
    */
   async function addMany(items, opts) {
     const source = (opts && opts.source) || 'auto';
@@ -337,7 +346,7 @@ const AssistantMemoryStore = (() => {
     (Array.isArray(items) ? items : []).forEach((item) => {
       try {
         const rec = normalize(Object.assign({}, item, { id: '', source, createdAt: undefined }), { source });
-        // AI 来源不允许永久，也不允许携带完成状态
+        // AI 来源的新记忆不允许永久，也不能借新增路径携带完成状态
         if (source === 'auto') {
           if (rec.rank === 'pinned') rec.rank = 'normal';
           delete rec.completedDate;
@@ -348,10 +357,41 @@ const AssistantMemoryStore = (() => {
         rejected.push({ item, reason: (err && err.message) || '无效记录' });
       }
     });
-    if (!added.length) {
-      if (docs.length) await commit({ put: [], remove: [], docs });
-      return { added, removed: [], rejected };
-    }
+
+    const completed = [];
+    const completionRejected = [];
+    const pendingIds = new Set((opts && Array.isArray(opts.pendingIds) ? opts.pendingIds : []).map(cleanString).filter(Boolean));
+    const handled = new Set();
+    (opts && Array.isArray(opts.completions) ? opts.completions : []).forEach((item) => {
+      const id = cleanString(item && item.id);
+      const reject = (reason) => completionRejected.push({ item, reason });
+      if (!id || !pendingIds.has(id)) return reject('不在本次注入的待办清单中');
+      if (handled.has(id)) return reject('同一条待办被重复勾选');
+      handled.add(id);
+      const old = get(id);
+      if (!old || old.category !== 'pending') return reject('清单对应的旧待办不存在或分类已改变');
+      if (old.completedDate) return reject('旧待办已经完成');
+      const completedDate = validDateOnly(item.completedDate);
+      if (!completedDate) return reject('完成日期不合法');
+      const originalDate = localDateOf(old.time) || localDateOf(old.createdAt);
+      if (originalDate && completedDate < originalDate) return reject('完成日期早于原待办日期');
+      const completionNote = Array.from(cleanString(item.completionNote)).slice(0, 160).join('');
+      if (!completionNote) return reject('完成说明为空');
+      try {
+        // 以缓存中的旧记录为底，保留原标题、正文、时间、等级和来源，只补完成状态与本次依据。
+        const evidence = cleanStringList((Array.isArray(old.evidence) ? old.evidence : [])
+          .concat(Array.isArray(item.evidence) ? item.evidence : []));
+        const rec = normalize(Object.assign({}, old, {
+          completedDate,
+          completionNote,
+          evidence,
+          updatedAt: Date.now()
+        }), { source: old.source });
+        completed.push(rec);
+      } catch (err) {
+        reject((err && err.message) || '完成状态无效');
+      }
+    });
 
     const keepIds = added.map((r) => r.id);
     const removed = [];
@@ -369,8 +409,12 @@ const AssistantMemoryStore = (() => {
         });
       });
     });
-    await commit({ put: added, remove: removed.map((r) => r.id), docs });
-    return { added, removed, rejected };
+
+    // 只有勾选、没有新增时也必须提交；完成更新与进度点同成同败。
+    if (added.length || completed.length || removed.length || docs.length) {
+      await commit({ put: added.concat(completed), remove: removed.map((r) => r.id), docs });
+    }
+    return { added, removed, rejected, completed, completionRejected };
   }
 
   return {

@@ -4507,8 +4507,16 @@ ${parts.join('\n\n———\n\n')}`;
         console.warn('[System Chat] 助手记忆召回失败，本轮不注入记忆：', err);
       }
     }
+    // 核心档案：静态注入系统提示词。读取失败时沿用上次缓存，不阻断回复
+    let coreProfile = '';
+    if (window.AssistantProfileStore && typeof AssistantProfileStore.refreshCache === 'function') {
+      coreProfile = await AssistantProfileStore.refreshCache();
+    }
     const sceneCtx = getForkSceneCtx();
-    const systemPrompt = SystemChatPrompt.buildSystemPrompt(history, sceneCtx, { memoryStable: memory.stable || '' });
+    const systemPrompt = SystemChatPrompt.buildSystemPrompt(history, sceneCtx, {
+      memoryStable: memory.stable || '',
+      coreProfile
+    });
     return fitMessagesToContext(config, systemPrompt, history, { memoryDynamic: memory.dynamic || '' });
   }
 
@@ -5805,9 +5813,16 @@ ${parts.join('\n\n———\n\n')}`;
           : {};
         const minCount = parseInt(settings.memoryMinCount, 10) || 20;
 
+        // 请求前固定待办清单，提示词注入和写库白名单共用这一份 id。
+        const store = window.AssistantMemoryStore;
+        if (!store) throw new Error('记忆库模块未就绪');
+        await store.load();
+        const pending = window.AssistantMemoryPrompt.selectPending(store.list('pending'));
+        const pendingIds = pending.map((item) => item.id);
+
         // 组装提示词
         const chatLog = lines.join('\n');
-        const messages = window.AssistantMemoryPrompt.build(chatLog, { MIN_COUNT: minCount });
+        const messages = window.AssistantMemoryPrompt.build(chatLog, { MIN_COUNT: minCount, pending });
 
         // 获取模型配置（与提取器同一套回退顺序）
         let config = null;
@@ -5836,21 +5851,27 @@ ${parts.join('\n\n———\n\n')}`;
           throw new Error(`解析失败：${parsed && parsed.reason || '未知错误'}`);
         }
 
-        // 写入记忆库
-        const store = window.AssistantMemoryStore;
-        if (!store) throw new Error('记忆库模块未就绪');
-        await store.load();
-        const result = await store.addMany(parsed.memories, { source: 'auto' });
+        // 新增记忆与复核通过的旧待办勾选一起写入；批量选择不推进 memcursor。
+        const result = await store.addMany(parsed.memories, {
+          source: 'auto',
+          completions: parsed.completed,
+          pendingIds
+        });
 
         exitBatchMode();
 
+        const added = result.added.length;
+        const completed = result.completed.length;
+        const changes = [];
+        if (added) changes.push(`新增 ${added} 条记忆`);
+        if (completed) changes.push(`勾掉 ${completed} 条待办`);
         if (window.RetroToast) {
           RetroToast.show({
             tag: 'MEMORY 提取完成',
-            message: result.added && result.added.length
-              ? `已整理 ${rows.length} 条消息，新增 ${result.added.length} 条记忆`
+            message: changes.length
+              ? `已整理 ${rows.length} 条消息，${changes.join('，')}`
               : `已整理 ${rows.length} 条消息，没有需要记住的内容`,
-            type: result.added && result.added.length ? 'success' : 'info'
+            type: changes.length ? 'success' : 'info'
           });
         }
       } catch (err) {

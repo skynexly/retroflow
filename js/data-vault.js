@@ -193,8 +193,9 @@ const DataVault = (() => {
     memory: {
       zh: '记忆',
       en: 'MEMORY ARCHIVE',
-      desc: '副本记忆、助手记忆与记忆提取进度。向量不备份，导入后在记忆库点「向量化」重新生成',
-      docKeys: [],
+      desc: '副本记忆、助手记忆、核心档案、自动巡检配置与记忆提取进度。向量不备份，导入后在记忆库点「向量化」重新生成',
+      // 核心档案与自动巡检配置：与记忆同进同出
+      docKeys: ['memory/core_profile', 'memory/config'],
       // 记忆提取进度点：与记忆同进同出（聊天记录块已排除）
       docPrefixes: ['sysChat/memcursor.'],
       assetPrefixes: [],

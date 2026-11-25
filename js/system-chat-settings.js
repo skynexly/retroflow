@@ -409,10 +409,13 @@ memoryIntervalInput = document.getElementById('systemChatMemoryIntervalInput');
         try {
           const res = await extractor.extractOnce();
           if (res && res.ok) {
+            const changes = [];
+            if (res.added) changes.push(`新增 ${res.added} 条记忆`);
+            if (res.completed) changes.push(`勾掉 ${res.completed} 条待办`);
             toast({
               tag: 'MEMORY 手动提取',
-              message: res.added
-                ? `已整理 ${res.messages} 条消息，新增 ${res.added} 条记忆`
+              message: changes.length
+                ? `已整理 ${res.messages} 条消息，${changes.join('，')}`
                 : `已整理 ${res.messages} 条消息，没有需要记住的内容`,
               type: 'success'
             });

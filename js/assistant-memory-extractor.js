@@ -344,12 +344,23 @@ const AssistantMemoryExtractor = (() => {
       return fail('config', '没有可用的模型，请先配置辅助推理模型或主模型');
     }
 
+    // 在请求前固定本次待办清单；提示词注入与写库白名单必须使用同一份 id。
+    let pending;
+    try {
+      await AssistantMemoryStore.load();
+      pending = AssistantMemoryPrompt.selectPending(AssistantMemoryStore.list('pending'));
+    } catch (err) {
+      return fail('store', `读取记忆库失败：${(err && err.message) || err}`);
+    }
+    const pendingIds = pending.map((item) => item.id);
+
     let reply;
     try {
       const messages = AssistantMemoryPrompt.build(plan.chunk.lines.join('\n'), {
         ASST_NAME: names.ASST_NAME,
         ENVOY_NAME: names.ENVOY_NAME,
-        MIN_COUNT: settings.minCount
+        MIN_COUNT: settings.minCount,
+        pending
       });
       reply = await RetroflowAPI.chat(config, messages, { logTag: LOG_TAG });
     } catch (err) {
@@ -372,9 +383,10 @@ const AssistantMemoryExtractor = (() => {
 
     let result;
     try {
-      await AssistantMemoryStore.load();
       result = await AssistantMemoryStore.addMany(parsed.memories, {
         source: 'auto',
+        completions: parsed.completed,
+        pendingIds,
         docs: [{ key: cursorKeyOf(forkId), value: { createdAt: next.createdAt, id: next.id, updatedAt: Date.now() } }]
       });
     } catch (err) {
@@ -385,18 +397,26 @@ const AssistantMemoryExtractor = (() => {
       ok: true,
       reason: 'done',
       added: result.added.length,
+      completed: result.completed.length,
       removed: result.removed.length,
       dropped: parsed.dropped.length,
+      completedDropped: parsed.completedDropped.length,
       rejected: result.rejected.length,
+      completionRejected: result.completionRejected.length,
       messages: plan.chunk.messages,
       tokens: plan.chunk.tokens
     };
-    if (parsed.dropped.length || parsed.warnings.length || result.rejected.length) {
+    if (parsed.dropped.length || parsed.completedDropped.length || parsed.warnings.length
+      || result.rejected.length || result.completionRejected.length) {
       console.info('[AssistantMemoryExtractor] 提取完成，部分记录被丢弃或有提示：', {
-        dropped: parsed.dropped, warnings: parsed.warnings, rejected: result.rejected
+        dropped: parsed.dropped,
+        completedDropped: parsed.completedDropped,
+        warnings: parsed.warnings,
+        rejected: result.rejected,
+        completionRejected: result.completionRejected
       });
     }
-    emit('retroflow:assistant-memory-extracted', { forkId, added: out.added });
+    emit('retroflow:assistant-memory-extracted', { forkId, added: out.added, completed: out.completed });
     return out;
   }
 
@@ -437,6 +457,7 @@ const AssistantMemoryExtractor = (() => {
   async function runAutoQueue() {
     const forkId = currentForkId();
     let added = 0;
+    let completed = 0;
     let rounds = 0;
     while (true) {
       const settings = getSettings();
@@ -462,16 +483,20 @@ const AssistantMemoryExtractor = (() => {
         break;
       }
       added += res.added;
+      completed += res.completed || 0;
       rounds += 1;
     }
     if (rounds) {
+      const changes = [];
+      if (added) changes.push(`新增 ${added} 条记忆`);
+      if (completed) changes.push(`勾掉 ${completed} 条待办`);
       toast({
         tag: 'MEMORY 自动提取',
-        message: added ? `已整理 ${rounds} 段对话，新增 ${added} 条记忆` : `已整理 ${rounds} 段对话，没有需要记住的内容`,
-        type: 'info'
+        message: `已整理 ${rounds} 段对话，${changes.length ? changes.join('，') : '没有需要记住的内容'}`,
+        type: changes.length ? 'success' : 'info'
       });
     }
-    return { ok: true, rounds, added };
+    return { ok: true, rounds, added, completed };
   }
 
   function scheduleAuto() {
