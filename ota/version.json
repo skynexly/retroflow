@@ -31,21 +31,22 @@
   "schemaVersion": 1,
   "channel": "stable",
   "latest": {
-    "version": "1.5.0",
-    "build": 1326,
+    "version": "1.6.0",
+    "build": 1327,
     "minBinary": 7,
-    "releasedAt": "2026-11-24T15:35:41Z",
+    "releasedAt": "2026-11-25T10:17:43Z",
     "notes": [
-      "桌面网格引擎重构：组件支持跨页拖拽，页数按需伸缩",
-      "桌面卡片序号改为按位置自动编号，跨页连续",
-      "修复启动时闪现初始桌面（新增启动遮罩）",
-      "红卡签名恢复为默认英文文案"
+      "新增核心档案：把助手记忆浓缩成长期档案，对话时自动带上",
+      "新增每七天自动记忆巡检，无可合并记忆时不调用模型",
+      "巡检分组更准：支持亲属称谓同义词与本机向量判断",
+      "记忆提取可自动勾掉已完成的待办",
+      "核心档案编辑页顶栏精简，字数统计不再被挤"
     ],
     "packages": {
       "full": {
-        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1326/retroflow-ota-full-b1326.zip",
-        "sha256": "65f02e9c1c65251c07cd32ea067d83596c950f47471b1ea8370404ed4272b6d4",
-        "size": 2171543
+        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1327/retroflow-ota-full-b1327.zip",
+        "sha256": "257c0b3073713c480e3215be21054b16899bda15e91c7bf01be3acbd72ef94db",
+        "size": 2210673
       },
       "patch": {
         "sinceBuild": 0,
@@ -55,5 +56,5 @@
       }
     }
   },
-  "_status": "已发布 build 1326（全量包，字体常驻不打包）。patch 差分留待后续。"
+  "_status": "已发布 build 1327（全量包，字体常驻不打包）。patch 差分留待后续。"
 }
