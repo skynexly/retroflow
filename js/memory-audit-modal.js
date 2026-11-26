@@ -19,12 +19,21 @@ const MemoryAuditModal = (() => {
   let autoToggle = null;
   let autoStatusEl = null;
   let lastResultEl = null;
+  let batchInput = null;
 
   let isOpen = false;
   let isProcessing = false;
   let isToggleSaving = false;
   let hasBackup = false;
   let autoInfoRequest = 0;
+  let isStopConfirming = false;
+
+  // 按钮两种形态：开始巡检（对勾）/ 终止巡检（实心方块）
+  const START_ICON = 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z';
+  const STOP_ICON = 'M8 6h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z';
+  const START_LABEL = '立刻开始记忆巡检';
+  const STOP_LABEL = '终止巡检';
+  const STOPPING_LABEL = '正在终止…';
 
   function getWin() {
     return typeof window !== 'undefined' ? window : {};
@@ -65,8 +74,24 @@ const MemoryAuditModal = (() => {
     autoToggle = document.getElementById('memAutoAuditToggle');
     autoStatusEl = document.getElementById('memAutoAuditStatus');
     lastResultEl = document.getElementById('memAuditLastResult');
+    batchInput = document.getElementById('memAuditBatchInput');
 
     if (!overlay) return false;
+
+    // 每批条数的范围与引擎常量同源，避免 UI 与逻辑各写一套 1/300
+    if (batchInput) {
+      const aud = auditor();
+      const min = (aud && Number.isFinite(aud.AUDIT_BATCH_MIN)) ? aud.AUDIT_BATCH_MIN : 1;
+      const max = (aud && Number.isFinite(aud.AUDIT_BATCH_MAX)) ? aud.AUDIT_BATCH_MAX : 300;
+      batchInput.min = String(min);
+      batchInput.max = String(max);
+      batchInput.step = '1';
+      batchInput.addEventListener('change', handleBatchSizeChange);
+      batchInput.addEventListener('blur', handleBatchSizeChange);
+
+      const rangeEl = document.getElementById('memAuditBatchRange');
+      if (rangeEl) rangeEl.textContent = `${min}~${max}`;
+    }
 
     // 关闭按钮
     if (closeBtn) {
@@ -178,6 +203,8 @@ const MemoryAuditModal = (() => {
       const config = await auto.getConfig();
       if (request !== autoInfoRequest) return;
       if (autoToggle) autoToggle.checked = config.autoAuditEnabled === true;
+      // 输入框回填当前生效值；巡检进行中不回填，避免把正在编辑的内容冲掉
+      if (batchInput && !isProcessing) batchInput.value = String(config.auditBatchSize);
 
       if (autoStatusEl) {
         if (!config.autoAuditEnabled) {
@@ -200,14 +227,20 @@ const MemoryAuditModal = (() => {
           lastResultEl.classList.remove('is-error');
         } else {
           const parts = [];
+          const stopped = result.status === 'stopped';
           if (result.status === 'no-candidates') parts.push('没有发现可合并的相似记忆');
           else parts.push(result.merged > 0 ? `合并 ${result.merged} 组记忆` : '没有合并记忆');
           if (result.groupCount > 0) parts.push(`候选 ${result.groupCount} 组`);
           if (result.skipped > 0) parts.push(`跳过 ${result.skipped} 组`);
-          if (result.failed > 0) parts.push(`失败 ${result.failed} 批`);
-          const failed = result.status === 'failed' || result.failed > 0;
-          const error = failed && result.error ? `\n${result.error}` : '';
-          lastResultEl.textContent = `最近巡检 ${formatTime(result.at)}\n${parts.join('，')}${error}`;
+          if (stopped) {
+            if (result.stoppedAt) parts.push(`停在「${result.stoppedAt}」`);
+          } else if (result.failed > 0) {
+            parts.push(`失败 ${result.failed} 批`);
+          }
+          const failed = !stopped && (result.status === 'failed' || result.failed > 0);
+          const error = (failed || stopped) && result.error ? `\n${result.error}` : '';
+          const suffix = stopped ? '（已终止）' : '';
+          lastResultEl.textContent = `最近巡检 ${formatTime(result.at)}${suffix}\n${parts.join('，')}${error}`;
           lastResultEl.classList.toggle('is-error', failed);
           lastResultEl.hidden = false;
         }
@@ -220,11 +253,27 @@ const MemoryAuditModal = (() => {
     syncRunningState();
   }
 
+  function setStartButtonMode(mode) {
+    if (!startBtn) return;
+    const stopMode = mode !== 'start';
+    startBtn.classList.toggle('is-stop', stopMode);
+    const path = startBtn.querySelector('svg path');
+    if (path) path.setAttribute('d', stopMode ? STOP_ICON : START_ICON);
+    const label = startBtn.querySelector('span');
+    const text = mode === 'stopping' ? STOPPING_LABEL : (stopMode ? STOP_LABEL : START_LABEL);
+    if (label && label.textContent !== text) label.textContent = text;
+  }
+
   function syncRunningState() {
     const auto = autoAudit();
     const state = auto && typeof auto.getState === 'function' ? auto.getState() : { running: false };
     const running = Boolean(state && state.running);
-    if (startBtn) startBtn.disabled = isProcessing || running;
+    const stopping = running && Boolean(state.stopping);
+    if (startBtn) {
+      // 巡检中按钮原地变成「终止巡检」并保持可点；恢复备份等其他处理中仍禁用
+      setStartButtonMode(running ? (stopping ? 'stopping' : 'stop') : 'start');
+      startBtn.disabled = running ? (stopping || isStopConfirming) : isProcessing;
+    }
     if (restoreBtn) restoreBtn.disabled = isProcessing || running || !hasBackup;
     if (autoToggle) autoToggle.disabled = isProcessing || running || isToggleSaving || !auto;
   }
@@ -279,14 +328,89 @@ const MemoryAuditModal = (() => {
   }
 
   /**
-   * 立刻开始巡检
+   * 保存每批巡检条数。空值回填原值，越界由 MemoryAutoAudit 钳制后回填，
+   * 保证输入框显示的永远是实际生效的值。
+   */
+  async function handleBatchSizeChange() {
+    if (!batchInput) return;
+    if (isProcessing) return;
+    const auto = autoAudit();
+    if (!auto || typeof auto.setAuditBatchSize !== 'function') return;
+
+    const raw = String(batchInput.value == null ? '' : batchInput.value).trim();
+    if (!raw) {
+      // 空值不当作 0：回读当前生效值，避免把用户的清空动作存成 1
+      try {
+        const config = await auto.getConfig();
+        batchInput.value = String(config.auditBatchSize);
+      } catch (_) { /* 读取失败时保持原样 */ }
+      return;
+    }
+
+    try {
+      const saved = await auto.setAuditBatchSize(raw);
+      batchInput.value = String(saved.auditBatchSize);
+    } catch (err) {
+      console.error('[MemoryAuditModal] 保存每批巡检条数失败:', err);
+      try {
+        const config = await auto.getConfig();
+        batchInput.value = String(config.auditBatchSize);
+      } catch (_) { /* 忽略回读失败 */ }
+    }
+  }
+
+  /**
+   * 提交前把输入框里的值同步落盘。
+   * change 事件在手机上不一定触发（比如直接点按钮），避免「改完立刻巡检」丢掉设置。
+   */
+  async function flushBatchSize() {
+    if (!batchInput) return;
+    await handleBatchSizeChange();
+  }
+
+  /**
+   * 终止巡检：手动和自动巡检都走这里。
+   * 已合并的记忆和备份保留；结果提示由发起巡检的一方负责。
+   */
+  async function handleStopAudit() {
+    const auto = autoAudit();
+    if (!auto || typeof auto.stop !== 'function' || isStopConfirming) return;
+    const modal = retroModal();
+    isStopConfirming = true;
+    syncRunningState();
+    try {
+      if (modal && typeof modal.confirm === 'function') {
+        const ok = await modal.confirm({
+          message: '确认终止巡检吗？',
+          detail: '已合并的记忆会保留，正在处理的这一批会作废。',
+          confirmText: '终止巡检',
+          cancelText: '继续巡检',
+          danger: true
+        });
+        if (!ok) return;
+      }
+      const state = typeof auto.getState === 'function' ? auto.getState() : null;
+      if (!state || !state.running) return;
+      auto.stop();
+    } finally {
+      isStopConfirming = false;
+      syncRunningState();
+    }
+  }
+
+  /**
+   * 立刻开始巡检；巡检进行中时同一个按钮负责终止
    */
   async function handleStartAudit() {
+    const auto = autoAudit();
+    if (auto && typeof auto.getState === 'function' && auto.getState().running) {
+      await handleStopAudit();
+      return;
+    }
     if (isProcessing) return;
 
     const modal = retroModal();
     const toast = retroToast();
-    const auto = autoAudit();
 
     if (!auto || typeof auto.runManual !== 'function') {
       console.error('[MemoryAuditModal] MemoryAutoAudit 未初始化');
@@ -301,19 +425,8 @@ const MemoryAuditModal = (() => {
       return;
     }
 
-    const running = typeof auto.getState === 'function' && auto.getState().running;
-    if (running) {
-      if (toast && typeof toast.show === 'function') {
-        toast.show({
-          tag: 'AUDIT 记忆巡检',
-          message: '巡检正在进行中',
-          detail: '请等待当前巡检结束后再试',
-          type: 'info',
-          duration: 3200
-        });
-      }
-      return;
-    }
+    // 先把输入框里的条数落盘再开始：手机上未必触发 change，避免改完直接点按钮时丢设置
+    await flushBatchSize();
 
     // 二次确认
     if (modal && typeof modal.confirm === 'function') {
@@ -336,7 +449,7 @@ const MemoryAuditModal = (() => {
       toast.show({
         tag: 'AUDIT 记忆巡检',
         message: '正在巡检中…',
-        detail: '系统正在分析记忆并生成合并方案，可点击关闭本提示',
+        detail: '可重新打开巡检面板终止，可点击关闭本提示',
         type: 'info',
         duration: 600000 // 10 分钟兜底，结果弹窗出现前由 dismiss 收掉
       });
@@ -363,6 +476,24 @@ const MemoryAuditModal = (() => {
       const merged = result.merged || 0;
       const skipped = result.skipped || 0;
       const failed = result.failed || 0;
+
+      if (result.stopped) {
+        const byUser = result.stopReason !== 'failed';
+        const lines = [merged > 0 ? `已合并 ${merged} 组记忆` : '没有合并任何记忆'];
+        if (skipped > 0) lines.push(`跳过 ${skipped} 组`);
+        if (result.stoppedAt) lines.push(`停在「${result.stoppedAt}」`);
+        const reason = !byUser && result.firstError ? `失败原因：${result.firstError}。` : '';
+        if (modal && typeof modal.alert === 'function') {
+          await modal.alert({
+            message: byUser ? '巡检已终止' : '巡检已停止',
+            detail: `${lines.join('，')}。${reason}已合并的记忆已保留，若发现异常，可重新打开巡检面板恢复备份。`,
+            confirmText: '知道了',
+            danger: false
+          });
+        }
+        return;
+      }
+
       const parts = [merged > 0 ? `合并了 ${merged} 组记忆` : '没有合并任何记忆'];
       if (skipped > 0) parts.push(`跳过 ${skipped} 组`);
       if (failed > 0) parts.push(`${failed} 批未处理（${result.firstError || '模型返回异常'}），可稍后再巡检一次`);

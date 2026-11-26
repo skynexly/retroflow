@@ -169,7 +169,7 @@ const AssistantProfileExtractor = (() => {
 
   /**
    * 整理一批（默认 batchSize 条最旧的未吸收记忆）
-   * @param {{batchSize?: number, maxChars?: number, dryRun?: boolean}} [opts]
+   * @param {{batchSize?: number, maxChars?: number, maxEvents?: number, dryRun?: boolean}} [opts]
    *   dryRun 为 true 时只组装请求，不调用模型
    * @returns {Promise<object>}
    */
@@ -193,7 +193,8 @@ const AssistantProfileExtractor = (() => {
       const { doc } = await store.loadRaw();
       const settings = store.normalizeSettings({
         batchSize: o.batchSize != null ? o.batchSize : doc.settings.batchSize,
-        maxChars: o.maxChars != null ? o.maxChars : doc.settings.maxChars
+        maxChars: o.maxChars != null ? o.maxChars : doc.settings.maxChars,
+        maxEvents: o.maxEvents != null ? o.maxEvents : doc.settings.maxEvents
       });
 
       const all = await listEligible();
@@ -216,6 +217,7 @@ const AssistantProfileExtractor = (() => {
       const batch = pending.slice(0, settings.batchSize);
       const messages = prompt.build({
         maxChars: settings.maxChars,
+        maxEvents: settings.maxEvents,
         currentProfile: doc.content,
         memories: formatBatch(batch)
       });

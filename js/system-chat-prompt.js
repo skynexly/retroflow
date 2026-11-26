@@ -766,6 +766,7 @@ Ta现在活生生地在你眼前，并非你的臆想，也绝非一个幻影，
   /**
    * 核心档案注入段：只认调用方显式传入的 options.coreProfile（与 memoryStable 同口径）。
    * 档案为空或六个板块全是（暂无）时返回空串，不注入。
+   * 说明句写在标签内部正文之前，让模型把「这是什么」和「里面写了什么」当成同一个语义块读。
    * @param {Object} [options]
    * @returns {string}
    */
@@ -773,7 +774,10 @@ Ta现在活生生地在你眼前，并非你的臆想，也绝非一个幻影，
     const content = options && typeof options.coreProfile === 'string' ? options.coreProfile.trim() : '';
     if (!content) return '';
     if (typeof AssistantProfileParser !== 'undefined' && AssistantProfileParser.isEmptyProfile(content)) return '';
-    return `<核心档案>\n${content}\n</核心档案>`;
+    return `<核心档案>
+<核心档案> 里是从日常记忆里提炼出的长期认知，是你对执行员已经内化的了解，不是外部资料，也不是当前对话的临时记录。它默认一直成立，除非这次对话明确出现了与之相反的信息。
+${content}
+</核心档案>`;
   }
 
   /* ================= 公共接口 ================= */

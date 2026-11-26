@@ -18,6 +18,9 @@ const MemoryAutoAudit = (() => {
   let running = false;
   let activeKind = '';
   let initialized = false;
+  let abortCtrl = null;      // 本次巡检的终止信号
+  let stopping = false;      // 已请求终止、正在收尾
+  let retryDialogOpen = false;
 
   function getWin() {
     return typeof window !== 'undefined' ? window : {};
@@ -45,7 +48,7 @@ const MemoryAutoAudit = (() => {
   function emitState() {
     try {
       window.dispatchEvent(new CustomEvent(STATE_EVENT, {
-        detail: { running, kind: activeKind }
+        detail: { running, kind: activeKind, stopping }
       }));
     } catch (_) { /* 非 DOM 环境下忽略 */ }
   }
@@ -61,6 +64,23 @@ const MemoryAutoAudit = (() => {
     return Number.isFinite(n) && n > 0 ? n : 0;
   }
 
+  /**
+   * 归一化每批巡检条数。范围与钳制规则只在 MemoryAuditor 里定义一份，
+   * 这里只做「取不到引擎时回落默认值」的兜底，避免 UI/配置/引擎三处各写一套常数。
+   * @param {*} value
+   * @returns {number} 1~300 之间的整数
+   */
+  function normalizeAuditBatchSize(value) {
+    const aud = auditor();
+    if (aud && typeof aud.normalizeBatchSize === 'function') {
+      return aud.normalizeBatchSize(value);
+    }
+    // 引擎尚未加载（极早期或脚本缺失）时不影响配置读写，回落默认 100
+    const n = Math.floor(Number(value));
+    if (!Number.isFinite(n) || n <= 0) return 100;
+    return n > 300 ? 300 : n;
+  }
+
   function normalizeResult(value) {
     const src = value && typeof value === 'object' ? value : {};
     return {
@@ -71,7 +91,8 @@ const MemoryAutoAudit = (() => {
       failed: Math.max(0, Number(src.failed) || 0),
       groupCount: Math.max(0, Number(src.groupCount) || 0),
       recordCount: Math.max(0, Number(src.recordCount) || 0),
-      error: typeof src.error === 'string' ? src.error.slice(0, 500) : ''
+      error: typeof src.error === 'string' ? src.error.slice(0, 500) : '',
+      stoppedAt: typeof src.stoppedAt === 'string' ? src.stoppedAt.slice(0, 100) : ''
     };
   }
 
@@ -84,7 +105,10 @@ const MemoryAutoAudit = (() => {
       autoAuditLastCompletedAt: finiteTime(src.autoAuditLastCompletedAt),
       autoAuditLastAttemptAt: finiteTime(src.autoAuditLastAttemptAt),
       autoAuditRetryAt: finiteTime(src.autoAuditRetryAt),
-      autoAuditLastResult: normalizeResult(src.autoAuditLastResult)
+      autoAuditLastResult: normalizeResult(src.autoAuditLastResult),
+      // 每批巡检条数：手动与自动共用这一份设置。范围与钳制逻辑统一交给 MemoryAuditor，
+      // 避免 UI、配置、引擎三处各写一套 1/300。
+      auditBatchSize: normalizeAuditBatchSize(src.auditBatchSize)
     });
   }
 
@@ -118,7 +142,46 @@ const MemoryAutoAudit = (() => {
   }
 
   function getState() {
-    return { running, kind: activeKind, periodMs: PERIOD_MS, retryMs: RETRY_MS };
+    return { running, kind: activeKind, stopping, periodMs: PERIOD_MS, retryMs: RETRY_MS };
+  }
+
+  /**
+   * 终止正在进行的巡检：中断当前请求，后续批次不再执行。
+   * 已合并的记忆和巡检前备份都保留。
+   * @returns {boolean} 是否发出了终止信号
+   */
+  function stop() {
+    if (!running || !abortCtrl || abortCtrl.signal.aborted) return false;
+    stopping = true;
+    abortCtrl.abort();
+    // 重试弹窗还开着时一并收掉，按「停止巡检」处理
+    if (retryDialogOpen) {
+      const modal = getWin().RetroModal;
+      if (modal && typeof modal.close === 'function') modal.close(false);
+    }
+    emitState();
+    return true;
+  }
+
+  /** 一批失败时询问重试或停止；没有弹窗模块时直接停止 */
+  async function askBatchRetry(info) {
+    const modal = getWin().RetroModal;
+    if (!modal || typeof modal.confirm !== 'function') return 'stop';
+    const reason = info.isTimeout ? '请求超过 180 秒未完成' : (info.error || '模型返回异常');
+    const where = info.scope ? `「${info.scope}」` : '';
+    retryDialogOpen = true;
+    try {
+      const ok = await modal.confirm({
+        message: '这一批巡检没有完成',
+        detail: `${where}${info.recordCount || 0} 条记忆：${reason}。重试会重新发送这一批；停止巡检会保留已合并的记忆。`,
+        confirmText: '重试',
+        cancelText: '停止巡检',
+        danger: true
+      });
+      return ok ? 'retry' : 'stop';
+    } finally {
+      retryDialogOpen = false;
+    }
   }
 
   async function setEnabled(enabled) {
@@ -140,6 +203,13 @@ const MemoryAutoAudit = (() => {
       autoAuditNextDueAt: 0,
       autoAuditRetryAt: 0
     });
+  }
+
+  /** 保存每批巡检条数。手动与自动共用这一个值；越界与非法输入统一由引擎钳制。 */
+  async function setAuditBatchSize(size) {
+    const value = normalizeAuditBatchSize(size);
+    const saved = await saveConfig({ auditBatchSize: value });
+    return saved;
   }
 
   function resultSummary(status, at, result, extra) {
@@ -175,6 +245,30 @@ const MemoryAutoAudit = (() => {
     await saveConfig(patch);
   }
 
+  /**
+   * 终止（含失败后在重试弹窗选「停止巡检」）不算失败：不设 24 小时补试。
+   * 自动巡检把下次时间推到 7 天后，避免回到前台又立刻重跑。
+   */
+  async function recordStopped(kind, now, err, result, preflight) {
+    const config = await getConfig();
+    const patch = {
+      autoAuditLastAttemptAt: now,
+      autoAuditLastResult: resultSummary('stopped', now, result || {}, Object.assign({}, preflight || {}, {
+        error: err && err.stopReason === 'failed' ? (err.message || '') : '',
+        stoppedAt: (err && err.stoppedAt) || ''
+      }))
+    };
+    if (kind === 'auto' && config.autoAuditEnabled) {
+      patch.autoAuditRetryAt = 0;
+      patch.autoAuditNextDueAt = now + PERIOD_MS;
+    }
+    try {
+      await saveConfig(patch);
+    } catch (saveErr) {
+      console.error('[MemoryAutoAudit] 保存终止状态失败:', saveErr);
+    }
+  }
+
   async function recordFailure(kind, now, error, result, preflight) {
     const config = await getConfig();
     const summary = resultSummary('failed', now, result || {}, Object.assign({}, preflight || {}, {
@@ -206,13 +300,19 @@ const MemoryAutoAudit = (() => {
 
     running = true;
     activeKind = source;
+    stopping = false;
+    abortCtrl = new AbortController();
+    const signal = abortCtrl.signal;
     emitState();
 
     let preflight = null;
     let result = null;
+    let config = null;
     try {
+      // 每批条数在手动与自动两条路径共用，所以在此统一读一次配置，向下传给预检和真实巡检。
+      config = await getConfig();
       if (source === 'auto' && typeof aud.inspectCandidates === 'function') {
-        preflight = await aud.inspectCandidates();
+        preflight = await aud.inspectCandidates({ batchSize: config.auditBatchSize });
         if (!preflight.groupCount) {
           const now = Date.now();
           const emptyResult = { merged: 0, skipped: 0, failed: 0 };
@@ -236,7 +336,7 @@ const MemoryAutoAudit = (() => {
 
       // createBackup 内部会校验写入返回值；备份失败时这里不会进入 auditAll。
       await aud.createBackup();
-      result = await aud.auditAll();
+      result = await aud.auditAll({ signal, onBatchError: askBatchRetry, batchSize: config.auditBatchSize });
       const now = Date.now();
       const failed = Math.max(0, Number(result.failed) || 0);
 
@@ -253,11 +353,28 @@ const MemoryAutoAudit = (() => {
       emitCompleted({ source, result: Object.assign({ status: 'success' }, result) });
       return Object.assign({ ok: true, status: 'success' }, result);
     } catch (err) {
+      if (err && err.isAuditStop) {
+        const partial = Object.assign({ merged: 0, skipped: 0, failed: 0, firstError: '' }, err.partial || {});
+        await recordStopped(source, Date.now(), err, partial, preflight);
+        if ((Number(partial.merged) || 0) > 0) {
+          emitCompleted({ source, result: Object.assign({ status: 'stopped' }, partial) });
+        }
+        return Object.assign({
+          ok: false,
+          stopped: true,
+          status: 'stopped',
+          stopReason: err.stopReason || 'user',
+          stoppedAt: err.stoppedAt || '',
+          preflight
+        }, partial);
+      }
       await recordFailure(source, Date.now(), err, result, preflight);
       throw err;
     } finally {
       running = false;
       activeKind = '';
+      stopping = false;
+      abortCtrl = null;
       emitState();
     }
   }
@@ -314,6 +431,15 @@ const MemoryAutoAudit = (() => {
         type: 'success',
         duration: 4500
       });
+    } else if (result.stopped) {
+      const parts = [result.merged > 0 ? `已合并 ${result.merged} 组记忆` : '没有合并记忆'];
+      if (result.stoppedAt) parts.push(`停在「${result.stoppedAt}」`);
+      toast({
+        message: '自动巡检已终止',
+        detail: `${parts.join('，')}。下次自动巡检在 7 天后`,
+        type: 'info',
+        duration: 5200
+      });
     } else if (result.partial) {
       toast({
         message: '自动巡检部分完成',
@@ -353,10 +479,13 @@ const MemoryAutoAudit = (() => {
     COMPLETE_EVENT,
     getConfig,
     setEnabled,
+    setAuditBatchSize,
+    normalizeAuditBatchSize,
     getState,
     isRunning,
     checkDue,
     runManual,
+    stop,
     formatTime(timestamp) {
       const t = finiteTime(timestamp);
       if (!t) return '尚未巡检';

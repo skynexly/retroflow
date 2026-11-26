@@ -19,7 +19,7 @@
 
   <!-- 样式资产（带构建版本戳穿透 HTTP 磁盘缓存） -->
   <link rel="stylesheet" href="css/variables.css?v=192">
-  <link rel="stylesheet" href="css/style.css?v=990">
+  <link rel="stylesheet" href="css/style.css?v=994">
   <link rel="stylesheet" href="css/fork-deck-camera.css?v=3">
   <link rel="stylesheet" href="css/api-call-log.css?v=4">
   <link rel="stylesheet" href="css/life-service.css?v=129">
@@ -784,6 +784,15 @@
           <div class="memory-audit-last-result" id="memAuditLastResult" hidden></div>
         </div>
 
+        <!-- 每批巡检条数：手动与自动巡检共用同一个设置 -->
+        <label class="memory-audit-row core-profile-field" for="memAuditBatchInput">
+          <span class="core-profile-field-text">
+            <span class="memory-audit-label">每批巡检记忆条数</span>
+            <span class="memory-audit-hint">每次 <span id="memAuditBatchRange">1~300</span> 条，自动巡检同样生效</span>
+          </span>
+          <input class="core-profile-input" id="memAuditBatchInput" type="number" inputmode="numeric" step="1">
+        </label>
+
         <!-- 立刻巡检按钮 -->
         <button class="memory-audit-btn primary" id="memAuditStartBtn" type="button">
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -872,6 +881,13 @@
               <span class="memory-audit-hint"><span id="coreProfileCharsRange">200~20000</span> 字</span>
             </span>
             <input class="core-profile-input" id="coreProfileCharsInput" type="number" inputmode="numeric" step="1">
+          </label>
+          <label class="memory-audit-row core-profile-field" for="coreProfileEventsInput">
+            <span class="core-profile-field-text">
+              <span class="memory-audit-label">情感事件条数</span>
+              <span class="memory-audit-hint">每次最多新增 <span id="coreProfileEventsRange">1~20</span> 条</span>
+            </span>
+            <input class="core-profile-input" id="coreProfileEventsInput" type="number" inputmode="numeric" step="1">
           </label>
           <!-- 自动提取（即将推出，暂时禁用） -->
           <div class="memory-audit-row disabled">
@@ -11396,7 +11412,7 @@
   <script src="js/downloader.js?v=189"></script>
   <script src="js/chat-shot.js?v=4"></script>
   <script src="js/ui-motion.js?v=186"></script>
-  <script src="js/modal.js?v=293"></script>
+  <script src="js/modal.js?v=294"></script>
   <script src="js/toast.js?v=297"></script>
   <script src="js/image-picker.js?v=190"></script>
   <script src="js/date-picker.js?v=187"></script>
@@ -11449,11 +11465,11 @@
   <script src="js/memory-store.js?v=1"></script>
   <script src="js/assistant-memory-store.js?v=5"></script>
   <script src="js/memory-vectors.js?v=1"></script>
-  <script src="js/memory-auditor.js?v=6"></script>
-  <script src="js/memory-auto-audit.js?v=1"></script>
+  <script src="js/memory-auditor.js?v=8"></script>
+  <script src="js/memory-auto-audit.js?v=3"></script>
   <script src="js/assistant-memory-parser.js?v=2"></script>
-  <script src="js/memory-bank-app.js?v=12"></script>
-  <script src="js/memory-audit-modal.js?v=4"></script>
+  <script src="js/memory-bank-app.js?v=14"></script>
+  <script src="js/memory-audit-modal.js?v=6"></script>
   <script src="js/fork-run-wallpaper.js?v=1"></script>
   <script src="js/fork-run-settings.js?v=19"></script>
   <script src="js/fork-run-api.js?v=24"></script>
@@ -11464,7 +11480,7 @@
   <script src="js/talent-prompt.js?v=3"></script>
   <script src="js/markdown.js?v=304"></script>
   <script src="js/env-awareness.js?v=1"></script>
-  <script src="js/system-chat-prompt.js?v=313"></script>
+  <script src="js/system-chat-prompt.js?v=314"></script>
   <script src="js/online-chat-prompt.js?v=380"></script>
   <script src="js/context-budget.js?v=1"></script>
   <script src="js/chat-day-sep.js?v=2"></script>
@@ -11483,11 +11499,11 @@
   <script src="js/assistant-memory-prompt.js?v=2"></script>
   <script src="js/assistant-memory-extractor.js?v=3"></script>
   <script src="js/assistant-memory-recall.js?v=2"></script>
-  <script src="js/assistant-profile-prompt.js?v=1"></script>
+  <script src="js/assistant-profile-prompt.js?v=3"></script>
   <script src="js/assistant-profile-parser.js?v=1"></script>
-  <script src="js/assistant-profile-store.js?v=1"></script>
-  <script src="js/assistant-profile-extractor.js?v=1"></script>
-  <script src="js/core-profile-modal.js?v=1"></script>
+  <script src="js/assistant-profile-store.js?v=3"></script>
+  <script src="js/assistant-profile-extractor.js?v=2"></script>
+  <script src="js/core-profile-modal.js?v=2"></script>
   <script src="js/system-chat-settings.js?v=319"></script>
   <script src="js/vendor/feel.js?v=1"></script>
   <script src="js/life-store.js?v=11"></script>

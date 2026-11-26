@@ -7,6 +7,7 @@
  * 占位符：
  *   {{ASST_NAME}} / {{ENVOY_NAME}}  与助手聊天提示词同一套取值（SystemChatPrompt.getVar）
  *   {{MAX_CHARS}}                   全文字数上限（含板块标题与「- 」符号）
+ *   {{MAX_EVENTS}}                  每次整理最多新增的「情感羁绊与事件」条数
  *   {{CURRENT_PROFILE}}             已有的核心档案正文；首次整理传「（无，这是第一次整理）」
  *   {{NEW_MEMORIES}}                本批待吸收的记忆，格式化后的一段文本
  *
@@ -17,6 +18,9 @@ const AssistantProfilePrompt = (() => {
   'use strict';
 
   const DEFAULT_MAX_CHARS = 1500;
+
+  /** 每次整理最多新增的「情感羁绊与事件」条数；界面可改，store 里另有取值范围 */
+  const DEFAULT_MAX_EVENTS = 3;
 
   /** 首次整理的占位文本，解析端与存储端判空都以这一句为准 */
   const FIRST_RUN_PROFILE = '（无，这是第一次整理）';
@@ -81,7 +85,9 @@ const AssistantProfilePrompt = (() => {
 - 普通日常小事不写。
 - 按时间从旧到近排列，一条一行，写成「- YYYY-MM-DD 概述」。
 - 时间只写到日期，不写时分。优先用材料正文里明确提到的日期；正文没写日期时，取这条记忆自带时间的日期部分。
-- 条数不设上限。
+- 每次整理最多新增 {{MAX_EVENTS}} 条。本批材料里值得记的节点超过 {{MAX_EVENTS}} 条时，只挑最重要的 {{MAX_EVENTS}} 条，优先关系的转折、确认、纪念日和约定，其余不写。
+- 新记忆只是补充或细化已有条目时，并进原条目，不算新增。不要把一条旧条目拆成多条。
+- 全文字数超过上限时，允许删除或合并时间线里相对不重要的旧条目，给更重要的节点腾位置。
 
 # 三、本次任务
 
@@ -128,7 +134,7 @@ const AssistantProfilePrompt = (() => {
 3. 全文第三人称，没有“你”“我”“她”“他”，引用原话用「」。
 4. 喜欢和讨厌按类别归并，没有一条一类地罗列。
 5. 人际关系里过滤了路人，没有名字时保留了关系和称谓。
-6. 【情感羁绊与事件】只留重要节点，按从旧到近排列，日期写成 YYYY-MM-DD。
+6. 【情感羁绊与事件】只留重要节点，按从旧到近排列，日期写成 YYYY-MM-DD，本次新增不超过 {{MAX_EVENTS}} 条。
 7. 增量合并后没有漏掉旧档案里仍然有效的信息。
 8. 全文不超过 {{MAX_CHARS}} 字，也没有为了凑字数注水。
 9. 只输出了 <RETROFLOW_PROFILE> 标签块。`;
@@ -174,7 +180,7 @@ const AssistantProfilePrompt = (() => {
   }
 
   function fillVars(template, vars) {
-    return String(template).replace(/\{\{(ASST_NAME|ENVOY_NAME|MAX_CHARS)\}\}/g, (_, key) => {
+    return String(template).replace(/\{\{(ASST_NAME|ENVOY_NAME|MAX_CHARS|MAX_EVENTS)\}\}/g, (_, key) => {
       const v = vars[key];
       return v == null ? '' : String(v);
     });
@@ -186,6 +192,7 @@ const AssistantProfilePrompt = (() => {
    *   ASST_NAME?: string,
    *   ENVOY_NAME?: string,
    *   maxChars?: number,
+   *   maxEvents?: number,
    *   currentProfile?: string,
    *   memories?: string
    * }} [input]
@@ -203,7 +210,10 @@ const AssistantProfilePrompt = (() => {
     const rawMax = parseInt(opts.maxChars, 10);
     const maxChars = Number.isFinite(rawMax) && rawMax > 0 ? rawMax : DEFAULT_MAX_CHARS;
 
-    const vars = { ...names, MAX_CHARS: maxChars };
+    const rawEvents = parseInt(opts.maxEvents, 10);
+    const maxEvents = Number.isFinite(rawEvents) && rawEvents > 0 ? rawEvents : DEFAULT_MAX_EVENTS;
+
+    const vars = { ...names, MAX_CHARS: maxChars, MAX_EVENTS: maxEvents };
     const system = fillVars(SYSTEM_TEMPLATE, vars);
 
     const currentProfile = String(opts.currentProfile == null ? '' : opts.currentProfile).trim()
@@ -225,6 +235,7 @@ const AssistantProfilePrompt = (() => {
     SYSTEM_TEMPLATE,
     USER_TEMPLATE,
     DEFAULT_MAX_CHARS,
+    DEFAULT_MAX_EVENTS,
     FIRST_RUN_PROFILE,
     resolveNames,
     build

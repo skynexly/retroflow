@@ -93,8 +93,10 @@ const CoreProfileModal = (() => {
       extractBtn: $('coreProfileExtractBtn'),
       batchInput: $('coreProfileBatchInput'),
       charsInput: $('coreProfileCharsInput'),
+      eventsInput: $('coreProfileEventsInput'),
       batchRange: $('coreProfileBatchRange'),
       charsRange: $('coreProfileCharsRange'),
+      eventsRange: $('coreProfileEventsRange'),
       backupInfo: $('coreProfileBackupInfo'),
       restoreBtn: $('coreProfileRestoreBtn'),
       resetBtn: $('coreProfileResetBtn'),
@@ -111,8 +113,11 @@ const CoreProfileModal = (() => {
       els.batchInput.max = String(s.BATCH_MAX);
       els.charsInput.min = String(s.CHARS_MIN);
       els.charsInput.max = String(s.CHARS_MAX);
+      els.eventsInput.min = String(s.EVENTS_MIN);
+      els.eventsInput.max = String(s.EVENTS_MAX);
       els.batchRange.textContent = `${s.BATCH_MIN}~${s.BATCH_MAX}`;
       els.charsRange.textContent = `${s.CHARS_MIN}~${s.CHARS_MAX}`;
+      els.eventsRange.textContent = `${s.EVENTS_MIN}~${s.EVENTS_MAX}`;
     }
 
     els.closeBtn.addEventListener('click', close);
@@ -123,6 +128,7 @@ const CoreProfileModal = (() => {
     els.resetBtn.addEventListener('click', handleReset);
     els.batchInput.addEventListener('change', () => handleSettingChange('batchSize', els.batchInput));
     els.charsInput.addEventListener('change', () => handleSettingChange('maxChars', els.charsInput));
+    els.eventsInput.addEventListener('change', () => handleSettingChange('maxEvents', els.eventsInput));
 
     els.editorBack.addEventListener('click', handleEditorBack);
     els.editorSave.addEventListener('click', handleEditorSave);
@@ -179,6 +185,7 @@ const CoreProfileModal = (() => {
 
     els.batchInput.value = String(doc.settings.batchSize);
     els.charsInput.value = String(doc.settings.maxChars);
+    els.eventsInput.value = String(doc.settings.maxEvents);
 
     const chars = parser().countChars(doc.content);
     const contentChars = parser().isEmptyProfile(doc.content) ? 0 : chars;
@@ -240,11 +247,17 @@ const CoreProfileModal = (() => {
     const current = (await s.load()).settings;
     const next = s.normalizeSettings({
       batchSize: String(els.batchInput.value || '').trim() || current.batchSize,
-      maxChars: String(els.charsInput.value || '').trim() || current.maxChars
+      maxChars: String(els.charsInput.value || '').trim() || current.maxChars,
+      maxEvents: String(els.eventsInput.value || '').trim() || current.maxEvents
     });
     els.batchInput.value = String(next.batchSize);
     els.charsInput.value = String(next.maxChars);
-    if (next.batchSize !== current.batchSize || next.maxChars !== current.maxChars) {
+    els.eventsInput.value = String(next.maxEvents);
+    if (
+      next.batchSize !== current.batchSize ||
+      next.maxChars !== current.maxChars ||
+      next.maxEvents !== current.maxEvents
+    ) {
       await s.saveSettings(next);
     }
     return next;
@@ -278,7 +291,7 @@ const CoreProfileModal = (() => {
     const take = Math.min(settings.batchSize, stats.pending);
     const ok = await confirmMsg(
       '确认提取核心档案吗？',
-      `本次会整理最早的 ${take} 条记忆（共 ${stats.pending} 条待整理），档案字数上限 ${settings.maxChars} 字。提取前会自动备份当前档案，整理需要一点时间。`,
+      `本次会整理最早的 ${take} 条记忆（共 ${stats.pending} 条待整理），档案字数上限 ${settings.maxChars} 字，情感事件每次最多新增 ${settings.maxEvents} 条。提取前会自动备份当前档案，整理需要一点时间。`,
       '开始提取',
       false
     );
@@ -290,7 +303,11 @@ const CoreProfileModal = (() => {
 
     try {
       await store().createBackup();
-      const res = await ex.extractBatch({ batchSize: settings.batchSize, maxChars: settings.maxChars });
+      const res = await ex.extractBatch({
+        batchSize: settings.batchSize,
+        maxChars: settings.maxChars,
+        maxEvents: settings.maxEvents
+      });
       toastDismiss();
 
       if (!res.ok) {

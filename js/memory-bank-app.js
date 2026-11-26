@@ -197,8 +197,10 @@ const MemoryBankApp = (() => {
   let currentForkId = '';
   /** 日常页是否展开「助手记忆」分类索引 */
   let isAssistantMemory = false;
-  /** 当前展开的助手记忆分类 id；空串 = 停在助手记忆索引 */
+  /** 当前展开的助手记忆分类 id；空串 = 停在助手记忆索引或跨分类聚合页 */
   let currentAssistantCategory = '';
+  /** 跨分类聚合维度：空串 = 不在聚合页；all / pinned / important 表示当前聚合视图 */
+  let assistantScope = '';
   /** 各分类独立记住当前书签；未访问过的分类取自身首组（信息 / 理解）。 */
   const assistantCurrentGroups = {};
   /** 右侧索引轨折叠状态，在两类分组页之间复用同一套版式。 */
@@ -513,9 +515,10 @@ const MemoryBankApp = (() => {
   }
 
   function openAssistantMemory() {
-    if (isAssistantMemory && !currentAssistantCategory) return;
+    if (isAssistantMemory && !currentAssistantCategory && !assistantScope) return;
     isAssistantMemory = true;
     currentAssistantCategory = '';
+    assistantScope = '';
     try {
       window.history.pushState({ rfPage: 'memory-bank', memoryIndex: true }, '', '#memory-bank/assistant-memory');
     } catch (_) {}
@@ -562,7 +565,7 @@ const MemoryBankApp = (() => {
       assistantLoadState = 'error';
       console.warn('[MemoryBank] 助手记忆读取失败：', err);
     }).then(() => {
-      if (isOpened && currentAssistantCategory) updateAssistantList();
+      if (isOpened && (currentAssistantCategory || assistantScope)) updateAssistantList();
     });
   }
 
@@ -573,10 +576,16 @@ const MemoryBankApp = (() => {
     return store.commit(ops);
   }
 
+  /** 详情页路由标识：聚合页用 scope id，分类页用分类 id。 */
+  function assistantDetailRouteId() {
+    return assistantScope || currentAssistantCategory;
+  }
+
   function assistantToolState(tool, entryId) {
     return {
       rfPage: 'memory-bank',
-      assistantCategory: currentAssistantCategory,
+      assistantCategory: assistantScope ? '' : currentAssistantCategory,
+      assistantScope,
       memTool: tool,
       entryId: entryId || ''
     };
@@ -587,7 +596,7 @@ const MemoryBankApp = (() => {
       window.history.pushState(
         assistantToolState(tool, entryId),
         '',
-        `#memory-bank/assistant-memory/${currentAssistantCategory}`
+        `#memory-bank/assistant-memory/${assistantDetailRouteId()}`
       );
       return true;
     } catch (_) {
@@ -639,12 +648,18 @@ const MemoryBankApp = (() => {
     if (tabBarEl) tabBarEl.hidden = false;
   }
 
+  /** 重绘当前详情视图：聚合页与分类页走各自的渲染器，工具条状态一并保留。 */
+  function rerenderAssistantDetail(opts) {
+    if (assistantScope) renderAssistantScope(assistantScope, opts);
+    else renderAssistantCategory(currentAssistantCategory, opts);
+  }
+
   function closeAssistantSearch() {
     const returnFocus = assistantOverlayReturnFocus;
     assistantOverlayReturnFocus = null;
     assistantSearchOpen = false;
     assistantSearchQuery = '';
-    renderAssistantCategory(currentAssistantCategory, { preserveTools: true });
+    rerenderAssistantDetail({ preserveTools: true });
     restoreAssistantFocus(returnFocus, '[data-assistant-tool="search"]');
   }
 
@@ -653,7 +668,7 @@ const MemoryBankApp = (() => {
     assistantOverlayReturnFocus = document.activeElement;
     assistantSearchOpen = true;
     assistantSearchQuery = '';
-    renderAssistantCategory(currentAssistantCategory, { preserveTools: true });
+    rerenderAssistantDetail({ preserveTools: true });
     // 同步聚焦，iOS 才会在这次点击里弹出键盘
     const input = viewportEl && viewportEl.querySelector('#memAssistantSearchInput');
     if (input) {
@@ -670,16 +685,15 @@ const MemoryBankApp = (() => {
 
   function enterAssistantSelection(fromHistory) {
     if (assistantEditorOpen || assistantSelectionMode) return;
-    const cat = getAssistantCategory(currentAssistantCategory);
-    // 与按钮、全选共用当前组口径，避免 history 恢复空组时进入无记录多选
-    if (!assistantCurrentGroupEntries(cat, getAssistantEntries(cat)).length) return;
+    // 与按钮、全选共用当前可见集合，聚合页也走同一口径
+    if (!assistantVisibleEntries().length) return;
     assistantOverlayReturnFocus = document.activeElement;
     assistantSearchOpen = false;
     assistantSearchQuery = '';
     assistantSelectionMode = true;
     assistantSelectedIds.clear();
     if (!fromHistory) pushAssistantToolState('select');
-    renderAssistantCategory(currentAssistantCategory, { preserveTools: true });
+    rerenderAssistantDetail({ preserveTools: true });
     // 触发按钮已随重绘移除，把焦点交给操作条，键盘与读屏用户不会丢失位置
     const done = containerEl && containerEl.querySelector('[data-manage="done"]');
     if (done) {
@@ -697,8 +711,8 @@ const MemoryBankApp = (() => {
     card.setAttribute('aria-checked', on ? 'true' : 'false');
     const allBtn = viewportEl && viewportEl.querySelector('[data-assistant-tool="select-all"]');
     if (allBtn) {
-      const cat = getAssistantCategory(currentAssistantCategory);
-      const entries = assistantCurrentGroupEntries(cat, getAssistantEntries(cat));
+      // 与全选按钮共用同一份可见集合：聚合页为跨分类结果，分类页为当前分组
+      const entries = assistantVisibleEntries();
       const all = entries.length > 0 && entries.every((e) => assistantSelectedIds.has(e.id));
       allBtn.textContent = all ? '取消全选' : '全选';
     }
@@ -763,8 +777,13 @@ const MemoryBankApp = (() => {
 
   async function deleteAssistantEntry(id) {
     if (assistantConfirmBusy || assistantSelectionMode || assistantEditorOpen) return;
+    // 聚合页没有分类，用 scope 快照判断用户中途是否已离开当前视图
+    const scopeId = assistantScope;
     const catId = currentAssistantCategory;
-    const entries = getAssistantEntries(getAssistantCategory(catId));
+    const store = assistantStore();
+    const entries = scopeId
+      ? (store ? store.all() : [])
+      : getAssistantEntries(getAssistantCategory(catId));
     const entry = entries.find((e) => e.id === id);
     if (!entry) return;
     assistantConfirmBusy = true;
@@ -780,7 +799,9 @@ const MemoryBankApp = (() => {
     } finally {
       assistantConfirmBusy = false;
     }
-    if (!ok || !isOpened || currentAssistantCategory !== catId || assistantSelectionMode || assistantEditorOpen) return;
+    // 视图快照：聚合页比对 scope，分类页比对分类 id
+    const sameView = () => assistantScope === scopeId && currentAssistantCategory === catId;
+    if (!ok || !isOpened || !sameView() || assistantSelectionMode || assistantEditorOpen) return;
     if (entries.findIndex((e) => e.id === id) === -1) return;
     assistantConfirmBusy = true;
     try {
@@ -791,13 +812,15 @@ const MemoryBankApp = (() => {
     } finally {
       assistantConfirmBusy = false;
     }
-    if (!isOpened || currentAssistantCategory !== catId) return;
+    if (!isOpened || !sameView()) return;
     updateAssistantList();
-    const visibleEntries = assistantCurrentGroupEntries(getAssistantCategory(catId), entries);
+    const visibleEntries = scopeId
+      ? getScopeEntries(scopeId)
+      : assistantCurrentGroupEntries(getAssistantCategory(catId), entries);
     const next = visibleEntries.find((e) => e.id !== id) || visibleEntries[0];
     restoreAssistantFocus(
       next && viewportEl ? viewportEl.querySelector(`[data-entry-id="${next.id}"] [data-entry-action="delete"]`) : null,
-      '[data-assistant-tool="add"]'
+      scopeId ? '[data-assistant-tool="select"]' : '[data-assistant-tool="add"]'
     );
     assistantToast('已删除 1 条记录');
   }
@@ -806,7 +829,9 @@ const MemoryBankApp = (() => {
     if (assistantConfirmBusy || !assistantSelectionMode) return;
     const n = assistantSelectedIds.size;
     if (!n) return;
+    const scopeId = assistantScope;
     const catId = currentAssistantCategory;
+    const sameScope = () => assistantScope === scopeId && currentAssistantCategory === catId;
     assistantConfirmBusy = true;
     let ok = false;
     try {
@@ -820,7 +845,7 @@ const MemoryBankApp = (() => {
     } finally {
       assistantConfirmBusy = false;
     }
-    if (!ok || !isOpened || !assistantSelectionMode || currentAssistantCategory !== catId) return;
+    if (!ok || !isOpened || !assistantSelectionMode || !sameScope()) return;
     const ids = Array.from(assistantSelectedIds);
     assistantConfirmBusy = true;
     try {
@@ -831,7 +856,7 @@ const MemoryBankApp = (() => {
     } finally {
       assistantConfirmBusy = false;
     }
-    if (!isOpened || currentAssistantCategory !== catId) return;
+    if (!isOpened || !sameScope()) return;
     assistantSelectedIds.clear();
     if (assistantSelectionMode) requestCloseAssistantLayer();
     else updateAssistantList();
@@ -998,6 +1023,74 @@ const MemoryBankApp = (() => {
     return store && store.isLoaded() ? store.countPinned() : 0;
   }
 
+  /* ---------------- 跨分类聚合：全部 / 永久 / 重要 ---------------- */
+
+  /** 三个聚合维度；三段条与聚合页共用同一份口径，all 不做过滤。 */
+  const MEMORY_SCOPES = [
+    { id: 'all', en: 'ALL', zh: '全部' },
+    { id: 'pinned', en: 'PERMANENT', zh: '永久' },
+    { id: 'important', en: 'IMPORTANT', zh: '重要' }
+  ];
+
+  function isAssistantScopeId(id) {
+    const key = String(id || '').trim();
+    return MEMORY_SCOPES.some((s) => s.id === key);
+  }
+
+  /** 聚合页数据：跨七分类汇总，按权重过滤后统一按记录时间倒序（永久不置顶）。 */
+  function getScopeEntries(scope) {
+    const store = assistantStore();
+    if (!store || !store.isLoaded()) return [];
+    const all = store.all();
+    const picked = scope === 'pinned' || scope === 'important'
+      ? all.filter((e) => memoryRankOf(e) === scope)
+      : all.slice();
+    return picked.sort(assistantRecordTimeNewestFirst);
+  }
+
+  /** 当前列表的实际可见集合：聚合页为跨分类结果，分类页为当前分组。 */
+  function assistantVisibleEntries() {
+    if (assistantScope) return getScopeEntries(assistantScope);
+    const cat = getAssistantCategory(currentAssistantCategory);
+    return assistantCurrentGroupEntries(cat, getAssistantEntries(cat));
+  }
+
+  /** 三段条右侧的计数：永久档显示全局额度，读库前统一显示破折号。 */
+  function scopeCountText(scope) {
+    const store = assistantStore();
+    if (!store || !store.isLoaded()) return '—';
+    if (scope === 'pinned') return `${store.countPinned()}/${MEMORY_RANK_LIMIT}`;
+    if (scope === 'important') {
+      return String(store.all().filter((e) => memoryRankOf(e) === 'important').length);
+    }
+    return String(store.all().length);
+  }
+
+  /**
+   * 三段条：卡片页顶部作纯入口（不高亮任何一项），聚合页顶部同位置作切换（高亮当前项）。
+   * 沿用底部 Tab 的反色胶囊观感，但用 static 定位，不抢底部安全区。
+   */
+  function scopeBarHtml(activeScope) {
+    const active = isAssistantScopeId(activeScope) ? activeScope : '';
+    return `
+      <div class="mem-scope-bar" role="group" aria-label="跨分类记忆视图">
+        ${MEMORY_SCOPES.map((s) => {
+          const on = s.id === active;
+          return `
+            <button type="button" class="mem-scope-btn${on ? ' is-active' : ''}" data-scope="${s.id}"
+              aria-label="查看${s.zh}记忆" aria-pressed="${on ? 'true' : 'false'}">
+              <span class="mem-scope-text">
+                <span class="mem-scope-en">${s.en}</span>
+                <span class="mem-scope-zh">${s.zh}</span>
+              </span>
+              <span class="mem-scope-count">${scopeCountText(s.id)}</span>
+            </button>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
   /** 保存时兜底校验：编辑中把旧永久改成其他档位会释放一个名额 */
   function pinnedQuotaAvailable(changingId) {
     const store = assistantStore();
@@ -1018,7 +1111,12 @@ const MemoryBankApp = (() => {
     if (!hint) return;
     const groupField = assistantEditorField(form, 'group');
     const groupId = groupField ? groupField.value : '';
-    const cat = getAssistantCategory(currentAssistantCategory);
+    // 聚合页编辑的记录可能属于任意分类：分类取记录自身的，避免读错分组池
+    const scopeMode = Boolean(assistantScope);
+    const editingEntry = scopeMode && assistantEditorEntryId ? assistantStore().get(assistantEditorEntryId) : null;
+    const cat = scopeMode
+      ? getAssistantCategory(editingEntry ? editingEntry.category : '')
+      : getAssistantCategory(currentAssistantCategory);
     const meta = cat.id === 'operator' ? operatorGroupMeta(groupId) : null;
     const entries = getAssistantEntries(cat);
     const editing = assistantEditorEntryId ? entries.find((e) => e.id === assistantEditorEntryId) : null;
@@ -1073,10 +1171,19 @@ const MemoryBankApp = (() => {
     if (!assistantMemoryReady()) return;
     const editor = containerEl && containerEl.querySelector('#memEntryEditor');
     if (!editor) return;
-    const cat = getAssistantCategory(currentAssistantCategory);
-    const entry = entryId ? getAssistantEntries(cat).find((e) => e.id === entryId) : null;
+
+    // 聚合页没有新增入口，且记录可能属于任意分类：按 ID 全库定位，再取其真实分类
+    const store = assistantStore();
+    const scopeMode = Boolean(assistantScope);
+    if (scopeMode && !entryId) return;
+    const entry = entryId
+      ? (scopeMode ? store.get(entryId) : getAssistantEntries(getAssistantCategory(currentAssistantCategory)).find((e) => e.id === entryId))
+      : null;
+    const cat = scopeMode
+      ? getAssistantCategory(entry ? entry.category : '')
+      : getAssistantCategory(currentAssistantCategory);
     if (entryId && !entry) return;
-    if (mode === 'completion' && (cat.id !== 'pending' || !entry)) return;
+    if (mode === 'completion' && ((scopeMode ? (entry ? entry.category : '') : cat.id) !== 'pending' || !entry)) return;
     assistantEditorMode = mode === 'completion' ? 'completion' : 'entry';
     if (assistantEditorMode === 'completion') {
       openAssistantCompletionEditor(entry, editor);
@@ -1283,12 +1390,9 @@ const MemoryBankApp = (() => {
         showAssistantEditorError(form, 'completionNote', '请留下一句完成说明。');
         return;
       }
-      if (currentAssistantCategory !== 'pending') return;
-      const entry = getAssistantEntries(getAssistantCategory('pending')).find((e) => e.id === assistantEditorEntryId);
-      if (!entry) {
-        showAssistantEditorError(form, 'completionNote', '这个目标已不在列表中，无法保存。');
-        return;
-      }
+      const pendingEntry = assistantEditorEntryId ? store.get(assistantEditorEntryId) : null;
+      if (!pendingEntry || pendingEntry.category !== 'pending') return;
+      const entry = pendingEntry;
       const wasCompleted = assistantEntryCompleted(entry);
       const record = store.normalize(Object.assign({}, entry, { completedDate, completionNote }));
       assistantSaving = true;
@@ -1322,9 +1426,14 @@ const MemoryBankApp = (() => {
     if (primary && keywords.indexOf(primary) === -1) keywords.unshift(primary);
     if (!primary && keywords.length) primary = keywords[0];
 
-    const cat = getAssistantCategory(currentAssistantCategory);
-    const entries = getAssistantEntries(cat);
+    const scopeMode = Boolean(assistantScope);
+    const editingEntry = assistantEditorEntryId && scopeMode ? assistantStore().get(assistantEditorEntryId) : null;
+    const cat = scopeMode
+      ? getAssistantCategory(editingEntry ? editingEntry.category : '')
+      : getAssistantCategory(currentAssistantCategory);
+    const entries = scopeMode ? [] : getAssistantEntries(cat);
     const isEdit = Boolean(assistantEditorEntryId);
+    // 聚合页按记录的真实分类取分组维度，编辑时不丢分组；聚合页不提供新增，isEdit 恒为真
     const groups = assistantGroupsOf(cat);
 
     const timeField = assistantEditorField(form, 'time');
@@ -1334,7 +1443,7 @@ const MemoryBankApp = (() => {
       showAssistantEditorError(form, 'time', '请填写时间。');
       return;
     }
-    const existing = isEdit ? entries.find((e) => e.id === assistantEditorEntryId) : null;
+    const existing = isEdit ? (scopeMode ? editingEntry : entries.find((e) => e.id === assistantEditorEntryId)) : null;
     if (isEdit && !existing) {
       showAssistantEditorError(form, 'title', '这条记录已不在列表中，无法保存。');
       return;
@@ -1383,7 +1492,8 @@ const MemoryBankApp = (() => {
     assistantEditorEntryId = record.id;
 
     // 保存到别的分组后，列表跟着切过去，让用户看到这条记录；书签状态在列表重绘时同步
-    if (groups) setAssistantCurrentGroup(cat.id, groupId);
+    // 聚合页没有书签轨与分组维度，不切换当前分组，避免污染分类页状态
+    if (groups && !scopeMode) setAssistantCurrentGroup(cat.id, groupId);
 
     assistantEditorSnapshot = assistantEditorSnapshotOf(form);
     requestCloseAssistantLayer();
@@ -1560,7 +1670,7 @@ const MemoryBankApp = (() => {
       bar.innerHTML = '';
     }
     if (tabBarEl) tabBarEl.hidden = false;
-    renderAssistantCategory(currentAssistantCategory, { preserveTools: true });
+    rerenderAssistantDetail({ preserveTools: true });
     if (restoreFocus) restoreAssistantFocus(returnFocus, '[data-assistant-tool="select"]');
   }
 
@@ -1643,6 +1753,7 @@ const MemoryBankApp = (() => {
     if (!cat) return;
     isAssistantMemory = true;
     currentAssistantCategory = cat.id;
+    assistantScope = '';
     try {
       window.history.pushState(
         { rfPage: 'memory-bank', assistantCategory: cat.id },
@@ -1680,6 +1791,7 @@ const MemoryBankApp = (() => {
     currentForkId = '';
     isAssistantMemory = true;
     currentAssistantCategory = '';
+    assistantScope = '';
     releaseCovers();
     setSearchVisible(false);
     setMarginNoteVisible(false);
@@ -1697,6 +1809,7 @@ const MemoryBankApp = (() => {
           <span class="mem-memory-intro-code">SEVEN LAYERS OF REMEMBERING</span>
           <p>关于你，关于我，以及只有我们知道的事。</p>
         </div>
+        ${scopeBarHtml('')}
         <div class="mem-memory-collection" role="list" aria-label="助手记忆的七个分类">
           <button type="button" class="mem-memory-lead mem-memory-lead-btn" data-assistant-cat="${escapeHtml(lead.id)}" role="listitem" aria-label="查看 对你的记忆 详情">
             <span class="mem-memory-lead-icon">${MEMORY_ICONS[lead.icon]}</span>
@@ -1716,6 +1829,11 @@ const MemoryBankApp = (() => {
     viewportEl.querySelectorAll('[data-assistant-cat]').forEach((el) => {
       el.addEventListener('click', () => {
         openAssistantCategory(el.getAttribute('data-assistant-cat'));
+      });
+    });
+    viewportEl.querySelectorAll('.mem-scope-btn').forEach((el) => {
+      el.addEventListener('click', () => {
+        openAssistantScope(el.getAttribute('data-scope'));
       });
     });
   }
@@ -1826,6 +1944,107 @@ const MemoryBankApp = (() => {
   }
 
   /**
+   * 跨分类聚合页：全部 / 永久 / 重要。
+   * 与分类详情共用同一套详情骨架和列表内核，但不设分组书签轨、不提供新增入口；
+   * 记录统一按记录时间倒序（永久不置顶），每张卡片标注所属分类。
+   */
+  function renderAssistantScope(scopeId, opts) {
+    if (!viewportEl) return;
+    const scope = isAssistantScopeId(scopeId) ? scopeId : '';
+    if (!scope) {
+      renderAssistantMemory();
+      return;
+    }
+    const meta = MEMORY_SCOPES.find((s) => s.id === scope);
+    const preserveTools = Boolean(opts && opts.preserveTools);
+    const keepScroll = preserveTools ? viewportEl.scrollTop : 0;
+    wallRenderSeq++;
+    if (!preserveTools || assistantScope !== scope) resetAssistantListTools();
+    currentTab = 'daily';
+    currentForkId = '';
+    isAssistantMemory = true;
+    currentAssistantCategory = '';
+    assistantScope = scope;
+    releaseCovers();
+    setSearchVisible(false);
+    setMarginNoteVisible(false);
+    const headerCat = { number: 'CROSS', en: meta.en, name: `${meta.zh}记忆` };
+    renderHeader('assistant-category', headerCat);
+    tabBarEl.querySelectorAll('.mem-tab-btn').forEach((btn) => {
+      btn.classList.toggle('is-active', btn.getAttribute('data-tab') === 'daily');
+    });
+
+    if (assistantRailObserver) {
+      assistantRailObserver.disconnect();
+      assistantRailObserver = null;
+    }
+    ensureAssistantMemoryLoaded();
+
+    const desc = scope === 'pinned'
+      ? '全局共用的永久记忆，最多 20 条，不会被近期池淘汰。'
+      : scope === 'important'
+        ? '标为重要的记录，跨七个分类汇总。'
+        : '七个分类的全部记录，按记录时间从新到旧。';
+    const searchHint = scope === 'pinned' ? '在永久记忆中搜索' : `在${meta.zh}记忆中搜索`;
+
+    viewportEl.innerHTML = `
+      <div class="mem-detail-page ${preserveTools ? '' : 'mem-view-in'} ${assistantSelectionMode ? 'is-selecting' : ''}" role="region" aria-label="${escapeHtml(meta.zh)}记忆">
+        <div class="mem-detail-main">
+          <div class="mem-detail-hero">
+            <span class="mem-detail-code">CROSS LAYERS / ${escapeHtml(meta.en)}</span>
+            <h2 class="mem-detail-title">${escapeHtml(meta.zh)}记忆</h2>
+            <p class="mem-detail-desc">${escapeHtml(desc)}</p>
+          </div>
+          ${scopeBarHtml(scope)}
+          <div class="mem-detail-tools" role="toolbar" aria-label="记录列表工具">
+            <span class="mem-detail-count" data-assistant-count aria-live="polite"></span>
+            <div class="mem-detail-tool-group">${assistantToolButtonsHtml({ hideAdd: true })}</div>
+          </div>
+          ${assistantSearchOpen ? `
+            <div class="mem-detail-search" role="search">
+              <span class="mem-detail-search-icon">${ICONS.searchLine}</span>
+              <input class="mem-detail-search-input" id="memAssistantSearchInput" type="search"
+                     placeholder="${searchHint}标题、关键词或正文" aria-label="${escapeHtml(searchHint)}"
+                     aria-controls="memAssistantList" autocomplete="off" spellcheck="false" enterkeyhint="search"
+                     value="${escapeHtml(assistantSearchQuery)}">
+              <button type="button" class="mem-detail-search-clear" data-assistant-search="clear" aria-label="清空搜索" ${assistantSearchQuery ? '' : 'hidden'}>${ICONS.close}</button>
+              <button type="button" class="mem-detail-search-cancel" data-assistant-search="close">收起</button>
+            </div>
+          ` : ''}
+          <div class="mem-detail-list" id="memAssistantList"></div>
+          <div class="mem-detail-empty" data-assistant-empty role="status" hidden></div>
+        </div>
+      </div>
+    `;
+
+    bindAssistantDetailEvents();
+    updateAssistantList();
+    syncAssistantManageBar();
+    if (preserveTools) viewportEl.scrollTop = keepScroll;
+  }
+
+  function openAssistantScope(scopeId) {
+    const scope = isAssistantScopeId(scopeId) ? scopeId : '';
+    if (!scope) return;
+    // 聚合页内换维度是同层跳转，覆盖当前历史层；只有从卡片页首次进入才推栈。
+    // 否则「全部 → 重要」会留下两层，返回时先落回上一个维度而不是卡片页。
+    const hash = window.location.hash || '';
+    const prefix = '#memory-bank/assistant-memory/';
+    const onScopePage = hash.indexOf(prefix) === 0 && isAssistantScopeId(hash.slice(prefix.length));
+    isAssistantMemory = true;
+    currentAssistantCategory = '';
+    assistantScope = scope;
+    try {
+      const state = { rfPage: 'memory-bank', assistantCategory: '', assistantScope: scope };
+      const url = `#memory-bank/assistant-memory/${scope}`;
+      if (onScopePage) window.history.replaceState(state, '', url);
+      else window.history.pushState(state, '', url);
+    } catch (_) {}
+    renderAssistantScope(scope);
+    if (viewportEl) viewportEl.scrollTop = 0;
+  }
+
+  /**
    * 书签轨对齐：收起按钮与分类标题同一行居中，第一个书签顶端对齐工具行。
    * 整组书签吸顶时，按钮随标题滚出，书签停在视口顶部 12px。
    */
@@ -1861,14 +2080,15 @@ const MemoryBankApp = (() => {
     assistantRailObserver.observe(hero);
   }
 
-  function assistantToolButtonsHtml() {
+  function assistantToolButtonsHtml(opts) {
+    const hideAdd = Boolean(opts && opts.hideAdd);
     if (assistantSelectionMode) {
       return `<span class="mem-detail-select-hint">点按记录即可选择</span>
         <button type="button" class="mem-detail-tool-text" data-assistant-tool="select-all">全选</button>`;
     }
     return `
       ${assistantSearchOpen ? '' : `<button type="button" class="mem-detail-tool-btn" data-assistant-tool="search" aria-label="搜索记录">${ICONS.searchLine}</button>`}
-      <button type="button" class="mem-detail-tool-btn" data-assistant-tool="add" aria-label="新增记录">${ICONS.plus}</button>
+      ${hideAdd ? '' : `<button type="button" class="mem-detail-tool-btn" data-assistant-tool="add" aria-label="新增记录">${ICONS.plus}</button>`}
       <button type="button" class="mem-detail-tool-text" data-assistant-tool="select">${ICONS.listChecks}<span>多选</span></button>
     `;
   }
@@ -1883,23 +2103,28 @@ const MemoryBankApp = (() => {
 
   /** 只重绘列表、计数和空状态；搜索框保持原样，输入法与光标不受影响。 */
   function updateAssistantList() {
-    if (!viewportEl || !currentAssistantCategory) return;
+    if (!viewportEl) return;
+    if (!currentAssistantCategory && !assistantScope) return;
     const page = viewportEl.querySelector('.mem-detail-page');
     const list = viewportEl.querySelector('#memAssistantList');
     if (!page || !list) return;
-    const cat = getAssistantCategory(currentAssistantCategory);
-    const allEntries = getAssistantEntries(cat);
-    const groups = assistantGroupsOf(cat);
-    const currentGroup = assistantCurrentGroup(cat);
+
+    // 聚合页走跨分类集合，分类页走当前分组；两者共用同一套卡片与计数外壳
+    const scopeMode = Boolean(assistantScope);
+    const cat = scopeMode ? null : getAssistantCategory(currentAssistantCategory);
+    const scopeMeta = scopeMode ? (MEMORY_SCOPES.find((s) => s.id === assistantScope) || MEMORY_SCOPES[0]) : null;
+    const allEntries = scopeMode ? getScopeEntries(assistantScope) : getAssistantEntries(cat);
+    const groups = scopeMode ? false : assistantGroupsOf(cat);
+    const currentGroup = scopeMode ? '' : assistantCurrentGroup(cat);
     const currentGroupMeta = groups ? assistantGroupMeta(cat, currentGroup) : null;
 
-    // 分组分类只显示当前书签；其余分类保持全量平铺
-    const groupEntries = assistantCurrentGroupEntries(cat, allEntries);
+    // 分组分类只显示当前书签；其余分类保持全量平铺；聚合页已全量汇总
+    const groupEntries = scopeMode ? allEntries : assistantCurrentGroupEntries(cat, allEntries);
 
     const rawQuery = assistantSearchOpen ? assistantSearchQuery.trim() : '';
     const query = rawQuery.toLowerCase();
     // 序号按排序后的完整列表编号，搜索时保留原序号
-    const ordered = assistantDisplayEntries(cat, groupEntries);
+    const ordered = scopeMode ? allEntries.slice() : assistantDisplayEntries(cat, groupEntries);
     const shown = ordered.filter((e) => assistantEntryMatches(e, query));
 
     // 被删掉或不可见组的条目不能残留在已选集合里
@@ -1908,12 +2133,19 @@ const MemoryBankApp = (() => {
 
     if (assistantSelectionMode) {
       list.setAttribute('role', 'group');
-      list.setAttribute('aria-label', '选择要删除的记录');
+      list.setAttribute('aria-label', `选择要删除的${scopeMode ? scopeMeta.zh : cat.name}记忆`);
     } else {
       list.setAttribute('role', 'list');
-      list.setAttribute('aria-label', `${cat.name} 记忆列表`);
+      list.setAttribute('aria-label', scopeMode ? `${scopeMeta.zh}记忆列表` : `${cat.name} 记忆列表`);
     }
-    list.innerHTML = shown.map((entry) => assistantEntryCardHtml(entry, ordered.indexOf(entry), cat)).join('');
+    list.innerHTML = shown
+      .map((entry) => assistantEntryCardHtml(
+        entry,
+        ordered.indexOf(entry),
+        scopeMode ? getAssistantCategory(entry.category) : cat,
+        scopeMode
+      ))
+      .join('');
 
     const countEl = page.querySelector('[data-assistant-count]');
     if (countEl) {
@@ -1922,6 +2154,10 @@ const MemoryBankApp = (() => {
         countEl.textContent = rawQuery
           ? `[${groupName}] 匹配 ${shown.length} / ${groupEntries.length} 条`
           : `[${groupName}] 共 ${groupEntries.length} 条`;
+      } else if (scopeMode) {
+        countEl.textContent = rawQuery
+          ? `${scopeMeta.zh} 匹配 ${shown.length} / ${groupEntries.length} 条`
+          : `${scopeMeta.zh} 共 ${groupEntries.length} 条`;
       } else {
         countEl.textContent = rawQuery ? `匹配 ${shown.length} / ${groupEntries.length} 条` : `共 ${groupEntries.length} 条`;
       }
@@ -1949,7 +2185,14 @@ const MemoryBankApp = (() => {
           : `<span class="mem-detail-empty-title">正在读取记忆库</span>`;
         empty.hidden = false;
       } else if (!groupEntries.length) {
-        if (groups) {
+        if (scopeMode) {
+          empty.innerHTML = `<span class="mem-detail-empty-title">${scopeMeta.zh}记忆还是空的</span>
+            <span class="mem-detail-empty-text">${assistantScope === 'pinned'
+              ? '把任意一条记录设为永久，它就会出现在这里。'
+              : assistantScope === 'important'
+                ? '把任意一条记录标为重要，它就会出现在这里。'
+                : '七个分类里还没有任何记录。'}</span>`;
+        } else if (groups) {
           const groupName = currentGroupMeta ? currentGroupMeta.name : '该分类';
           empty.innerHTML = `
             <span class="mem-detail-empty-icon">${currentGroupMeta ? currentGroupMeta.iconSvg : ICONS.emptyBox}</span>
@@ -1963,7 +2206,7 @@ const MemoryBankApp = (() => {
         empty.hidden = false;
       } else if (!shown.length) {
         empty.innerHTML = `<span class="mem-detail-empty-title">没有找到匹配的记录</span>
-          <span class="mem-detail-empty-text">「${escapeHtml(rawQuery)}」未出现在当前记录的标题、关键词、正文${cat.id === 'pending' ? '或完成说明' : ''}中。</span>`;
+          <span class="mem-detail-empty-text">「${escapeHtml(rawQuery)}」未出现在当前记录的标题、关键词、正文${!scopeMode && cat.id === 'pending' ? '或完成说明' : ''}中。</span>`;
         empty.hidden = false;
       } else {
         empty.hidden = true;
@@ -1976,15 +2219,14 @@ const MemoryBankApp = (() => {
 
   function toggleAssistantSelectAll() {
     if (!assistantSelectionMode) return;
-    const cat = getAssistantCategory(currentAssistantCategory);
-    const entries = assistantCurrentGroupEntries(cat, getAssistantEntries(cat));
+    const entries = assistantVisibleEntries();
     const all = entries.length > 0 && entries.every((e) => assistantSelectedIds.has(e.id));
     assistantSelectedIds.clear();
     if (!all) entries.forEach((e) => assistantSelectedIds.add(e.id));
     updateAssistantList();
   }
 
-  function assistantEntryCardHtml(entry, index, cat) {
+  function assistantEntryCardHtml(entry, index, cat, showCategory) {
     const seq = String(index + 1).padStart(3, '0');
     const title = escapeHtml(entry.title || '无题记忆');
     const timeText = escapeHtml(formatAssistantTime(entry.time));
@@ -2011,7 +2253,7 @@ const MemoryBankApp = (() => {
     return `
       <article class="mem-record-card ${selecting ? 'is-selectable' : ''} ${selected ? 'is-selected' : ''} ${completed ? 'is-completed' : ''}" data-entry-id="${id}" ${cardAttrs} aria-label="${title}${completed ? '，已完成' : ''}">
         <div class="mem-record-meta">
-          <span class="mem-record-seq">ENTRY ${seq}</span>
+          <span class="mem-record-seq">ENTRY ${seq}${showCategory ? `<span class="mem-record-scope">${escapeHtml(cat.number)} / ${escapeHtml(cat.en)}</span>` : ''}</span>
           <time class="mem-record-time" datetime="${escapeHtml(entry.time || '')}">${timeText}</time>
         </div>
         <h3 class="mem-record-title">${title}</h3>
@@ -2074,7 +2316,22 @@ const MemoryBankApp = (() => {
         return;
       }
 
-      // 2. 书签项点击切换分组
+      // 2. 三段条切换聚合维度：已在当前维度则只回顶，不重复推栈
+      const scopeBtn = e.target.closest('.mem-scope-btn');
+      if (scopeBtn) {
+        const next = scopeBtn.getAttribute('data-scope');
+        if (!isAssistantScopeId(next)) return;
+        // 编辑面板开着时不切维度，避免未保存内容被顶掉
+        if (assistantEditorOpen || assistantConfirmBusy) return;
+        if (next === assistantScope) {
+          if (viewportEl) viewportEl.scrollTop = 0;
+          return;
+        }
+        openAssistantScope(next);
+        return;
+      }
+
+      // 3. 书签项点击切换分组
       const bookmark = e.target.closest('.mem-operator-bookmark');
       if (bookmark) {
         const cat = getAssistantCategory(currentAssistantCategory);
@@ -2126,9 +2383,13 @@ const MemoryBankApp = (() => {
       if (action) {
         const id = card.getAttribute('data-entry-id');
         const act = action.getAttribute('data-entry-action');
-        const cat = getAssistantCategory(currentAssistantCategory);
-        const entry = getAssistantEntries(cat).find((item) => item.id === id);
+        // 聚合页记录可能属于任意分类：按 ID 全库定位，分类再取记录自身的
+        const store = assistantStore();
+        const entry = assistantScope
+          ? (store && store.isLoaded() ? store.get(id) : null)
+          : getAssistantEntries(getAssistantCategory(currentAssistantCategory)).find((item) => item.id === id);
         if (!entry) return;
+        const cat = getAssistantCategory(entry.category);
         if (act === 'edit') openAssistantEditor(id);
         else if (act === 'complete' && cat.id === 'pending') openAssistantEditor(id, 'completion');
         else if (act === 'delete') deleteAssistantEntry(id);
@@ -2624,6 +2885,7 @@ const MemoryBankApp = (() => {
     currentForkId = '';
     isAssistantMemory = false;
     currentAssistantCategory = '';
+    assistantScope = '';
     containerEl.classList.add('is-open');
     if ((window.location.hash || '') !== '#memory-bank') {
       try {
@@ -2644,6 +2906,7 @@ const MemoryBankApp = (() => {
     currentForkId = '';
     isAssistantMemory = false;
     currentAssistantCategory = '';
+    assistantScope = '';
     wallRenderSeq++;
     searchQuery = '';
     syncSearchUI();
@@ -2665,6 +2928,7 @@ const MemoryBankApp = (() => {
     const hash = window.location.hash || '';
     if (hash.indexOf('#memory-bank/assistant-memory/') !== 0) {
       currentAssistantCategory = '';
+      assistantScope = '';
       renderAssistantMemory();
       if (viewportEl) viewportEl.scrollTop = 0;
       return;
@@ -2675,6 +2939,7 @@ const MemoryBankApp = (() => {
     } catch (_) {
       pendingProgrammaticBack = false;
       currentAssistantCategory = '';
+      assistantScope = '';
       try { window.history.replaceState({ rfPage: 'memory-bank', memoryIndex: true }, '', '#memory-bank/assistant-memory'); } catch (_) {}
       renderAssistantMemory();
       return;
@@ -2683,6 +2948,7 @@ const MemoryBankApp = (() => {
       if (!pendingProgrammaticBack || (window.location.hash || '').indexOf('#memory-bank/assistant-memory/') === -1) return;
       pendingProgrammaticBack = false;
       currentAssistantCategory = '';
+      assistantScope = '';
       try { window.history.replaceState({ rfPage: 'memory-bank', memoryIndex: true }, '', '#memory-bank/assistant-memory'); } catch (_) {}
       renderAssistantMemory();
       if (viewportEl) viewportEl.scrollTop = 0;
@@ -2751,7 +3017,7 @@ const MemoryBankApp = (() => {
     if (!store || typeof store.load !== 'function') return;
     try {
       await store.load(true);
-      if (isOpened && isAssistantMemory && currentAssistantCategory) updateAssistantList();
+      if (isOpened && isAssistantMemory && (currentAssistantCategory || assistantScope)) updateAssistantList();
     } catch (err) {
       console.warn('[MemoryBank] 巡检后刷新助手记忆失败：', err);
     }
@@ -2768,6 +3034,17 @@ const MemoryBankApp = (() => {
       let state = null;
       try { state = window.history.state; } catch (_) {}
       const tool = state && state.memTool ? String(state.memTool) : '';
+      // 聚合页优先：scope id 不是分类 id，不能落进分类解析
+      if (isAssistantScopeId(catId)) {
+        if (assistantScope === catId && handleAssistantToolPop(tool, wasProgrammatic)) return;
+        currentForkId = '';
+        isAssistantMemory = true;
+        currentAssistantCategory = '';
+        assistantScope = catId;
+        renderAssistantScope(catId);
+        if (viewportEl) viewportEl.scrollTop = 0;
+        return;
+      }
       // 同一分类内的返回只收起编辑面板或多选，不重绘整页
       if (currentAssistantCategory && currentAssistantCategory === getAssistantCategory(catId).id
           && handleAssistantToolPop(tool, wasProgrammatic)) return;

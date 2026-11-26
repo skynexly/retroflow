@@ -2123,8 +2123,8 @@ body.has-wallpaper.has-wallpaper-mask .bento-card.is-icon-mode .bento-title {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  margin: 12px auto 6px;
+  gap: 6px;
+  margin: 10px auto 4px;
   user-select: none;
 }
 
@@ -2134,7 +2134,7 @@ body.has-wallpaper.has-wallpaper-mask .bento-card.is-icon-mode .bento-title {
   align-items: center;
   justify-content: center;
   padding: 4px;
-  border-radius: 2px;
+  border-radius: 0;
   border: none;
   background: none;
   cursor: pointer;
@@ -2142,12 +2142,12 @@ body.has-wallpaper.has-wallpaper-mask .bento-card.is-icon-mode .bento-title {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* 方块本体：未选中是低对比灰，选中切成重点色并放大 1.5 倍 */
+/* 方块本体：未选中是低对比灰，选中切成重点色并放大 1.4 倍 */
 .page-indicator-dot .dot-core {
   display: block;
-  width: 6px;
-  height: 6px;
-  border-radius: 1px;
+  width: 5px;
+  height: 5px;
+  border-radius: 0;
   background-color: rgba(var(--secondary-color-rgb), 0.22);
   transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
               background-color 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -2155,7 +2155,7 @@ body.has-wallpaper.has-wallpaper-mask .bento-card.is-icon-mode .bento-title {
 
 .page-indicator-dot.active .dot-core {
   background-color: var(--primary-color);
-  transform: scale(1.5);
+  transform: scale(1.4);
 }
 
 /* 传统指示器不再承载序号，标签节点保留但隐藏，兼容旧 DOM */
@@ -43240,6 +43240,22 @@ button.fork-run-mission-action-card:active,
   color: var(--primary-color);
   opacity: 0.82;
 }
+/* 聚合页卡片的分类徽标：紧跟在序号后，同一行内靠 0.4em 间隙分开，不用线 */
+.mem-record-scope {
+  margin-left: 6px;
+  font-family: var(--mono-font, monospace);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.9px;
+  color: var(--secondary-color);
+  opacity: 0.7;
+  white-space: nowrap;
+}
+.mem-record-scope::before {
+  content: "·";
+  margin-right: 6px;
+  opacity: 0.6;
+}
 .mem-record-time {
   font-family: var(--mono-font, monospace);
   font-size: 9px;
@@ -44444,6 +44460,97 @@ html:not(.is-native) #otaUpdateModule { display: none !important; }
   opacity: 1;
 }
 
+/* 5. 跨分类三段条（全部 / 永久 / 重要）
+   与底部控制台同观感，但用 static 定位贴在详情标题下；
+   卡片页作纯入口（不高亮），聚合页高亮当前维度。 */
+.mem-scope-bar {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 4px;
+  margin: 0 0 12px;
+  padding: 4px;
+  background: var(--text-color);
+  border-radius: 6px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.16);
+}
+.mem-scope-btn {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--bg-color);
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.16s ease, color 0.16s ease, opacity 0.16s ease;
+}
+.mem-scope-btn:active {
+  opacity: 0.8;
+}
+.mem-scope-btn:focus-visible {
+  outline: 1px solid rgba(var(--bg-color-rgb), 0.55);
+  outline-offset: -1px;
+}
+.mem-scope-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 0;
+}
+.mem-scope-en {
+  font-family: var(--mono-font, monospace);
+  font-size: 8px;
+  letter-spacing: 0.8px;
+  line-height: 1;
+  opacity: 0.6;
+}
+.mem-scope-zh {
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  opacity: 0.85;
+}
+.mem-scope-count {
+  flex: none;
+  font-family: var(--mono-font, monospace);
+  font-size: 9px;
+  letter-spacing: 0.4px;
+  line-height: 1;
+  opacity: 0.55;
+}
+.mem-scope-btn.is-active {
+  background: var(--bg-color);
+  color: var(--text-color);
+}
+.mem-scope-btn.is-active .mem-scope-en {
+  opacity: 0.72;
+}
+.mem-scope-btn.is-active .mem-scope-zh {
+  font-weight: 700;
+  opacity: 1;
+}
+.mem-scope-btn.is-active .mem-scope-count {
+  opacity: 0.72;
+}
+@media (max-width: 359px) {
+  .mem-scope-btn {
+    padding: 6px 8px;
+    gap: 6px;
+  }
+  .mem-scope-zh {
+    font-size: 12px;
+  }
+}
+
 
 
 
@@ -44475,7 +44582,7 @@ html:not(.is-native) #otaUpdateModule { display: none !important; }
   width: 100%;
   max-width: 360px;
   background-color: var(--card-bg-color);
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 20px 18px;
   display: flex;
   flex-direction: column;
@@ -44534,7 +44641,7 @@ html:not(.is-native) #otaUpdateModule { display: none !important; }
   align-items: center;
   padding: 12px 14px;
   background-color: rgba(var(--secondary-color-rgb), 0.05);
-  border-radius: 6px;
+  border-radius: 4px;
 }
 .memory-audit-row.disabled {
   opacity: 0.5;
@@ -44605,7 +44712,7 @@ html:not(.is-native) #otaUpdateModule { display: none !important; }
   width: 100%;
   padding: 13px 16px;
   border: none;
-  border-radius: 6px;
+  border-radius: 4px;
   font-size: 14px;
   font-weight: 600;
   display: flex;
@@ -44639,6 +44746,11 @@ html:not(.is-native) #otaUpdateModule { display: none !important; }
 .memory-audit-btn.secondary {
   background-color: rgba(var(--secondary-color-rgb), 0.12);
   color: var(--secondary-color);
+}
+/* 巡检进行中：开始按钮原地变成「终止巡检」，危险色 */
+.memory-audit-btn.primary.is-stop {
+  background-color: var(--danger-color);
+  color: var(--bg-color);
 }
 
 .memory-audit-restore-section {
@@ -44748,7 +44860,7 @@ html:not(.is-native) #otaUpdateModule { display: none !important; }
   gap: 4px;
   padding: 12px 6px;
   background-color: rgba(var(--secondary-color-rgb), 0.05);
-  border-radius: 6px;
+  border-radius: 4px;
   min-width: 0;
 }
 .core-profile-stat-value {
@@ -44919,7 +45031,7 @@ html:not(.is-native) #otaUpdateModule { display: none !important; }
   gap: 8px;
   padding: 14px 14px 12px;
   background-color: var(--card-bg-color);
-  border-radius: 6px;
+  border-radius: 4px;
 }
 .core-profile-section-head {
   display: flex;

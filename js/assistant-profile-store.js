@@ -11,7 +11,7 @@
  * {
  *   content:  '',                      当前核心档案正文（标准格式，含六个板块标题）
  *   updatedAt: 0,                      最后更新时间戳
- *   settings: { batchSize: 50, maxChars: 1500 },
+ *   settings: { batchSize: 100, maxChars: 1500, maxEvents: 3 },
  *   absorbed: { [memoryId]: timestamp }, 已吸收的记忆 id → 吸收时间
  *   backup:   { content, absorbed, updatedAt, backedUpAt } | null
  * }
@@ -25,12 +25,14 @@ const AssistantProfileStore = (() => {
 
   const DOC_KEY = 'memory/core_profile';
 
-  const DEFAULT_SETTINGS = Object.freeze({ batchSize: 50, maxChars: 1500 });
+  const DEFAULT_SETTINGS = Object.freeze({ batchSize: 100, maxChars: 1500, maxEvents: 3 });
 
   const BATCH_MIN = 1;
   const BATCH_MAX = 500;
   const CHARS_MIN = 200;
   const CHARS_MAX = 20000;
+  const EVENTS_MIN = 1;
+  const EVENTS_MAX = 20;
 
   /** 最近一次读取失败的错误信息，便于界面提示 */
   let lastError = null;
@@ -57,7 +59,8 @@ const AssistantProfileStore = (() => {
     const src = raw && typeof raw === 'object' ? raw : {};
     return {
       batchSize: clampInt(src.batchSize, BATCH_MIN, BATCH_MAX, DEFAULT_SETTINGS.batchSize),
-      maxChars: clampInt(src.maxChars, CHARS_MIN, CHARS_MAX, DEFAULT_SETTINGS.maxChars)
+      maxChars: clampInt(src.maxChars, CHARS_MIN, CHARS_MAX, DEFAULT_SETTINGS.maxChars),
+      maxEvents: clampInt(src.maxEvents, EVENTS_MIN, EVENTS_MAX, DEFAULT_SETTINGS.maxEvents)
     };
   }
 
@@ -184,7 +187,7 @@ const AssistantProfileStore = (() => {
 
   /**
    * 更新设置
-   * @param {{batchSize?: number, maxChars?: number}} patch
+   * @param {{batchSize?: number, maxChars?: number, maxEvents?: number}} patch
    */
   async function saveSettings(patch) {
     return await update((doc) => {
@@ -268,6 +271,8 @@ const AssistantProfileStore = (() => {
     BATCH_MAX,
     CHARS_MIN,
     CHARS_MAX,
+    EVENTS_MIN,
+    EVENTS_MAX,
     normalizeDoc,
     normalizeSettings,
     emptyDoc,

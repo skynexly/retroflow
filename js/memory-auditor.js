@@ -7,7 +7,7 @@
  *      ① 主关键词相似；② 一方主关键词与另一方普通关键词相似；
  *      ③ 两条都有有效向量且相似度够高；④ 双方全部关键词里至少两对相似。
  *      比较关键词时，同义词表里同一组的词（如 爸爸/父亲/爹）视为相同。
- *   2. 分批打包：每批最多 50 条记忆，超过 50 条的组均分拆批
+ *   2. 分批打包：每批条数由用户设定（默认 100，范围 1~300），超过该上限的组均分拆批
  *   3. AI 判断：发给主模型，返回 JSON 格式的合并指令
  *   4. 执行合并：更新记忆、删除旧记录、记录 mergeLog
  *   5. 备份恢复：巡检前自动备份，支持一键恢复
@@ -16,7 +16,12 @@
 const MemoryAuditor = (() => {
   'use strict';
 
-  const BATCH_SIZE = 50; // 每批最多 50 条记忆
+  // 每批最多发送多少条记忆。默认 100，由用户在记忆巡检弹窗里调整（1~300），
+  // 经 options.batchSize 逐层传入；AUDIT_BATCH_MIN/MAX 与 UI 输入框的 min/max 同源。
+  const DEFAULT_BATCH_SIZE = 100;
+  const AUDIT_BATCH_MIN = 1;
+  const AUDIT_BATCH_MAX = 300;
+  const AUDIT_TIMEOUT_MS = 180000; // 单批请求全程上限：从发出请求算到拿到完整回复
   const MEM_CURSOR_PREFIX = 'sysChat/memcursor.'; // 记忆提取进度点 doc 键前缀
   const KEYWORD_SIMILARITY_THRESHOLD = 0.7; // 关键词相似度阈值
   const TITLE_BOOST_THRESHOLD = 0.5; // title 词汇交集可以降低关键词阈值到这个值
@@ -53,6 +58,53 @@ const MemoryAuditor = (() => {
     flat: ['bond', 'events', 'pending', 'knowledge']
     // forks 明确跳过：副本记忆结构不同，且内容较少
   };
+  // 结果窗里「停在哪」用的中文名，与 memory-bank-app.js 的分类 / Tab 名一致
+  const SCOPE_LABELS = {
+    operator: '对你的记忆', self: '自我认知', bond: '情感羁绊',
+    events: '事件记录', pending: '未完事项', knowledge: '知识库',
+    info: '信息', habit: '习惯', like: '喜好', dislike: '讨厌',
+    relationship: '人际关系', daily_piece: '日常碎片', recent_status: '近期状况',
+    understanding: '理解', desire: '渴望', shadow: '阴影', wish: '心愿', emotion: '情绪'
+  };
+  function describeScope(category, groupId) {
+    const cat = SCOPE_LABELS[category] || category || '';
+    if (!groupId || groupId === 'all') return cat;
+    return `${cat} · ${SCOPE_LABELS[groupId] || groupId}`;
+  }
+
+  /**
+   * 归一化每批条数：非法值（空、非数字、0、负数）回落到默认值，越界钳到 1~300。
+   * 拆组与打包两处阈值必须用同一个返回值，否则某批会超限。
+   * @param {*} value 调用方传入的 options.batchSize 或设置值
+   * @returns {number} 1~300 之间的整数
+   */
+  function normalizeBatchSize(value) {
+    const n = Math.floor(Number(value));
+    if (!Number.isFinite(n) || n <= 0) return DEFAULT_BATCH_SIZE;
+    if (n < AUDIT_BATCH_MIN) return AUDIT_BATCH_MIN;
+    if (n > AUDIT_BATCH_MAX) return AUDIT_BATCH_MAX;
+    return n;
+  }
+
+  /** 用户主动终止：不算失败，调用方据此安静收尾 */
+  function makeAbortError() {
+    const e = new Error('巡检已终止');
+    e.name = 'AbortError';
+    e.isAuditAbort = true;
+    return e;
+  }
+  function isAbortError(err) {
+    return Boolean(err && (err.isAuditAbort || err.name === 'AbortError') && !err.isTimeout);
+  }
+  /** 巡检提前结束（终止或失败后选择停止），携带已完成部分的统计 */
+  function makeStopError(reason, scope, message) {
+    const e = new Error(message || (reason === 'user' ? '巡检已终止' : '巡检已停止'));
+    e.isAuditStop = true;
+    e.stopReason = reason;
+    e.stoppedAt = scope || '';
+    e.partial = null;
+    return e;
+  }
 
   // 停用词表（简单版）
   const STOP_WORDS = new Set([
@@ -347,18 +399,21 @@ const MemoryAuditor = (() => {
   }
 
   /**
-   * 超过 BATCH_SIZE 的组：按主关键词排序让相近的挨在一起，再均分成若干份。
-   * 均分后每份至少 BATCH_SIZE/2 条，不会出现单条的份。
+   * 超过 batchSize 的组：按主关键词排序让相近的挨在一起，再均分成若干份。
+   * 均分后每份至少 batchSize/2 条，不会出现单条的份。
+   * @param {object} group 分组对象
+   * @param {number} [batchSize] 每批上限；不传用默认值
    */
-  function splitOversizedGroup(group) {
+  function splitOversizedGroup(group, batchSize) {
+    const limit = normalizeBatchSize(batchSize);
     const recs = group.records;
-    if (recs.length <= BATCH_SIZE) return [group];
+    if (recs.length <= limit) return [group];
     const sorted = recs.slice().sort((x, y) => {
       const kx = canonicalKeyword(x.primaryKeyword);
       const ky = canonicalKeyword(y.primaryKeyword);
       return kx < ky ? -1 : (kx > ky ? 1 : 0);
     });
-    const parts = Math.ceil(sorted.length / BATCH_SIZE);
+    const parts = Math.ceil(sorted.length / limit);
     const out = [];
     let start = 0;
     for (let p = 0; p < parts; p++) {
@@ -383,12 +438,13 @@ const MemoryAuditor = (() => {
 
   /**
    * 候选分组：记忆两两判断，满足任一规则即并入同组（a↔b、b↔c → a、b、c 一组）。
-   * 只输出 ≥2 条的组；超过 BATCH_SIZE 的组已均分拆开。
+   * 只输出 ≥2 条的组；超过 batchSize 的组已均分拆开。
    * @param {Array<object>} records 记忆列表
    * @param {Map} [vectorIndex] loadVectorIndex() 的结果；不传则不用向量
+   * @param {number} [batchSize] 每批上限，用于拆分超大组；不传用默认值
    * @returns {Array<{keywords: string[], records: object[]}>}
    */
-  function groupCandidates(records, vectorIndex) {
+  function groupCandidates(records, vectorIndex, batchSize) {
     const list = (Array.isArray(records) ? records : []).filter(Boolean);
     if (list.length < 2) return [];
 
@@ -425,7 +481,7 @@ const MemoryAuditor = (() => {
       if (idxs.length < 2) return;
       idxs.sort((x, y) => x - y);
       const recs = idxs.map((i) => items[i].record);
-      splitOversizedGroup({ keywords: primaryKeywordsOf(recs), records: recs })
+      splitOversizedGroup({ keywords: primaryKeywordsOf(recs), records: recs }, batchSize)
         .forEach((g) => result.push(g));
     });
     return result;
@@ -618,9 +674,10 @@ const MemoryAuditor = (() => {
    * 调用模型进行巡检分析
    * @param {string} systemPrompt 系统提示词
    * @param {string} userMessage 用户消息（包含记忆组）
+   * @param {AbortSignal} [signal] 用户终止信号
    * @returns {Promise<object>} 解析后的 JSON 对象
    */
-  async function callAuditAPI(systemPrompt, userMessage) {
+  async function callAuditAPI(systemPrompt, userMessage, signal) {
     const api = apiCore();
     if (!api || typeof api.chat !== 'function') {
       throw new Error('RetroflowAPI 未初始化或 chat 方法不存在');
@@ -638,21 +695,56 @@ const MemoryAuditor = (() => {
 
     // 项目 chat 签名为 chat(config, messages, options)；
     // 部分端点不支持 response_format，这里不强制传，改由提示词 + 容错解析保证。
+    // api-core 的 timeout 只管到响应头，读正文不限时；这里自建全程计时器，
+    // 并把用户终止信号一起桥接进去。中断后 chat() 可能报成「返回体不是合法 JSON」，
+    // 所以用 timedOut / signal.aborted 判断真实原因，而不是看错误文字。
+    if (signal && signal.aborted) throw makeAbortError();
+    const ctrl = new AbortController();
+    let timedOut = false;
+    let rejectGuard = null;
+    const guard = new Promise((_, reject) => { rejectGuard = reject; });
+    guard.catch(() => {});
+    const timer = setTimeout(() => {
+      timedOut = true;
+      ctrl.abort();
+      const e = new Error('请求超时 · 180 秒内未完成');
+      e.isTimeout = true;
+      rejectGuard(e);
+    }, AUDIT_TIMEOUT_MS);
+    const onAbort = () => {
+      ctrl.abort();
+      rejectGuard(makeAbortError());
+    };
+    if (signal) signal.addEventListener('abort', onAbort, { once: true });
     try {
-      const response = await api.chat(config, messages, {
-        timeout: 120000,
-        logTag: '记忆巡检'
-      });
+      const response = await Promise.race([
+        api.chat(config, messages, {
+          timeout: AUDIT_TIMEOUT_MS,
+          logTag: '记忆巡检',
+          signal: ctrl.signal
+        }),
+        guard
+      ]);
+      if (signal && signal.aborted) throw makeAbortError();
       const content = String((response && response.content) || '').trim();
       if (!content) throw new Error('模型返回空内容');
 
       return parseAuditJSON(content);
     } catch (err) {
+      if (signal && signal.aborted) throw makeAbortError();
+      if (timedOut) {
+        const e = new Error('请求超时 · 180 秒内未完成');
+        e.isTimeout = true;
+        throw e;
+      }
       console.error('[MemoryAuditor] AI 调用或解析失败:', err);
       const desc = (api && typeof api.describeNetworkError === 'function')
         ? api.describeNetworkError(err)
         : ((err && err.message) || String(err));
       throw new Error(desc);
+    } finally {
+      clearTimeout(timer);
+      if (signal) signal.removeEventListener('abort', onAbort);
     }
   }
 
@@ -990,9 +1082,13 @@ const MemoryAuditor = (() => {
 
   /**
    * 只读预检：复用真实巡检的聚类规则，不写记忆、不请求模型、不覆盖备份。
+   * @param {object} [options]
+   * @param {number} [options.batchSize] 与真实巡检同源的每批上限，保证预检组数与实际处理组数一致
    * @returns {Promise<{groupCount: number, recordCount: number}>}
    */
-  async function inspectCandidates() {
+  async function inspectCandidates(options) {
+    const opts = options || {};
+    const batchSize = normalizeBatchSize(opts.batchSize);
     const st = store();
     if (!st || typeof st.list !== 'function') {
       throw new Error('AssistantMemoryStore 未初始化');
@@ -1008,7 +1104,7 @@ const MemoryAuditor = (() => {
     const vectorIndex = await loadVectorIndex();
     const inspect = (records) => {
       if (!Array.isArray(records) || records.length < 2) return;
-      const groups = groupCandidates(records, vectorIndex);
+      const groups = groupCandidates(records, vectorIndex, batchSize);
       groupCount += groups.length;
       groups.forEach((group) => { recordCount += group.records.length; });
     };
@@ -1029,9 +1125,10 @@ const MemoryAuditor = (() => {
    * @param {string} category 分类（如 'operator'）
    * @param {string} groupId Tab ID（如 'recent_status'）
    * @param {Map} [vectorIndex] 已读好的向量表（auditAll 传入，避免每个 Tab 重读）
+   * @param {object} [options] 同 auditAll 的 options
    * @returns {Promise<{merged: number, skipped: number}>}
    */
-  async function audit(category, groupId, vectorIndex) {
+  async function audit(category, groupId, vectorIndex, options) {
     const st = store();
     if (!st || typeof st.list !== 'function') {
       throw new Error('AssistantMemoryStore 未初始化');
@@ -1041,7 +1138,7 @@ const MemoryAuditor = (() => {
     const allRecords = st.list(category);
     const records = allRecords.filter(r => r.groupId === groupId);
 
-    return auditRecords(category, groupId, records, vectorIndex);
+    return auditRecords(category, groupId, records, vectorIndex, options);
   }
 
   /**
@@ -1050,23 +1147,29 @@ const MemoryAuditor = (() => {
    * @param {string} groupId Tab ID（无 Tab 分类时传 'all'）
    * @param {Array<object>} records 该组的所有记忆
    * @param {Map} [vectorIndex] 已读好的向量表；不传则本次自己读
+   * @param {object} [options] 同 auditAll 的 options
    * @returns {Promise<{merged: number, skipped: number}>}
    */
-  async function auditRecords(category, groupId, records, vectorIndex) {
+  async function auditRecords(category, groupId, records, vectorIndex, options) {
+    const opts = options || {};
+    const signal = opts.signal || null;
+    const onBatchError = typeof opts.onBatchError === 'function' ? opts.onBatchError : null;
+    // 拆组与打包共用同一个上限，避免「组被拆到 N 条、打包却按 M 条」的两套阈值打架。
+    const batchSize = normalizeBatchSize(opts.batchSize);
     if (records.length < 2) {
       console.log('[MemoryAuditor] 记忆数量少于 2 条，无需巡检');
       return { merged: 0, skipped: 0 };
     }
 
-    // 2-3. 候选分组（四条规则 + 同义词，超过 50 条的组已均分拆开）
+    // 2-3. 候选分组（四条规则 + 同义词，超过每批上限的组已均分拆开）
     const index = vectorIndex instanceof Map ? vectorIndex : await loadVectorIndex();
-    const groups = groupCandidates(records, index);
+    const groups = groupCandidates(records, index, batchSize);
     if (groups.length === 0) {
       console.log('[MemoryAuditor] 未发现需要合并的记忆组');
       return { merged: 0, skipped: 0 };
     }
 
-    // 4. 分批处理（每批最多 50 条记忆）
+    // 4. 分批处理（每批最多 batchSize 条记忆）
     let totalMerged = 0;
     let totalSkipped = 0;
     let totalFailed = 0;
@@ -1074,31 +1177,68 @@ const MemoryAuditor = (() => {
 
     const systemPrompt = await loadPromptTemplate();
 
-    // 单批执行：失败只记数，不中断后续批次
-    const runBatch = async (batchGroups) => {
-      let plan;
-      try {
-        const userMessage = buildPromptBatch(batchGroups, category, groupId);
-        plan = await callAuditAPI(systemPrompt, userMessage);
-      } catch (err) {
-        console.warn(`[MemoryAuditor] ${category}/${groupId} 一批请求或解析失败，已跳过:`, err);
-        totalFailed++;
-        if (!firstError) firstError = (err && err.message) || String(err);
-        return;
-      }
-      const result = await executeAuditPlan(plan, category, groupId);
-      totalMerged += result.merged;
-      totalSkipped += result.skipped;
+    const scope = describeScope(category, groupId);
+    // 提前结束时把本组已完成的统计带出去，auditAll 再累加上前面分类的
+    const stopWith = (reason, message) => {
+      const e = makeStopError(reason, scope, message);
+      e.partial = { merged: totalMerged, skipped: totalSkipped, failed: totalFailed, firstError };
+      return e;
     };
 
-    // 按组打包：凑到 50 条就发一批（groupCandidates 已把超过 50 条的组拆开）
+    // 单批执行：失败时交给 onBatchError 决定重试（就地重发这一批）或停止；
+    // 没有传 onBatchError 时沿用旧行为：只记数，继续下一批。
+    const runBatch = async (batchGroups) => {
+      const batchRecordTotal = batchGroups.reduce((n, g) => n + g.records.length, 0);
+      for (;;) {
+        if (signal && signal.aborted) throw stopWith('user');
+        let plan;
+        try {
+          const userMessage = buildPromptBatch(batchGroups, category, groupId);
+          plan = await callAuditAPI(systemPrompt, userMessage, signal);
+        } catch (err) {
+          if (isAbortError(err) || (signal && signal.aborted)) throw stopWith('user');
+          const message = (err && err.message) || String(err);
+          console.warn(`[MemoryAuditor] ${category}/${groupId} 一批请求或解析失败:`, err);
+          if (!onBatchError) {
+            totalFailed++;
+            if (!firstError) firstError = message;
+            return;
+          }
+          let decision = 'stop';
+          try {
+            decision = await onBatchError({
+              error: message,
+              isTimeout: Boolean(err && err.isTimeout),
+              scope,
+              category,
+              groupId,
+              recordCount: batchRecordTotal
+            });
+          } catch (cbErr) {
+            console.error('[MemoryAuditor] onBatchError 回调异常，按停止处理:', cbErr);
+            decision = 'stop';
+          }
+          if (signal && signal.aborted) throw stopWith('user');
+          if (decision === 'retry') continue;
+          totalFailed++;
+          if (!firstError) firstError = message;
+          throw stopWith('failed', message);
+        }
+        const result = await executeAuditPlan(plan, category, groupId);
+        totalMerged += result.merged;
+        totalSkipped += result.skipped;
+        return;
+      }
+    };
+
+    // 按组打包：凑到 batchSize 条就发一批（groupCandidates 已把超过 batchSize 条的组拆开）
     let batch = [];
     let batchRecordCount = 0;
 
     for (const group of groups) {
       const groupRecordCount = group.records.length;
 
-      if (batchRecordCount + groupRecordCount > BATCH_SIZE && batch.length > 0) {
+      if (batchRecordCount + groupRecordCount > batchSize && batch.length > 0) {
         await runBatch(batch);
         batch = [];
         batchRecordCount = 0;
@@ -1118,9 +1258,16 @@ const MemoryAuditor = (() => {
 
   /**
    * 巡检所有助手记忆（所有分类和 Tab）
+   * @param {object} [options]
+   * @param {AbortSignal} [options.signal] 用户终止信号；触发后中断当前请求，不再跑后续批次
+   * @param {(info:object)=>Promise<'retry'|'stop'>} [options.onBatchError]
+   *        一批失败时调用；返回 'retry' 就地重发这一批，其余按停止处理
    * @returns {Promise<{merged: number, skipped: number}>}
+   *          提前结束时抛出 isAuditStop 错误，err.partial 为已完成部分的累计统计
    */
-  async function auditAll() {
+  async function auditAll(options) {
+    const opts = options || {};
+    const signal = opts.signal || null;
     const st = store();
     if (!st) throw new Error('AssistantMemoryStore 未初始化');
 
@@ -1145,22 +1292,41 @@ const MemoryAuditor = (() => {
       if (!firstError && result.firstError) firstError = result.firstError;
     };
 
-    // 1. 处理有 Tab 的分类
-    for (const category of Object.keys(AUDIT_SCHEMA.tabbed)) {
-      const groupIds = AUDIT_SCHEMA.tabbed[category];
-      for (const groupId of groupIds) {
-        add(await audit(category, groupId, vectorIndex));
+    const totals = () => ({ merged: totalMerged, skipped: totalSkipped, failed: totalFailed, firstError });
+    const checkAbort = (category, groupId) => {
+      if (!signal || !signal.aborted) return;
+      const e = makeStopError('user', describeScope(category, groupId));
+      e.partial = totals();
+      throw e;
+    };
+
+    try {
+      // 1. 处理有 Tab 的分类
+      for (const category of Object.keys(AUDIT_SCHEMA.tabbed)) {
+        const groupIds = AUDIT_SCHEMA.tabbed[category];
+        for (const groupId of groupIds) {
+          checkAbort(category, groupId);
+          add(await audit(category, groupId, vectorIndex, opts));
+        }
       }
-    }
 
-    // 2. 处理没有 Tab 的分类：把整个分类当作一个"Tab"来巡检
-    for (const category of AUDIT_SCHEMA.flat) {
-      // 读取该分类下所有记忆（这些分类没有 groupId）
-      const allRecords = st.list(category);
-      if (allRecords.length < 2) continue;
+      // 2. 处理没有 Tab 的分类：把整个分类当作一个"Tab"来巡检
+      for (const category of AUDIT_SCHEMA.flat) {
+        checkAbort(category, '');
+        // 读取该分类下所有记忆（这些分类没有 groupId）
+        const allRecords = st.list(category);
+        if (allRecords.length < 2) continue;
 
-      // groupId 传空：normalize 对无 Tab 分类不写 groupId
-      add(await auditRecords(category, '', allRecords, vectorIndex));
+        // groupId 传空：normalize 对无 Tab 分类不写 groupId
+        add(await auditRecords(category, '', allRecords, vectorIndex, opts));
+      }
+    } catch (err) {
+      // 提前结束：把前面分类的统计和本组已完成的部分合在一起交给调用方
+      if (err && err.isAuditStop) {
+        if (err.partial) add(err.partial);
+        err.partial = totals();
+      }
+      throw err;
     }
 
     return { merged: totalMerged, skipped: totalSkipped, failed: totalFailed, firstError };
@@ -1174,6 +1340,11 @@ const MemoryAuditor = (() => {
     createBackup,
     getBackupInfo,
     restoreBackup,
+    AUDIT_TIMEOUT_MS,
+    AUDIT_BATCH_MIN,
+    AUDIT_BATCH_MAX,
+    DEFAULT_BATCH_SIZE,
+    normalizeBatchSize,
     // 导出内部函数供测试
     _test: {
       levenshtein,

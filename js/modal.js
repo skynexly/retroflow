@@ -43,6 +43,17 @@ window.RetroModal = (() => {
     }
   }
 
+  /**
+   * 弹窗只有一个槽位：新弹窗出现前，先把还没回答的旧弹窗按「取消」结算，
+   * 避免旧 Promise 永远不 resolve、调用方一直卡在等待。
+   */
+  function settlePrevious() {
+    if (!currentResolver) return;
+    const fn = currentResolver;
+    currentResolver = null;
+    fn(false);
+  }
+
   if (overlay) {
     overlay.addEventListener('click', (e) => {
       // 点遮罩空白处等同于取消
@@ -81,6 +92,7 @@ window.RetroModal = (() => {
    * @returns {Promise<boolean>}
    */
   function confirm(options) {
+    settlePrevious();
     const opts = Object.assign({
       message: '确定要执行此操作吗？',
       detail: '',
@@ -127,6 +139,7 @@ window.RetroModal = (() => {
    * @returns {Promise<boolean>}
    */
   function alert(options) {
+    settlePrevious();
     currentRememberKey = '';
     if (rememberWrap) rememberWrap.hidden = true;
     if (rememberCheckbox) rememberCheckbox.checked = false;
