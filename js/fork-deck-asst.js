@@ -580,7 +580,7 @@ window.ForkDeckAsst = (() => {
       : null;
     const systemPrompt = SystemChatPrompt.buildSystemPrompt(history, sceneCtx);
     const fitted = (window.SystemChatUI && typeof SystemChatUI.fitMessagesToContext === 'function')
-      ? SystemChatUI.fitMessagesToContext(config, systemPrompt, history)
+      ? await SystemChatUI.fitMessagesToContext(config, systemPrompt, history)
       : { messages: [{ role: 'system', content: systemPrompt }].concat(history) };
 
     const settings = (window.SystemChatSettings && typeof SystemChatSettings.getSettings === 'function')
@@ -2272,9 +2272,10 @@ window.ForkDeckAsst = (() => {
       }
       galleryEntries.push(entry);
 
+      const inline = window.SystemChatSettings?.getSettings()?.preVision === false;
       const media = {
         type: 'image', galleryId: entry.id, assetKey: entry.key,
-        state: 'pending', mime: entry.mime, visionDescription: ''
+        inline, state: inline ? 'inline' : 'pending', mime: entry.mime, visionDescription: ''
       };
 
       let imgRec = null;
@@ -2292,7 +2293,7 @@ window.ForkDeckAsst = (() => {
 
       // 上屏图行（复用历史渲染的用户图样式）
       const row = appendUserImageRow(media, imgRec.id, messageGroupId, imgRec.createdAt);
-      visionTasks.push({ blob, text, record: imgRec, row });
+      if (!inline) visionTasks.push({ blob, text, record: imgRec, row });
     }
 
     // 带图时的随图文字作为独立 user 记录跟在图后面（与助手页一致）
@@ -2323,8 +2324,8 @@ window.ForkDeckAsst = (() => {
   /** 造一个用户图行并挂上屏（骨架同历史渲染，带识图中标记） */
   function appendUserImageRow(media, recordId, messageGroupId, createdAt) {
     const row = document.createElement('div');
-    row.className = 'chat-msg-row user is-vision-pending';
-    row.dataset.mediaState = 'pending';
+    row.className = media.inline ? 'chat-msg-row user' : 'chat-msg-row user is-vision-pending';
+    row.dataset.mediaState = media.state;
     if (recordId) row.dataset.recordId = recordId;
     if (messageGroupId) row.dataset.messageGroupId = messageGroupId;
     if (createdAt) row.dataset.createdAt = String(createdAt);
@@ -2349,7 +2350,8 @@ window.ForkDeckAsst = (() => {
     stack.append(figure, visionTag);
     row.appendChild(stack);
     // 失败后小胶囊变成重试按钮；识别中点了不响应（is-retryable 未挂）
-    bindDeckVisionRetry(visionTag, row);
+    if (media.inline) visionTag.textContent = '原图直传（仅当轮提供）';
+    else bindDeckVisionRetry(visionTag, row);
 
     bindLongPress(figure, () => {
       const icons = (window.SystemChatUI && SystemChatUI.HUD_ICONS) || {};

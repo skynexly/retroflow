@@ -3283,7 +3283,7 @@ const records = await OnlineChatStore.listMessages(session.accountId, session.co
       // 时间基准紧跟人设之后、历史之前：模型读到历史时已经知道「现在」是什么时候。
       // 每次请求重新生成，取的是发起这一刻的时间，不是会话打开时的。
       if (baseline) messages.push({ role: 'system', content: baseline });
-      messages.push(...history);
+      messages.push(...await ChatInlineImages.prepare(history, history, blobToDataUrl));
 
       // 深度注入的世界书条目按深度落位。深度从对话尾部往前数，
       // 所以必须在历史拼进来之后、常驻清单追加之前插，
@@ -3315,7 +3315,12 @@ const records = await OnlineChatStore.listMessages(session.accountId, session.co
       let loopCount = 0;
       const loopLimit = getToolLoopLimit();
       while (true) {
-        const result = await RetroflowAPI.chat(config, messages, { signal, logTag: '线上联络' });
+        const result = await RetroflowAPI.chat(config, messages, { signal, logTag: '线上联络' }).catch(err => {
+          const original = err && err.message;
+          const hint = original && ChatInlineImages.errorText(original);
+          if (hint && hint !== original && messages.some(m => Array.isArray(m.content) && m.content.some(p => p.type === 'image_url'))) throw new Error(hint, { cause: err });
+          throw err;
+        });
         raw = (result && result.content) ? result.content : '';
 
         const extracted = (typeof OnlineChatPrompt.extractActions === 'function')
@@ -3805,7 +3810,7 @@ const records = await OnlineChatStore.listMessages(session.accountId, session.co
     el.removeAttribute('role');
     el.removeAttribute('tabindex');
     el.removeAttribute('aria-label');
-    el.textContent = state === 'pending'
+    el.textContent = state === 'inline' ? '原图直传（仅当轮提供）' : state === 'pending'
       ? '正在识别影像……'
       : state === 'failed' ? '原图已释放，无法重试' : '影像记忆已归档';
   }
@@ -4056,7 +4061,8 @@ if (sendBtn) {
             if (!galleryEntry) throw new Error('影像归档失败');
             galleryEntries.push(galleryEntry);
 
-            const imageRef = { type: 'image', galleryId: galleryEntry.id, assetKey: galleryEntry.key, state: 'pending', mime: galleryEntry.mime, visionDescription: '' };
+            const inline = window.OnlineChatSettings?.getSettings(currentContactId)?.preVision === false;
+            const imageRef = { type: 'image', galleryId: galleryEntry.id, assetKey: galleryEntry.key, inline, state: inline ? 'inline' : 'pending', mime: galleryEntry.mime, visionDescription: '' };
             const imgRec = await OnlineChatStore.putMessage({
               accountId: currentAccountId, contactId: currentContactId, role: 'envoy', type: 'image',
               content: '', imageRef, quote: (!text && !pendingFiles.length && i === 0) ? takeQuote() : null, messageGroupId: groupId
@@ -4064,8 +4070,10 @@ if (sendBtn) {
             if (!imgRec) throw new Error('图片消息落库失败');
             imageRecs.push(imgRec);
             // 上屏前先登记在途，否则 appendImageMessage 会把 pending 当成中断残留画成失败
-            onlineVisionInFlight.add(String(imgRec.id));
-            visionTasks.push({ blob, text, record: imgRec });
+            if (!inline) {
+              onlineVisionInFlight.add(String(imgRec.id));
+              visionTasks.push({ blob, text, record: imgRec });
+            }
           }
         }
         if (pendingFiles.length) {

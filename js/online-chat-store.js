@@ -360,7 +360,9 @@ window.OnlineChatStore = (() => {
         line = parts.join('\n\n');
       }
     }
-    if (!isChar && r.messageType === 'image' && r.imageRef && trimStr(r.imageRef.visionDescription)) {
+    if (!isChar && r.messageType === 'image' && r.imageRef?.inline) {
+      line = [ChatInlineImages.placeholder(r.imageRef.galleryId), line].filter(Boolean).join('\n');
+    } else if (!isChar && r.messageType === 'image' && r.imageRef && trimStr(r.imageRef.visionDescription)) {
       const released = !!(ctx.staleVisionRecords && ctx.staleVisionRecords.has(r));
       const visionText = buildVisionContextText(r.imageRef.galleryId, r.imageRef.visionDescription, released);
       line = `${visionText}${line ? `\n${line}` : ''}`;
@@ -446,6 +448,11 @@ window.OnlineChatStore = (() => {
     // 识图截断按全量记录数轮，裁剪后的子集也能得到一致的判定
     ctx.staleVisionRecords = findStaleVisionRecords(ctx.allRecords);
 
+    const pendingInline = new Set();
+    for (const rec of ctx.allRecords) {
+      if (rec.role === 'char') pendingInline.clear();
+      else if (rec.role === 'envoy' && rec.imageRef?.inline) pendingInline.add(rec);
+    }
     const out = [];
     for (const r of sliced) {
       const rendered = await renderRecordLine(r, ctx);
@@ -459,6 +466,7 @@ window.OnlineChatStore = (() => {
         const stamp = withTime ? timeStampOf(r.createdAt) : '';
         out.push({ role: rendered.role, content: stamp ? `${stamp}\n${rendered.content}` : rendered.content });
       }
+      if (pendingInline.has(r)) ChatInlineImages.attach(out[out.length - 1], r.imageRef.galleryId);
     }
     return out;
   }
@@ -508,9 +516,11 @@ window.OnlineChatStore = (() => {
     // 单轮成本 = 该轮每条渲染文本的 token 之和；时间戳只有组首条会加，
     // 这里按每条都加算，宁可高估也不要装超。
     const stampCost = opts.withTime ? budgetApi.estimateTokens('[消息时间：2042年03月15日 21:47 星期六]') : 0;
+    const lastReply = list.reduce((index, r, i) => r.role === 'char' ? i : index, -1);
+    const currentImages = new Set(list.slice(lastReply + 1).filter(r => r.role === 'envoy' && r.imageRef?.inline));
     const costOf = (turn) => turn.reduce((sum, r) => {
       const item = rendered.get(r);
-      return sum + budgetApi.estimateMessageTokens(item) + stampCost;
+      return sum + budgetApi.estimateMessageTokens(item) + stampCost + (currentImages.has(r) ? 1200 : 0);
     }, 0);
 
     const fitted = budgetApi.fitRecordsToBudget(list, { budget, costOf });

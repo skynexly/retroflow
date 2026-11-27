@@ -103,7 +103,9 @@ window.ApiCallLog = (() => {
           parts.push(`messages: ${body.messages.length} 条`);
           const last = body.messages[body.messages.length - 1];
           if (last) {
-            let txt = typeof last.content === 'string' ? last.content : JSON.stringify(last.content);
+            let txt = typeof last.content === 'string' ? last.content : Array.isArray(last.content)
+              ? last.content.map(part => part && part.type === 'text' ? String(part.text || '') : part && part.type === 'image_url' ? '[直传图片 · 已省略]' : '[非文本内容]').join('\n')
+              : '[非文本内容]';
             if (txt.length > 400) txt = txt.slice(0, 400) + `...[截断，全文 ${txt.length} 字符]`;
             parts.push(`末条(${last.role}): ${txt}`);
           }

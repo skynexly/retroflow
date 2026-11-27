@@ -2965,8 +2965,9 @@
       }
       const messageTime = formattedTime ? `[消息时间：${formattedTime}]` : '';
       const envStamp = role === 'user' ? envStampFor(rec) : '';
-      const contextText = [messageTime, envStamp, quote, vision, fileBlock, text].filter(Boolean).join('\n').trim();
-      if (contextText) history.push({ role, content: contextText, _createdAt: rec.createdAt });
+      const inlineId = role === 'user' && media && media.inline && media.galleryId;
+      const contextText = [messageTime, envStamp, quote, inlineId ? ChatInlineImages.placeholder(inlineId) : vision, fileBlock, text].filter(Boolean).join('\n').trim();
+      if (contextText) history.push(ChatInlineImages.attach({ role, content: contextText, _createdAt: rec.createdAt }, inlineId));
     }
 
     // —— 时间线归并 ——
@@ -3481,7 +3482,7 @@ ${parts.join('\n\n———\n\n')}`;
   }
 
   function getApiErrorText(err) {
-    return err && err.message ? err.message : '系统助手 API 调用失败';
+    return ChatInlineImages.errorText(err && err.message ? err.message : '系统助手 API 调用失败');
   }
 
   /**
@@ -4399,7 +4400,7 @@ ${parts.join('\n\n———\n\n')}`;
    * System Prompt 与最后一条助手消息之后的用户消息、系统事件属于强制保留区；
    * 其余历史从最新向最旧装入预算，避免旧消息挤掉待推演草稿。
    */
-  function fitMessagesToContext(config, systemPrompt, history, extras) {
+  async function fitMessagesToContext(config, systemPrompt, history, extras) {
     const configuredContext = parseInt(config && config.context, 10);
     const contextLimit = Number.isFinite(configuredContext) && configuredContext >= 1000
       ? configuredContext
@@ -4430,7 +4431,9 @@ ${parts.join('\n\n———\n\n')}`;
     if (memoryDynamic) used += estimateMessageTokens({ content: memoryDynamic });
 
     // 连发的待推演用户消息始终保留，即使配置容量过小也不静默删掉用户输入。
+    const inlineCost = pending.reduce((sum, message) => sum + ChatInlineImages.idsFrom(message).length * 1200, 0);
     pending.forEach(message => { used += estimateMessageTokens(message); });
+    used += inlineCost;
 
     const keptOlder = [];
     for (let i = older.length - 1; i >= 0; i -= 1) {
@@ -4483,7 +4486,7 @@ ${parts.join('\n\n———\n\n')}`;
     }
 
     return {
-      messages: finalMessages,
+      messages: await ChatInlineImages.prepare(finalMessages, pending, blobToDataUrl),
       meta: {
         contextLimit,
         outputReserve,
@@ -5044,7 +5047,7 @@ ${parts.join('\n\n———\n\n')}`;
     el.removeAttribute('role');
     el.removeAttribute('tabindex');
     el.removeAttribute('aria-label');
-    el.textContent = o.text || (state === 'pending'
+    el.textContent = o.text || (state === 'inline' ? '原图直传（仅当轮提供）' : state === 'pending'
       ? '正在识别影像……'
       : state === 'failed' ? '原图已释放，无法重试' : '影像记忆已归档');
   }
@@ -5222,9 +5225,10 @@ ${parts.join('\n\n———\n\n')}`;
           if (!galleryEntry) throw new Error('影像归档失败');
           galleryEntries.push(galleryEntry);
 
+          const inline = window.SystemChatSettings?.getSettings()?.preVision === false;
           const media = {
             type: 'image', galleryId: galleryEntry.id, assetKey: galleryEntry.key,
-            state: 'pending', mime: galleryEntry.mime, visionDescription: ''
+            inline, state: inline ? 'inline' : 'pending', mime: galleryEntry.mime, visionDescription: ''
           };
           mediaList.push(media);
 
@@ -5233,7 +5237,7 @@ ${parts.join('\n\n———\n\n')}`;
           imageRecords.push(imgRec);
 
           // 识图回写由 runImageVision 基于 imgRec 只改 imageRef，原始 createdAt / envSnapshot 原样保留
-          visionTasks.push({ blob, text, mediaIndex: i });
+          if (!inline) visionTasks.push({ blob, text, mediaIndex: i });
         }
         record = text ? await persistChatMessage('user', text, quote, '', Date.now() + imageBlobs.length, null, messageGroupId, envExtra) : null;
       } else if (filesToSend.length) {
@@ -5259,7 +5263,7 @@ ${parts.join('\n\n———\n\n')}`;
 
     if (imageRecords.length) {
       // 先登记在途，再上屏：渲染层据此区分「正在识别」与「上次中断残留的 pending」
-      imageRecords.forEach((r) => visionInFlight.add(String(r.id)));
+      visionTasks.forEach(({ mediaIndex }) => visionInFlight.add(String(imageRecords[mediaIndex].id)));
       for (let i = 0; i < imageRecords.length; i++) {
         const imgRec = imageRecords[i];
         const med = mediaList[i];

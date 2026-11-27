@@ -11,6 +11,7 @@
     streaming: true,
     autoRetry: false,
     imageGen: true,
+    preVision: true,
     timePerception: true,
     batteryPerception: true,
     weatherPerception: false,
@@ -230,7 +231,7 @@ memoryIntervalInput = document.getElementById('systemChatMemoryIntervalInput');
 
     // 绑定所有 toggle 开关
     const toggleKeys = [
-      'streaming', 'autoRetry', 'imageGen', 'timePerception',
+      'streaming', 'autoRetry', 'imageGen', 'preVision', 'timePerception',
       'batteryPerception', 'weatherPerception', 'builtinTools', 'webSearch', 'mcpProtocol',
       'autoMemory', 'memoryTool', 'markdownRender', 'segmentedBubbles', 'hideThinking'
     ];

@@ -19,6 +19,7 @@ window.OnlineChatSettings = (() => {
 
   const DEFAULT_SETTINGS = {
     imageGen: true,
+    preVision: true,
     timePerception: true,
     // 内置工具 = 文件区翻阅能力。关闭时提示词不注入文件段，运行期也不响应标记。
     builtinTools: true,
@@ -82,7 +83,7 @@ window.OnlineChatSettings = (() => {
   let pendingProgrammaticBack = false;
 
   /** 开关键名与 DOM id 后缀一致（onlineChatToggle_xxx） */
-  const TOGGLE_KEYS = ['imageGen', 'timePerception', 'builtinTools', 'webSearch', 'mcpProtocol'];
+  const TOGGLE_KEYS = ['imageGen', 'preVision', 'timePerception', 'builtinTools', 'webSearch', 'mcpProtocol'];
   const toggleEls = {};
   let loopSlider = null;
   let loopDisplay = null;
