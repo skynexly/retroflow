@@ -31,23 +31,21 @@
   "schemaVersion": 1,
   "channel": "stable",
   "latest": {
-    "version": "1.7.0",
-    "build": 1328,
+    "version": "1.8.0",
+    "build": 1329,
     "minBinary": 7,
-    "releasedAt": "2026-11-26T03:33:43Z",
+    "releasedAt": "2026-11-27T05:27:34Z",
     "notes": [
-      "记忆卡片页新增聚合视图：全部 / 永久 / 重要 三个维度可在页内切换",
-      "修好返回栈：在聚合页内换维度后按返回，直接回到卡片页，不再先落回上一个维度",
-      "聚合页补齐编辑、多选、搜索收起等操作，不再误跳回分类页",
-      "记忆巡检每批条数可调（1~300），超长分组合并自动拆批",
-      "巡检支持中途终止与按批重试，单批全程 180 秒上限",
-      "核心档案每次整理可调「情感羁绊与事件」条数（1~20）"
+      "助手窗口的 HTML / SVG 围栏改为沙箱渲染，AI 生成的交互组件可直接运行",
+      "沙箱内文档自动继承主界面主题色，深浅色切换不再撞白底",
+      "长内容自动撑高，流式输出期间不重复加载脚本",
+      "私聊顶部新增未读消息提醒"
     ],
     "packages": {
       "full": {
-        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1328/retroflow-ota-full-b1328.zip",
-        "sha256": "3924bd7b17cbd5595d3f590575c54eefcc3cbf75ccc556538ca64663aaa10538",
-        "size": 2221675
+        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1329/retroflow-ota-full-b1329.zip",
+        "sha256": "23e87825d8f127117d742deb38159a446256136e8298bd6f3b769224775365af",
+        "size": 2226719
       },
       "patch": {
         "sinceBuild": 0,
@@ -57,5 +55,5 @@
       }
     }
   },
-  "_status": "已发布 build 1328（全量包，字体常驻不打包）。patch 差分留待后续。"
+  "_status": "已发布 build 1329（全量包，字体常驻不打包）。patch 差分留待后续。"
 }
