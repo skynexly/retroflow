@@ -1101,7 +1101,7 @@
     return historyRestorePromise;
   }
 
-  function renderBubbleText(container, text) {
+  function renderBubbleText(container, text, streaming) {
     if (!container) return;
     // HTML 注释 <!-- ... --> 是「给 AI 的暗号 / 指令」约定，无论是否开启 markdown
     // 渲染都不应显形给用户。开引擎时由 RetroflowMarkdown.render 内部剥离；关渲染走
@@ -1110,9 +1110,10 @@
     const settings = window.SystemChatSettings && typeof SystemChatSettings.getSettings === 'function'
       ? SystemChatSettings.getSettings()
       : { markdownRender: true };
-
     if (settings.markdownRender !== false && window.RetroflowMarkdown && typeof RetroflowMarkdown.render === 'function') {
-      container.innerHTML = RetroflowMarkdown.render(cleaned);
+      // streaming 透传给引擎：流式期间 HTML/SVG 围栏只出占位不建 iframe，
+      // 否则每来一片文字就整体重建 innerHTML，iframe 内的脚本会反复重跑。
+      container.innerHTML = RetroflowMarkdown.render(cleaned, { streaming: streaming === true });
       if (typeof RetroflowMarkdown.bindCodeCopy === 'function') {
         RetroflowMarkdown.bindCodeCopy(container);
       }
@@ -1210,7 +1211,9 @@
       const content = bubble.querySelector('.chat-bubble-content');
       if (content) {
         if (awaitingFirst && index === 0) content.innerHTML = WAVEFORM_HTML;
-        else renderBubbleText(content, blockText);
+        // opts.cursor 即「流式输出中」的信号：此时末尾会在下方追加打字光标。
+        // 以此透传给渲染引擎，避免流式期间反复重建沙箱 iframe。
+        else renderBubbleText(content, blockText, opts.cursor === true);
         if (opts.cursor && index === blocks.length - 1) {
           const cursor = document.createElement('span');
           cursor.className = 'chat-typing-cursor';
@@ -6263,6 +6266,25 @@ ${parts.join('\n\n———\n\n')}`;
       }
     }
   }
+
+  // ── HTML 沙箱 iframe 高度回传监听 ─────────────────────────────
+  // 沙箱内文档（srcdoc）与主页面不同源，拿不到主页面 DOM，只能由内部量高后
+  // postMessage 回传。三个数值必须与 markdown.js 的 _sandboxMeasureScript 保持一致：
+  // 下限 24（避免空组件塌成一条线）、余量 +4（给内部 8px 门槛留缓冲）、上限 20000。
+  (function bindHtmlSandboxHeight() {
+    if (window.__htmlSandboxHeightBound) return;
+    window.__htmlSandboxHeightBound = true;
+    window.addEventListener('message', (e) => {
+      const d = e.data;
+      if (!d || typeof d !== 'object' || !d.__htmlbox || typeof d.height !== 'number') return;
+      if (!Number.isFinite(d.height)) return;
+      // 沙箱只给 allow-scripts、不给 allow-same-origin，故 e.origin 为 "null"，
+      // 无法靠来源校验，只能凭 data-hid 认领，且 selector 里的值来自已渲染的属性。
+      const frame = document.querySelector('iframe.html-sandbox[data-hid="' + d.__htmlbox + '"]');
+      if (!frame) return;
+      frame.style.height = Math.min(Math.max(d.height + 4, 24), 20000) + 'px';
+    });
+  })();
 
   // 暴露给全局中枢
   window.SystemChatUI = {

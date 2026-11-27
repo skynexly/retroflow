@@ -25,6 +25,225 @@
   }
 
   /**
+   * 属性转义（用于 srcdoc 这类嵌在属性里的整段文档）
+   * 必须转义双引号：内部一旦出现 " 就会提前闭合 srcdoc 属性，
+   * 结果是 iframe 直接空白，且控制台不会有任何报错，极难排查。
+   */
+  function escAttr(str) {
+    if (typeof str !== 'string') return '';
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  /* ---------------------------------------------------------------
+   * HTML 沙箱：把 AI 写的 ```html / ```svg / ```xml 围栏塞进
+   * sandbox="allow-scripts" 的 iframe 里独立运行。
+   *
+   * 安全边界：只给 allow-scripts，绝不给 allow-same-origin。
+   * 这样 iframe 是 null 源，读不到 localStorage / cookie，
+   * 也碰不到宿主 DOM。代价是父侧收到 message 时 e.origin 为 "null"，
+   * 只能靠 data-hid（fid）来认领是哪一块，不能靠 origin 校验。
+   * ------------------------------------------------------------- */
+
+  // 沙箱 iframe 是独立文档，拿不到宿主 :root 上的 CSS 变量。
+  // AI 写 var(--accent) 会解析成空值，整条声明失效，所以要把这些变量
+  // 抄进沙箱文档里。清单与宿主设计令牌保持一致。
+  const SANDBOX_THEME_VARS = [
+    '--bg', '--bg-secondary', '--bg-tertiary',
+    '--text', '--text-secondary', '--text-tertiary',
+    '--accent', '--accent-dim', '--on-accent',
+    '--border', '--decoration', '--danger', '--success'
+  ];
+
+  /** 读取宿主当前生效的主题变量，拼成 :root 规则 */
+  function _themeVarsCss() {
+    let decls = '';
+    let rootStyle = null;
+    let secondary = '';
+    try {
+      rootStyle = getComputedStyle(document.documentElement);
+      secondary = (rootStyle.getPropertyValue('--text-secondary') || '').trim();
+    } catch (_) {
+      rootStyle = null;
+    }
+
+    SANDBOX_THEME_VARS.forEach((name) => {
+      let value = '';
+      try {
+        value = rootStyle ? String(rootStyle.getPropertyValue(name) || '').trim() : '';
+      } catch (_) {
+        value = '';
+      }
+      // --text-tertiary 宿主未定义时用 --text-secondary 兜底，避免沙箱内
+      // 三级文字直接消失（继承到透明或黑色）。
+      if (!value && name === '--text-tertiary') value = secondary;
+      // 空值不写：写成 `--accent:;` 会让沙箱里的 var(--accent, fallback)
+      // 拿到空串而不是回退值，反而更糟。宁可不定义，交给 fallback。
+      if (value) decls += `${name}:${value};`;
+    });
+
+    return decls ? `:root{${decls}}` : '';
+  }
+
+  // 沙箱文档统一隐藏滚动条，避免 iframe 内部多出一条与宿主风格无关的滚动条
+  const SANDBOX_HIDE_SCROLLBAR_STYLE =
+    '<style>::-webkit-scrollbar{display:none;width:0;height:0}' +
+    'html{scrollbar-width:none;-ms-overflow-style:none}</style>';
+
+  /**
+   * 沙箱内的高度回传脚本
+   * 关键点：不读 scrollHeight。100vh / flex 居中这类布局会把 scrollHeight
+   * 撑得虚高或量不准，改用「遍历所有元素，取 getBoundingClientRect().bottom
+   * 的最大值」对「一个按钮」和「整页手账」都准确。
+   */
+  function _sandboxMeasureScript(fid) {
+    return `<script>(function(){
+  var FID = ${JSON.stringify(fid)};
+  var last = 0;
+  var pending = null;
+  var armed = false;
+  function measure() {
+    var max = 0;
+    var list = document.body ? document.body.getElementsByTagName('*') : [];
+    for (var i = 0; i < list.length; i++) {
+      var el = list[i];
+      try {
+        if (getComputedStyle(el).position === 'fixed') continue;
+      } catch (e) {}
+      var r = el.getBoundingClientRect();
+      if (r.bottom > max) max = r.bottom;
+    }
+    if (document.body) {
+      var br = document.body.getBoundingClientRect();
+      if (br.bottom > max) max = br.bottom;
+    }
+    return Math.ceil(max);
+  }
+  function send(h) {
+    last = h;
+    try { parent.postMessage({ __htmlbox: FID, height: h }, '*'); } catch (e) {}
+  }
+  function flush() {
+    pending = null;
+    var h = measure();
+    if (h <= 0) return;
+    if (h > last) {
+      // 变高：门槛 8px。父侧设高时会 +4 余量，若无门槛会形成
+      // 「回传 -> 父侧加 4 -> 又变高 -> 再回传」的缓慢爬升正反馈。
+      if (h - last > 8 || last === 0) {
+        armed = false;
+        send(h);
+      }
+      return;
+    }
+    if (h < last) {
+      // 变矮：二次确认。若立即回传，100vh 类布局会让高度被一路拽到 0。
+      if (!armed) {
+        armed = true;
+        setTimeout(function () {
+          armed = false;
+          var h2 = measure();
+          if (h2 > 0 && h2 < last - 1) send(h2);
+        }, 120);
+      }
+    }
+  }
+  function schedule() {
+    if (pending) return;
+    pending = requestAnimationFrame(flush);
+  }
+  try { new ResizeObserver(schedule).observe(document.body); } catch (e) {}
+  try {
+    new MutationObserver(schedule).observe(document.documentElement, {
+      attributes: true, childList: true, subtree: true,
+      attributeFilter: ['class', 'style', 'hidden']
+    });
+  } catch (e) {}
+  [80, 300, 800, 1600].forEach(function (t) { setTimeout(schedule, t); });
+  ['transitionend', 'animationend'].forEach(function (ev) {
+    document.addEventListener(ev, schedule, true);
+  });
+  document.addEventListener('click', function () {
+    setTimeout(schedule, 60);
+    setTimeout(schedule, 360);
+  }, true);
+  if (document.readyState === 'complete') schedule();
+  else window.addEventListener('load', schedule);
+})();<\/script>`;
+  }
+
+  /**
+   * 把任意 HTML 包成沙箱文档
+   * @param {string} userHtml AI 写的 HTML 原文
+   * @param {string} fid 沙箱 ID，高度回传时用它认领
+   * @param {{minHeight?:number}} [opts]
+   */
+  function _buildSandboxDoc(userHtml, fid, opts) {
+    const o = opts || {};
+    const minHeight = typeof o.minHeight === 'number' ? o.minHeight : 60;
+    const themeCss = _themeVarsCss();
+    // 透明底 + 强制透明：让 iframe 视觉上与气泡连成一片，不出现一块色块
+    const bgFix = '<style>' + themeCss +
+      'html,body{background:transparent!important}' +
+      '</style>' + SANDBOX_HIDE_SCROLLBAR_STYLE;
+    const measure = _sandboxMeasureScript(fid);
+
+    const html = String(userHtml || '');
+    const isFullDoc = /<html[\s>]/i.test(html) || /<!doctype/i.test(html);
+
+    if (isFullDoc) {
+      // 完整文档只往 head 里注入主题与量高，绝不碰它的结构、尺寸和子元素，
+      // 否则会把 AI 自己写的整页布局弄坏。
+      let doc = html;
+      if (/<\/head>/i.test(doc)) {
+        doc = doc.replace(/<\/head>/i, bgFix + '</head>');
+      } else if (/<body[\s>]/i.test(doc)) {
+        doc = doc.replace(/<body/i, bgFix + '<body');
+      } else {
+        doc = bgFix + doc;
+      }
+      if (/<\/body>/i.test(doc)) {
+        doc = doc.replace(/<\/body>/i, measure + '</body>');
+      } else {
+        doc += measure;
+      }
+      return doc;
+    }
+
+    // 片段：套一层骨架，保证有 viewport、有基础排版、内容宽度不溢出
+    return `<!DOCTYPE html><html><head><meta charset="utf-8">` +
+      `<meta name="viewport" content="width=device-width,initial-scale=1">` +
+      bgFix +
+      `<style>html,body{margin:0;padding:0;background:transparent;` +
+      `color:var(--text,#e8e8e8);font-size:14px;line-height:1.6;` +
+      `word-break:break-word;overflow:hidden}` +
+      `img{max-width:100%}*{box-sizing:border-box}</style>` +
+      `</head><body>${html}${measure}</body></html>`;
+  }
+
+  // 走沙箱 iframe 渲染的围栏语言（统一大写比较）
+  const SANDBOX_LANGS = ['HTML', 'SVG', 'XML'];
+
+  /**
+   * 通用沙箱入口：把任意 HTML 生成可直接插入 DOM 的 iframe 字符串。
+   * 与 ```html 围栏共用同一套文档构建与父侧高度监听。
+   * @param {string} html
+   * @param {{minHeight?:number}} [opts]
+   */
+  function sandboxIframe(html, opts) {
+    const fid = 'htmlbox_' + Math.random().toString(36).slice(2, 10);
+    const o = opts || {};
+    const h0 = typeof o.minHeight === 'number' ? o.minHeight : 60;
+    const doc = _buildSandboxDoc(html, fid, o);
+    return `<iframe class="html-sandbox" data-hid="${fid}" sandbox="allow-scripts" ` +
+      `scrolling="no" style="width:100%;height:${h0}px;border:0;display:block;` +
+      `background:transparent" srcdoc="${escAttr(doc)}"></iframe>`;
+  }
+
+  /**
    * 解析行内样式
    * 规则：
    * - 加粗：**text** 或 __text__ -> <strong>
@@ -269,8 +488,12 @@
     * @param {string} rawText 原始 Markdown 文本
     * @returns {string} 渲染后的 HTML 字符串
     */
-   function render(rawText) {
+   function render(rawText, opts) {
     if (!rawText || typeof rawText !== 'string') return '';
+
+    // 流式态由上游显式告知：正在逐字输出时不能建沙箱 iframe（见 flushCodeBlock）。
+    const renderOpts = opts || {};
+    const isStreaming = renderOpts.streaming === true;
 
     // 先剥掉 HTML 注释 <!-- ... -->：这是「给 AI 看的暗号 / 指令」约定，
     // 玩家侧不应显形（如角色卡指令、副本导演提示）。在 think/details 预处理之前
@@ -362,10 +585,26 @@
       tableRows = [];
     }
 
-    function flushCodeBlock() {
+    // 围栏未闭合（流式中断或模型漏写收尾反引号）时以 forcedRaw 调用，
+    // 退回普通代码块显示半截源码，宁可不可交互也不渲染残破 HTML。
+    function flushCodeBlock(forcedRaw) {
       if (!inCodeBlock) return;
       const rawCode = codeBuffer.join('\n');
       const langLabel = (codeLanguage || 'TEXT').toUpperCase();
+
+      // HTML / SVG / XML 围栏进沙箱 iframe 独立运行，其余语言照常当代码展示。
+      // 流式期间只出占位、不建 iframe：上游每来一片文字就会整体重建 innerHTML，
+      // 提前建 iframe 会导致脚本反复重跑、闪烁甚至卡死。
+      if (SANDBOX_LANGS.indexOf(langLabel) >= 0 && !forcedRaw) {
+        out.push(isStreaming
+          ? '<div class="html-sandbox-loading">HTML 组件加载中…</div>'
+          : sandboxIframe(rawCode));
+        codeBuffer = [];
+        codeLanguage = '';
+        inCodeBlock = false;
+        return;
+      }
+
       const encodedCode = encodeURIComponent(rawCode);
 
       out.push(
@@ -621,7 +860,10 @@
     flushBlockquote();
     flushList();
     flushTable();
-    flushCodeBlock();
+    // 走到这里还开着代码块，说明围栏没闭合（流式中断或模型漏写结尾）。
+    // 这种情况不建沙箱 iframe：半截 HTML 渲染出来是残缺界面甚至报错，
+    // 不如按普通代码块把原文显示出来，至少信息不丢。
+    flushCodeBlock(true);
 
     return out.join('');
   }
@@ -724,6 +966,7 @@
     stripActionMarkers,
     parseInline,
     bindCodeCopy,
+    sandboxIframe,
     COPY_SVG,
     CHECK_SVG
   };

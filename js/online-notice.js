@@ -504,22 +504,18 @@ window.RetroflowOnlineNotice = (() => {
     const body = document.createElement('div');
     body.className = 'online-notice-body';
 
-    // 顶部时间行
-    const tacticalBar = document.createElement('div');
-    tacticalBar.className = 'online-notice-tactical-bar';
-    const timeEl = document.createElement('span');
-    timeEl.className = 'online-notice-time';
-    timeEl.textContent = formatTime(stamp);
-
-    tacticalBar.append(timeEl);
-
-    // 联系人名称行
+    // 联系人名称 + 时间同排：名字在前，时间紧随其后
     const head = document.createElement('div');
     head.className = 'online-notice-head';
     const nameEl = document.createElement('span');
     nameEl.className = 'online-notice-name';
     nameEl.textContent = name;
-    head.append(nameEl);
+
+    const timeEl = document.createElement('span');
+    timeEl.className = 'online-notice-time';
+    timeEl.textContent = formatTime(stamp);
+
+    head.append(nameEl, timeEl);
 
     // 内容摘要行（带类型微标）
     const textEl = document.createElement('div');
@@ -542,7 +538,7 @@ window.RetroflowOnlineNotice = (() => {
     textSpan.textContent = preview;
     textEl.appendChild(textSpan);
 
-    body.append(tacticalBar, head, textEl);
+    body.append(head, textEl);
 
     const closeBtn = document.createElement('button');
     closeBtn.type = 'button';

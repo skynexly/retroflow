@@ -14447,7 +14447,6 @@ button.api-node-badge:active {
   box-shadow:
     0 18px 36px rgba(var(--secondary-color-rgb), 0.28),
     0 4px 12px rgba(var(--secondary-color-rgb), 0.12),
-    inset 0 1px 0 rgba(var(--decor-color-rgb), 0.45),
     inset 0 -1px 0 rgba(var(--secondary-color-rgb), 0.08);
   padding: 9px 12px 11px 12px;
   display: flex;
@@ -14583,17 +14582,13 @@ button.api-node-badge:active {
   gap: 1px;
 }
 
-/* 顶部时间行 */
-.online-notice-tactical-bar {
+/* 名字行：名字在前，时间紧随其后同一基线 */
+.online-notice-head {
   display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  margin-bottom: 0;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
 }
-
-
-
-
 
 .online-notice-time {
   font-family: var(--mono-font);
@@ -14602,12 +14597,7 @@ button.api-node-badge:active {
   color: var(--text-muted);
   letter-spacing: 0.5px;
   flex-shrink: 0;
-}
-
-.online-notice-head {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
+  opacity: 0.88;
 }
 
 .online-notice-name {
@@ -14615,6 +14605,7 @@ button.api-node-badge:active {
   font-weight: 700;
   color: var(--secondary-color);
   line-height: 1.25;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -45507,4 +45498,25 @@ html:not(.is-native) #otaUpdateModule { display: none !important; }
   .es-test-btn:active {
     transform: none;
   }
+}
+
+/* ── HTML 沙箱 iframe（AI 生成的 HTML/SVG 围栏独立运行） ─────── */
+/* iframe 默认是行内元素，会带基线间隙导致气泡下沿多出一条缝 */
+.chat-bubble-content .html-sandbox {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  overflow: hidden;
+}
+/* 流式期间的占位：留出高度避免后续 iframe 落地时气泡跳动 */
+.chat-bubble-content .html-sandbox-loading {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 4px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary, var(--text-secondary, #888));
 }
