@@ -2555,7 +2555,7 @@ window.ForkDeckAsst = (() => {
     const draft = (textareaEl.value || '').trim();
     if (draft) {
       // 有草稿：作为本轮输入临时带上（与助手页 hasUnsentDraft 分支同口径）
-      history.push({ role: 'user', content: draft });
+      history.push(Object.defineProperty({ role: 'user', content: draft }, 'linkSourceText', { value: draft }));
     } else if (typeof SystemChatUI.buildSilentContinuationInstruction === 'function'
       && !(typeof SystemChatUI.historyEndsWithUnansweredUser === 'function'
         && SystemChatUI.historyEndsWithUnansweredUser(history))) {

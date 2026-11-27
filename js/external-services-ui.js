@@ -148,6 +148,13 @@ const ExternalServicesUI = (() => {
       +       '</label>'
       +     '</div>'
       +   '</div>'
+      +   '<label class="es-sub-toggle-row' + (globalOn ? '' : ' is-disabled') + '" for="svcAutoFetch">'
+      +     '<span class="es-sub-toggle-title">自动读取我发送的链接</span>'
+      +     '<span class="chat-bento-switch">'
+      +       '<input type="checkbox" id="svcAutoFetch"' + (fetchCfg.autoFetch ? ' checked' : '') + (globalOn ? '' : ' disabled') + '>'
+      +       '<span class="chat-switch-slider"></span>'
+      +     '</span>'
+      +   '</label>'
       +   '<div class="psych-radar-manual-drawer terminal-config-drawer" id="svcFetchHelpDrawer" hidden>'
       +     '<div class="terminal-config-hint">'
       +       'AI 可打开网址读取正文，常与联网搜索配合。单次最多读取前 ' + ES.FETCH_MAX_CHARS + ' 字。'
@@ -301,6 +308,8 @@ const ExternalServicesUI = (() => {
       };
     }
     // 全局网页抓取开关
+    const autoToggle = containerEl.querySelector('#svcAutoFetch');
+    if (autoToggle) autoToggle.onchange = async () => { await ES.setAutoFetch(autoToggle.checked); render(); };
     const fetchToggle = containerEl.querySelector('#svcFetchGlobalToggle');
     if (fetchToggle) {
       fetchToggle.onchange = async () => {

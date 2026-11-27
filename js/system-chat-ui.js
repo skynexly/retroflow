@@ -2967,7 +2967,11 @@
       const envStamp = role === 'user' ? envStampFor(rec) : '';
       const inlineId = role === 'user' && media && media.inline && media.galleryId;
       const contextText = [messageTime, envStamp, quote, inlineId ? ChatInlineImages.placeholder(inlineId) : vision, fileBlock, text].filter(Boolean).join('\n').trim();
-      if (contextText) history.push(ChatInlineImages.attach({ role, content: contextText, _createdAt: rec.createdAt }, inlineId));
+      if (contextText) {
+        const msg = ChatInlineImages.attach({ role, content: contextText, _createdAt: rec.createdAt }, inlineId);
+        if (role === 'user') Object.defineProperty(msg, 'linkSourceText', { value: rawText });
+        history.push(msg);
+      }
     }
 
     // —— 时间线归并 ——
@@ -4434,6 +4438,13 @@ ${parts.join('\n\n———\n\n')}`;
     const inlineCost = pending.reduce((sum, message) => sum + ChatInlineImages.idsFrom(message).length * 1200, 0);
     pending.forEach(message => { used += estimateMessageTokens(message); });
     used += inlineCost;
+    const excerpt = await ExternalServices.linkExcerpt(pending.map(m => m.linkSourceText));
+    const available = Math.max(0, inputBudget - used - 8);
+    if (excerpt && available >= 80) {
+      const reference = { role: 'user', content: excerpt.slice(0, available) };
+      pending.unshift(reference);
+      used += estimateMessageTokens(reference);
+    }
 
     const keptOlder = [];
     for (let i = older.length - 1; i >= 0; i -= 1) {
@@ -4485,8 +4496,35 @@ ${parts.join('\n\n———\n\n')}`;
       console.warn('[System Chat] 上下文快照写入失败：', err);
     }
 
+    const prepared = await ChatInlineImages.prepare(finalMessages, pending, blobToDataUrl);
+    const pendingSet = new Set(pending);
+    const isPendingUser = m => m && m.role === 'user' && pendingSet.has(m);
+    const messages = [];
+    // 用原消息判定轮次，用同下标的已装配内容拼接；系统注入仍保留原位。
+    for (let i = 0; i < finalMessages.length;) {
+      if (!isPendingUser(finalMessages[i])) {
+        messages.push(prepared[i++]);
+        continue;
+      }
+      const start = i;
+      let hasInline = false;
+      while (i < finalMessages.length && isPendingUser(finalMessages[i])) {
+        if (ChatInlineImages.idsFrom(finalMessages[i]).length) hasInline = true;
+        i++;
+      }
+      const group = prepared.slice(start, i);
+      if (!hasInline || group.length === 1) {
+        for (const m of group) messages.push(m);
+        continue;
+      }
+      const content = group.flatMap(m => Array.isArray(m.content)
+        ? m.content.filter(p => p.type !== 'text' || p.text)
+        : [{ type: 'text', text: m.content }]);
+      messages.push({ role: 'user', content });
+    }
+
     return {
-      messages: await ChatInlineImages.prepare(finalMessages, pending, blobToDataUrl),
+      messages,
       meta: {
         contextLimit,
         outputReserve,

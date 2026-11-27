@@ -17081,6 +17081,7 @@ button.api-node-badge:active {
   border-radius: 50%;
   animation: chatVisionSpin .8s linear infinite;
 }
+.chat-vision-status.is-inline::before { content: none; }
 .chat-vision-status.is-done { color: var(--secondary-color); }
 .chat-vision-status.is-done::before { background: currentColor; border: 0; animation: none; }
 .chat-vision-status.is-failed { color: var(--danger-color, #c46b6b); }
@@ -45152,6 +45153,36 @@ html:not(.is-native) #otaUpdateModule { display: none !important; }
 /* 裸控制行：无大卡片包裹，直接坐在页面底色上，左右微缩进与卡片对齐 */
 .es-module-toggle-row {
   padding: 0 2px;
+}
+/* 子级开关：浅底缩进块，视觉归属上方的总闸；无边框、无分割线、无竖条 */
+.es-sub-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 13px 12px;
+  border-radius: 4px;
+  background: var(--card-bg-color, rgba(127, 127, 127, 0.1));
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.18s ease, background-color 0.18s ease;
+}
+.es-sub-toggle-row:active {
+  background: rgba(var(--primary-color-rgb, 99, 0, 0), 0.07);
+}
+.es-sub-toggle-title {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text-color);
+  letter-spacing: 0.2px;
+}
+/* 总闸关闭：整块安静降透明度并禁用交互 */
+.es-sub-toggle-row.is-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+  cursor: default;
 }
 /* 服务商列表：卡片之间用间距分隔，不用线 */
 .es-provider-list {

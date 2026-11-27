@@ -3251,6 +3251,12 @@ const records = await OnlineChatStore.listMessages(session.accountId, session.co
       const budgetApi = window.ContextBudget;
       let history;
       let injectedRecords = records;
+      const turnTexts = [];
+      for (const r of records) {
+        if (r.role === 'char') turnTexts.length = 0;
+        else if (r.role === 'envoy' && (!r.messageType || r.messageType === 'text')) turnTexts.push(r.content);
+      }
+      const linkExcerpt = await ExternalServices.linkExcerpt(turnTexts);
       if (budgetApi && typeof budgetApi.resolveBudget === 'function') {
         const { inputBudget, contextLimit } = budgetApi.resolveBudget(config);
         const fixedCost = budgetApi.estimateMessageTokens({ role: 'system', content: systemPrompt })
@@ -3299,6 +3305,7 @@ const records = await OnlineChatStore.listMessages(session.accountId, session.co
       // 文件区常驻清单：让对方知道现在有哪些文件可翻，不必猜文件名。
       // 内容在上面算预算时已经取过，这里直接用，避免重复构建导致两次
       // 结果不一致（预算按 A 算、实际发 B）。
+      if (linkExcerpt) messages.push({ role: 'user', content: linkExcerpt });
       if (manifest) messages.push({ role: 'system', content: manifest });
 
       // 波形占位：请求期间让用户看到对方正在回应
