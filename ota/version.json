@@ -32,19 +32,18 @@
   "channel": "stable",
   "latest": {
     "version": "1.9.0",
-    "build": 1330,
+    "build": 1331,
     "minBinary": 7,
-    "releasedAt": "2026-11-27T10:23:31Z",
+    "releasedAt": "2026-11-27T14:34:06Z",
     "notes": [
-      "新增「预识图模式」开关，可关闭图片先压缩识别的流程",
-      "关闭后新发图片仍归档，但仅在当轮以原图直传主模型，后续轮次只保留图片ID占位",
-      "直传图片不写入聊天记录与请求日志摘要；模型拒收时提示改用多模态模型"
+      "外部服务新增「自动读取我发送的链接」开关：开启后点回复时自动读取本轮消息里的链接",
+      "该开关默认关闭，助手页、DECK、私聊共用；关闭网页抓取总闸即停用"
     ],
     "packages": {
       "full": {
-        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1330/retroflow-ota-full-b1330.zip",
-        "sha256": "5fe6bd00c2d2d652b58e3d22e31d177b6acb41c97f98a87de8ca57d1ff5cc5f8",
-        "size": 2228747
+        "url": "https://github.com/skynexly/retroflow/releases/download/ota-b1331/retroflow-ota-full-b1331.zip",
+        "sha256": "27fe7cdec6523a8d752e6a0898500e1ae708904d578e07ab04a1c9e0da9b1262",
+        "size": 2230532
       },
       "patch": {
         "sinceBuild": 0,
@@ -54,5 +53,5 @@
       }
     }
   },
-  "_status": "已发布 build 1330（全量包，字体常驻不打包）。patch 差分留待后续。"
+  "_status": "已发布 build 1331（全量包，字体常驻不打包）。patch 差分留待后续。"
 }
